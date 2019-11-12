@@ -1,0 +1,13 @@
+name = "CanRad"
+uuid = "aeb86711-de0f-4108-877d-aa9de166218e"
+authors = ["Clare Webster"]
+version = "0.1.0"
+
+[compat]
+julia = "1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
