@@ -1,5 +1,12 @@
-function readlas(infile)
-    header, dsmdat = FileIO.load(infile)
+function readlas(infile,lastoolspath)
+    if infile[end-3:end] == ".laz"
+        header, dsmdat = LazIO.load(infile)
+    elseif infile[end-3:end] == ".las"
+        header, dsmdat = FileIO.load(infile)
+    else
+        error("Unknown DSM file extension")
+    end
+
     dsm = zeros(size(dsmdat,1),4) .* NaN
     dsm_c = zeros(size(dsmdat,1)) .* NaN
     for dx in eachindex(dsmdat)
