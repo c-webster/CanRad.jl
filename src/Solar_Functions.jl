@@ -1,4 +1,4 @@
-function calc_ringratios(ring_phi,ring_radius,mat2ev,g_rad)
+function calc_ringratios(ring_tht,ring_radius,mat2ev,g_rad)
     w2all     = zeros(size(ring_radius,1)-1) .* NaN
     surf_area = zeros(size(ring_radius,1)-1) .* NaN
     cos_corr  = zeros(size(ring_radius,1)-1) .* NaN
@@ -8,8 +8,8 @@ function calc_ringratios(ring_phi,ring_radius,mat2ev,g_rad)
         outer_radius   = ring_radius[rix+1]
         relevant_pix   = findall(inner_radius .< vec(g_rad) .< outer_radius)
         w2all[rix]     = sum(mat2ev[relevant_pix].==1) / size(relevant_pix,1)
-        surf_area[rix] = 2*pi*(cos(ring_phi[rix]/360*2*pi) - cos(ring_phi[rix+1]/360*2*pi))/2/pi
-        cos_corr[rix]  = (cos(ring_phi[rix]/360*2*pi) + cos(ring_phi[rix+1]/360*2*pi))/2
+        surf_area[rix] = 2*pi*(cos(ring_tht[rix]/360*2*pi) - cos(ring_tht[rix+1]/360*2*pi))/2/pi
+        cos_corr[rix]  = (cos(ring_tht[rix]/360*2*pi) + cos(ring_tht[rix+1]/360*2*pi))/2
     end
 
     return w2all, surf_area, cos_corr
@@ -17,12 +17,12 @@ end
 
 function calculateVf(mat2ev,g_rad)
 
-    lens_profile_phi  = collect(0:10:90)
+    lens_profile_tht  = collect(0:10:90)
     lens_profile_rpix = collect(0:1/9:1)
-    ring_phi          = collect(0:90/9:90)
-    ring_radius       = pyinterp.interp1d(lens_profile_phi,lens_profile_rpix*radius)(ring_phi)
+    ring_tht          = collect(0:90/9:90)
+    ring_radius       = pyinterp.interp1d(lens_profile_tht,lens_profile_rpix*radius)(ring_tht)
 
-    w2all, surf_area, cos_corr = calc_ringratios(ring_phi,ring_radius,mat2ev,g_rad)
+    w2all, surf_area, cos_corr = calc_ringratios(ring_tht,ring_radius,mat2ev,g_rad)
 
     Vf = zeros(1,2) .* NaN
     Vfweighted = sum(w2all.*surf_area.*cos_corr) / sum(surf_area.*cos_corr)
@@ -46,20 +46,20 @@ function getsundxs(mat2ev,trans_for,xmm,ymm,mini,maxi,nolp,noap,dix,keepix,six)
     return mat2ev,nolp1,noap1,trans_for
 end
 
-function calculateSWR(mat2ev,loc_time,radius,sol_tht,sol_phi,Vf,g_coorpol,sol_sinelev)
-    im_centre = size(mat2ev)./2
-    drad      = [0.533 1.066 2.132]./2
-    trans_for = zeros(size(loc_time,1),size(drad,2))
+function calculateSWR(mat2ev,loc_time,radius,sol_phi,sol_tht,Vf,g_coorpol,sol_sinelev)
+    im_centre         = size(mat2ev)./2
+    drad              = [0.533 1.066 2.132]./2
+    trans_for         = zeros(size(loc_time,1),size(drad,2))
 
-    lens_profile_phi  = collect(0:10:90)
+    lens_profile_tht  = collect(0:10:90)
     lens_profile_rpix = collect(0:1/9:1)
-    dx        = findall(sol_phi .<= maximum(filter(!isnan,g_coorpol[:,2])))
-    prad      = ones(size(sol_phi,1)) .* NaN
-    prad[dx]  = pyinterp.interp1d(lens_profile_phi,lens_profile_rpix*radius)(sol_phi[dx])
+    dx                = findall(sol_tht .<= maximum(filter(!isnan,g_coorpol[:,2])))
+    prad              = ones(size(sol_tht,1)) .* NaN
+    prad[dx]          = pyinterp.interp1d(lens_profile_tht,lens_profile_rpix*radius)(sol_tht[dx])
 
-    keepix    = findall(sol_phi .<= 90)
-    x         = im_centre[1] .+ sin.(deg2rad.(sol_tht[keepix])) .* prad[keepix]
-    y         = im_centre[2] .+ cos.(deg2rad.(sol_tht[keepix])) .* prad[keepix]
+    keepix            = findall(sol_tht .<= 90)
+    x                 = im_centre[1] .+ sin.(deg2rad.(sol_phi[keepix])) .* prad[keepix]
+    y                 = im_centre[2] .+ cos.(deg2rad.(sol_phi[keepix])) .* prad[keepix]
 
     for six = 1:1:size(x,1)
         # global mat2ev, trans_for
@@ -100,10 +100,10 @@ function calculateSWR(mat2ev,loc_time,radius,sol_tht,sol_phi,Vf,g_coorpol,sol_si
     loc_slp = NaN
     loc_asp = NaN
 
-    cang_1           = max.(sin.((90 .- sol_phi)/360*2*pi),0.001)
-    temp = sin.((90 .- sol_phi)/360*2*pi).*cos.(loc_slp/360*2*pi) .+
-                            cos.((90 .- sol_phi)/360*2*pi).*sin.(loc_slp/360*2*pi) .*
-                            cos.((loc_asp .- sol_tht)/360*2*pi)
+    cang_1           = max.(sin.((90 .- sol_tht)/360*2*pi),0.001)
+    temp = sin.((90 .- sol_tht)/360*2*pi).*cos.(loc_slp/360*2*pi) .+
+                            cos.((90 .- sol_tht)/360*2*pi).*sin.(loc_slp/360*2*pi) .*
+                            cos.((loc_asp .- sol_phi)/360*2*pi)
     temp[isnan.(temp)] .= 0
     cang_2           = max.(temp,0)
     swr_for_dir_flat = min.(dir_frac .* swr_open,max_dir) .* trans_for_wgt
@@ -245,11 +245,11 @@ function calc_solar_track(pts,loc_time,time_zone,coor_system)
                                           sin.(deg2rad.(solar_zenith_angle_deg[idx2.==1])))))).*100000)./100000,360)
 
     # convert solar position to phi/tht
-    sol_phi                     = 90 .- solar_elev_corr_atm_ref_deg          # convert to zenith angle in degree, i.e. sun @ zenith is phi = 0; sun @ horizon is phi = 90
-    sol_tht                     = solar_azimuth_angle
-    sol_tht[sol_tht.>=360]      = sol_tht[sol_tht .>= 360] .- 360
-    sol_tht[sol_tht.<0]         = sol_tht[sol_tht .< 0] .+ 360                            #convert to azimuth angle in degree, so that 0ï¿½ is North, 90ï¿½ is East, 180ï¿½ is South, and 270ï¿½ is East
+    sol_tht                     = 90 .- solar_elev_corr_atm_ref_deg          # convert to zenith angle in degree, i.e. sun @ zenith is tht = 0; sun @ horizon is tht = 90
+    sol_phi                     = solar_azimuth_angle
+    sol_phi[sol_phi.>=360]      = sol_phi[sol_phi .>= 360] .- 360
+    sol_phi[sol_phi.<0]         = sol_phi[sol_phi .< 0] .+ 360                            #convert to azimuth angle in degree, so that 0ï¿½ is North, 90ï¿½ is East, 180ï¿½ is South, and 270ï¿½ is East
     sol_sin_elev                = sin.(solar_elev_corr_atm_ref_deg./360 .*2 .* pi) # sin of elevation angle
 
-    return sol_phi, sol_tht, sol_sin_elev
-end
+    return sol_tht, sol_phi, sol_sin_elev
+ends

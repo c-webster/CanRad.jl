@@ -101,7 +101,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID)
     loc_time = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(int):
                                 Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS"))
 
-    sol_phi, sol_tht, sol_sinelev  = calc_solar_track(pts,loc_time,time_zone,coor_system)
+    sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts,loc_time,time_zone,coor_system)
 
 
     # create the output files
@@ -259,8 +259,8 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID)
 
                 ##### Calculate SWR/forest transmissivity
                 if ~tilt
-                    swrtot, swrdir, swr_dif, transfor = calculateSWR(mat2ev,loc_time,radius,sol_tht,
-                                                                sol_phi,Vf_w,g_coorpol,sol_sinelev)
+                    swrtot, swrdir, swr_dif, transfor = calculateSWR(mat2ev,loc_time,radius,sol_phi,
+                                                                sol_tht,Vf_w,g_coorpol,sol_sinelev)
                 end
 
                 if progress

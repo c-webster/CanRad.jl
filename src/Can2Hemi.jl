@@ -159,13 +159,13 @@ function create_mat(radius)
 
     grad  = sqrt.((tgrid[1] .- radius .- 1).^2 .+ (tgrid[2] .- radius .- 1).^2)
     grad[grad .> radius] .= NaN
-    gphi  = (grad./radius).*90
+    gtht  = (grad./radius).*90
 
-    gtht  = reverse(map(atan,(tgrid[2].-radius),(tgrid[1].-radius)),dims=1)
+    gphi  = reverse(map(atan,(tgrid[2].-radius),(tgrid[1].-radius)),dims=1)
 
-    grid  = ones(size(gtht))
+    grid  = ones(size(gphi))
     grid[grad .> radius] .= NaN
-    gcoors = [vec(gtht) vec(gphi)]
+    gcoors = [vec(gphi) vec(gtht)]
     gcoorcart = float([vec(tgrid[1]) vec(tgrid[2])])
 
     return grad, gcoors, gcoorcart, grid
@@ -197,8 +197,8 @@ function dem2pol(dem,pts_x,pts_y,ch,peri,dem_cellsize,slp)
     temppol = cart2sph(xpc,ypc,zpc)
 
     dpol = zeros(size(xpc,1),3) .* NaN
-    dpol[:,1] = temppol[1] # tht
-    dpol[:,2] = (pi/2 .- temppol[2]) .*(180/pi) # phi
+    dpol[:,1] = temppol[1] # azimuth (phi)
+    dpol[:,2] = (pi/2 .- temppol[2]) .*(180/pi) # zenith (theta)
     # dpol[dpol[:,2] .> 90,2] .= 90
     dpol[:,3] = temppol[3] # rad
     dpol[dpol[:,3] .>  peri,3] .= NaN
@@ -215,17 +215,17 @@ function dem2pol(dem,pts_x,pts_y,ch,peri,dem_cellsize,slp)
     return dempol
 end
 
-function fillterrain(rtht,rphi,slp)
+function fillterrain(rphi,rtht,slp)
 
-    min_rphi = minimum(filter(!isnan,rphi))
+    min_rphi = minimum(filter(!isnan,rtht))
     int = size(collect(min_rphi:0.5:(90+slp)),1)
-    temp1 = repeat(collect(range(0,stop=1,length=int))',outer=[size(rphi,1),1])
-    temp2 = repeat((ones(size(rphi,1),1) .* (90+slp)) - rphi,outer=[1,int])
+    temp1 = repeat(collect(range(0,stop=1,length=int))',outer=[size(rtht,1),1])
+    temp2 = repeat((ones(size(rtht,1),1) .* (90+slp)) - rtht,outer=[1,int])
 
-    phi = vec(repeat(rphi,outer=[1,int]) + temp1 .* temp2)
-    tht = vec(repeat(rtht,outer=[1,int]))
+    tht = vec(repeat(rtht,outer=[1,int]) + temp1 .* temp2)
+    phi = vec(repeat(rphi,outer=[1,int]))
 
-    return hcat(tht,phi)
+    return hcat(phi,tht) # azimuth, zenith
 end
 
 function pcd2pol(pcd,xcoor,ycoor,ecoor,peri,ch=0)
@@ -248,8 +248,8 @@ function pcd2pol(pcd,xcoor,ycoor,ecoor,peri,ch=0)
     temppol = cart2sph(plcn[:,1],plcn[:,2],plcn[:,3])
 
     pol = zeros(size(plcn,1),3) .* NaN
-    pol[:,1] = temppol[1] # tht
-    pol[:,2] = ((pi/2) .- temppol[2]) * (180/pi) # phi
+    pol[:,1] = temppol[1] # azimuth (phi)
+    pol[:,2] = ((pi/2) .- temppol[2]) * (180/pi) # zenith (theta)
     # pol[pol[:,2] .> 90,2] .= NaN
     pol[:,3] = temppol[3] # rad
     pol[pol[:,3] .>  peri,3] .= NaN
@@ -262,8 +262,8 @@ function pcd2pol(pcd,xcoor,ycoor,ecoor,peri,ch=0)
     return pol
 end
 
-function pol2cart(tht,phi)
-    @fastmath datcrt = [phi .* cos.(tht) phi .* sin.(tht)]
+function pol2cart(phi,tht)
+    @fastmath datcrt = [tht .* cos.(phi) tht .* sin.(phi)]
     return datcrt
 end
 
@@ -354,4 +354,36 @@ end
 
 function findmincol(row)
     return findmin(row)[2]
+end
+
+function calc_horizon_lines(cellsize,peri,pcdpol,slp)
+
+    rbins = collect(2*cellsize:sqrt(2).*cellsize:peri)
+    phi_bins = collect(-pi+((pi/360)*3):pi/720:pi-((pi/360)*3))
+
+    global mintht = ones(size(phi_bins,1)) .* 90
+
+    for rbix = length(rbins)-1:-1:1
+        global mintht
+            fix1 = findall((pcdpol[:,3] .>= rbins[rbix]) .& (pcdpol[:,3] .< rbins[rbix+1]))
+            if size(fix1) > (1,)
+                fix2 = sortperm(pcdpol[fix1,1])
+                tdx = findall(minimum(pcdpol[fix1[fix2],1]) .<= phi_bins
+                                    .<= maximum(pcdpol[fix1[fix2],1]))
+
+                temp = ones(size(phi_bins,1)) .* 90
+                temp[tdx] =  pyinterp.interp1d(pcdpol[fix1[fix2],1],
+                            pcdpol[fix1[fix2],2],fill_value="extrapolate")(phi_bins[tdx])
+
+                mintht = minimum(hcat(mintht,temp),dims=2)
+            end
+    end
+
+    rphi = collect(-pi:pi/1080:pi)
+    rtht = pyinterp.interp1d([phi_bins[end]-2*pi; phi_bins; phi_bins[1]+2*pi],
+                        vec([mintht[end];mintht;mintht[1]]),fill_value="extrapolate")(rphi)
+
+    pol = fillterrain(rphi,rtht,slp)
+
+    return pol
 end
