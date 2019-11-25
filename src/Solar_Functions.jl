@@ -252,4 +252,4 @@ function calc_solar_track(pts,loc_time,time_zone,coor_system)
     sol_sin_elev                = sin.(solar_elev_corr_atm_ref_deg./360 .*2 .* pi) # sin of elevation angle
 
     return sol_tht, sol_phi, sol_sin_elev
-ends
+end
