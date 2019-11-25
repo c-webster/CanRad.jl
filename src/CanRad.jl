@@ -13,10 +13,13 @@ function __init__()
     @eval global np        = pyimport("numpy")
 end
 
-include("FileFunctions.jl")
+include("File_Functions.jl")
 include("calcHorizon.jl")
-include("Can2Hemi.jl")
-include("PrepatoryFunctions.jl")
+include("Can2Hemi_Functions.jl")
+include("Prepatory_Functions.jl")
+include("Can2Hemi_Functions.jl")
+include("Solar_Functions.jl")
+include("Terrain_Functions.jl")
 
 export
     readlas,
