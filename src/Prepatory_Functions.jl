@@ -1,10 +1,10 @@
-function extract(d)
+function extract(d::Dict)
     expr = quote end
     for (k, v) in d
        push!(expr.args, :($(Symbol(k)) = $v))
     end
-    eval(expr)
-    return
+    # eval(expr)
+    return expr
 end
 
 function clipdat(pc,pts,peri)

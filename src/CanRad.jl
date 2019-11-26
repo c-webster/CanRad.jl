@@ -41,13 +41,19 @@ export
     prepcrtdat,
     preptercart,
     getimagecentre,
-    findparis,
+    findpairs,
     fillmat,
     findmincol,
+    calc_horizon_lines,
     pyinterp,
     scipyspat,
     netcdf,
-    np
+    np,
+    makeDTM,
+    tileDTM,
+    Settings_makeDTM
+
+include("Settings_Files/Settings_makeDTM.jl")
 
 
 end # module

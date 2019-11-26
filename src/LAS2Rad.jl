@@ -3,8 +3,8 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID)
 
     ################################################################################
     # Initialise
-    extract(dat_in)
-    extract(par_in)
+    eval(extract(dat_in))
+    eval(extract(par_in))
 
     if progress; start = time(); end
 
