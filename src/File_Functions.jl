@@ -1,4 +1,4 @@
-function readlas(infile,lastoolspath)
+function readlas(infile)
     if infile[end-3:end] == ".laz"
         header, dsmdat = LazIO.load(infile)
     elseif infile[end-3:end] == ".las"
