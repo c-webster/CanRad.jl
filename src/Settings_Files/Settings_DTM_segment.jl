@@ -1,4 +1,4 @@
-function Settings_DTM_segment()
+function settings_DTM_segment()
 
     set_in = Dict(
 

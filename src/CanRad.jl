@@ -6,6 +6,10 @@ using FileIO, LasIO, DelimitedFiles, MAT, DataStructures,
 
 using Conda, PyCall
 
+Conda.add("scipy")
+Conda.add("netCDF4")
+Conda.add("numpy")
+
 function __init__()
     @eval global pyinterp  = pyimport("scipy.interpolate")
     @eval global scipyspat = pyimport("scipy.spatial")
@@ -21,6 +25,9 @@ include("Can2Hemi_Functions.jl")
 include("Solar_Functions.jl")
 include("Terrain_Functions.jl")
 # include("calcHorizon.jl")
+
+include("Settings_Files/settings_DTM_create.jl")
+include("Settings_Files/settings_DTM_segment.jl")
 
 export
     readlas,
@@ -52,10 +59,12 @@ export
     np,
     DTM_create,
     DTM_segment,
-    DTM_resample
+    DTM_resample,
+    settings_DTM_create, # eventually remove settings files to be included by user
+    settings_DTM_segment
 
-include("Settings_Files/Settings_DTM_create.jl")
-include("Settings_Files/Settings_DTM_segment.jl")
+
+
 
 
 end # module

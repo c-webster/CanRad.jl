@@ -1,4 +1,4 @@
-function Settings_DTM_create()
+function settings_DTM_create()
 
     set_in = Dict(
 
