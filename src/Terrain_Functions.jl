@@ -1,7 +1,6 @@
-function makeDTM(set_in)
+function DTM_create(set_in)
 
     eval(extract(set_in))
-
 
     if !ispath(outdir)
         mkdir(outdir)
@@ -20,16 +19,35 @@ function makeDTM(set_in)
 end
 
 
+function DTM_segment(set_in)
+
+    eval(extract(set_in))
+
+    # import the dtm
+
+
+    # loop through the segments, clipping and saving the dtm to the analysis area dimensions
+    # @rput 
+    #
+    # @rimport raster as raster
+    #
+    # R"""
+    # chm <- raster()
+    #
+    # """
 
 
 
 
-#
-# function tileDTM(dtmfname)
-#
-#
-#
-#
-#
-#
-# end
+
+
+
+end
+
+
+function DTM_resample(set_in)
+
+
+
+
+end
