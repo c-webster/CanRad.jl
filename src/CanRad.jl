@@ -4,7 +4,7 @@ using FileIO, LasIO, DelimitedFiles, MAT, DataStructures,
     Statistics, VectorizedRoutines, Dates,
     Match, DataFrames, Formatting
 
-using PyCall
+using Conda, PyCall
 
 function __init__()
     @eval global pyinterp  = pyimport("scipy.interpolate")
@@ -13,7 +13,7 @@ function __init__()
     @eval global np        = pyimport("numpy")
 end
 
-using RCall
+# using RCall
 
 include("File_Functions.jl")
 include("Prepatory_Functions.jl")
