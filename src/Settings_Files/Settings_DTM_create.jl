@@ -1,4 +1,4 @@
-function Settings_makeDTM()
+function Settings_DTM_create()
 
     set_in = Dict(
 
@@ -24,8 +24,5 @@ function Settings_makeDTM()
     )
 
     return set_in
-
-
-
 
 end
