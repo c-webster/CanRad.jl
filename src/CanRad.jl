@@ -13,13 +13,14 @@ function __init__()
     @eval global np        = pyimport("numpy")
 end
 
+using RCall
+
 include("File_Functions.jl")
-include("calcHorizon.jl")
-include("Can2Hemi_Functions.jl")
 include("Prepatory_Functions.jl")
 include("Can2Hemi_Functions.jl")
 include("Solar_Functions.jl")
 include("Terrain_Functions.jl")
+# include("calcHorizon.jl")
 
 export
     readlas,
@@ -49,11 +50,12 @@ export
     scipyspat,
     netcdf,
     np,
-    makeDTM,
-    tileDTM,
-    Settings_makeDTM
+    DTM_create,
+    DTM_segment,
+    DTM_resample
 
-include("Settings_Files/Settings_makeDTM.jl")
+include("Settings_Files/Settings_DTM_create.jl")
+include("Settings_Files/Settings_DTM_segment.jl")
 
 
 end # module
