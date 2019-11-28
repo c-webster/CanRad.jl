@@ -23,13 +23,13 @@ include("File_Functions.jl")
 include("Prepatory_Functions.jl")
 include("Can2Hemi_Functions.jl")
 include("Solar_Functions.jl")
-include("Terrain_Functions.jl")
-# include("calcHorizon.jl")
+include("CHM2Rad.jl")
+include('LAS2Rad.jl')
+include("CanRad_Prep.jl")
 
-include("Settings_Files/settings_DTM_create.jl")
-include("Settings_Files/settings_DTM_segment.jl")
 
 export
+    Can2Rad_Prep,
     readlas,
     importdtm,
     read_ascii,
@@ -53,15 +53,11 @@ export
     fillmat,
     findmincol,
     calc_horizon_lines,
+    calcThickness,
     pyinterp,
     scipyspat,
     netcdf,
-    np,
-    DTM_create,
-    DTM_segment,
-    DTM_resample,
-    settings_DTM_create, # eventually remove settings files to be included by user
-    settings_DTM_segment
+    np
 
 
 
