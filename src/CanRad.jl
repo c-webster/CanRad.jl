@@ -24,12 +24,12 @@ include("Prepatory_Functions.jl")
 include("Can2Hemi_Functions.jl")
 include("Solar_Functions.jl")
 include("CHM2Rad.jl")
-include('LAS2Rad.jl')
-include("CanRad_Prep.jl")
+include("LAS2Rad.jl")
+# include("CanRad_Prep.jl")
 
 
 export
-    Can2Rad_Prep,
+    # CanRad_Prep,
     readlas,
     importdtm,
     read_ascii,
