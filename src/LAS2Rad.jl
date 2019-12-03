@@ -1,4 +1,4 @@
-function LAS2Rad(pts,dat_in,par_in,exdir,taskID)
+function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
 
 
     ################################################################################
@@ -179,7 +179,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID)
                 #### Prepare surface data
                 if trunks && branches
                     # datpol = vcat(dsmpol,tsmpol,bsmpol);
-                    dattemp = vcat(hcat(dsmcrt,dsmpol[:,3]),hcat(bsmcrt,bsmpol[:,3]),hcat(tsmcrt,tsmrad))
+                    datpol = vcat(hcat(dsmcrt,dsmpol[:,3]),hcat(bsmcrt,bsmpol[:,3]),hcat(tsmcrt,tsmrad))
                 elseif trunks && ~branches
                     datpol = vcat(dsmpol,tsmpol)
                 elseif ~trunks && branches
@@ -206,11 +206,11 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID)
                     kdtree = scipyspat.cKDTree(gcrcrt)
                     kdtreedims = size(gcrcrt,1)
                 else
-                    dattemp[dattemp[:,2] .> 90,2] .= 90
+                    datpol[datpol[:,2] .> 90,2] .= 90
                     slope = pts_slp[crx]
                 end
 
-                datcrt, datrad = prepcrtdat(dattemp[:,1:2], dattemp[:,3])
+                datcrt, datrad = prepcrtdat(datpol[:,1:2], datpol[:,3])
 
                 if progress
                     elapsed = time() - start
