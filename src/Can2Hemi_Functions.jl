@@ -171,6 +171,14 @@ function create_mat(radius)
     return grad, gcoors, gcoorcart, grid
 end
 
+function cart2sph(x,y,z)
+    hypotxy = hypot.(x,y)
+    r       = hypot.(hypotxy,z)
+    elev    = atan.(z,hypotxy)
+    az      = atan.(y,x)
+    return (az,elev,r)
+end
+
 function dem2pol(dem,pts_x,pts_y,ch,peri,dem_cellsize,slp)
 
     if size(pts_x,1) > 1
