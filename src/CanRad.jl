@@ -1,8 +1,8 @@
 module CanRad
 
 using FileIO, LasIO, DelimitedFiles, MAT, DataStructures,
-    Statistics, VectorizedRoutines, Dates,
-    Match, DataFrames, Formatting
+    Statistics, VectorizedRoutines, Dates, 
+    Match, DataFrames, Formatting, Distributed
 
 using Conda, PyCall
 
@@ -57,7 +57,9 @@ export
     pyinterp,
     scipyspat,
     netcdf,
-    np
+    np,
+    LAS2Rad,
+    CHM2Rad
 
 
 
