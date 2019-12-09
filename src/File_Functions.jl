@@ -1,7 +1,9 @@
+extension(url::String) = match(r"\.[A-Za-z0-9]+$", url).match
+
 function readlas(infile)
-    if infile[end-3:end] == ".laz"
+    if extension(infile) == ".laz"
         header, dsmdat = LazIO.load(infile)
-    elseif infile[end-3:end] == ".las"
+    elseif entension(infile) == ".las"
         header, dsmdat = FileIO.load(infile)
     else
         error("Unknown DSM file extension")
@@ -35,12 +37,16 @@ function importdtm(dtmf,tilt)
         dtm = [dtm1 dtm2 dtm3 dtm4 dtm5]
         dtm_cellsize = dtmdat["cellsize"]
     else
-        file = matopen(dtmf); dtmdat = read(file,"dtm"); close(file)
-        dtm1 = dtmdat["x"]
-        dtm2 = dtmdat["y"]
-        dtm3 = dtmdat["z"]
-        dtm = [dtm1 dtm2 dtm3]
-        dtm_cellsize = dtmdat["cellsize"]
+        if extension(infile) == ".mat"
+            file = matopen(dtmf); dtmdat = read(file,"dtm"); close(file)
+            dtm1 = dtmdat["x"]
+            dtm2 = dtmdat["y"]
+            dtm3 = dtmdat["z"]
+            dtm = [dtm1 dtm2 dtm3]
+            dtm_cellsize = dtmdat["cellsize"]
+        elseif extension(infile) == ".asc"
+            dtm, cellsize = read_ascii(infile)
+        end
     end
     return dtm, dtm_cellsize
 end
@@ -103,4 +109,25 @@ function createfiles(outdir,pts,loc_time,t1,t2,int)
                                         least_significant_digit=3)
 
     return swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset
+end
+
+
+function create_exmat(outdir,pts,g_img)
+
+    outfile  = outdir*"/SHIs_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".nc"
+
+    images   = netcdf.Dataset(outfile,"w",format="NETCDF4_CLASSIC")
+
+    dims     = size(g_img)
+
+    loc1  = images.createDimension("loc1",size(g_img)[1])
+    locxy = images.createDimension("locxy",size(pts,1))
+
+    loc2  = images.createDimension("loc2",size(g_img)[2])
+
+    SHIs  = images.createVariable("SHI",np.int8,("locxy","loc1","loc2"),zlib="TRUE",
+                                    least_significant_digit=1)
+
+    return SHIs, images
+
 end

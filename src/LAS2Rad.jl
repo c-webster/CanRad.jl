@@ -108,6 +108,11 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
 
     swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,pts,loc_time,t1,t2,int)
 
+    if save_images
+        SHIs, images = create_exmat(outdir,pts,g_img)
+    end
+
+
     if progress
         elapsed = time() - start
         progtextinit = "0. Pre-calc took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
@@ -126,7 +131,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
 
         @simd for crx = 1:size(pts,1)
 
-            # try # catch statement to close dataset if error
+            try # catch statement to close dataset if error
 
                 if progress; start = time(); end
 
@@ -258,7 +263,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
                 Vf_w, Vf_f = calculateVf(mat2ev,g_rad)
 
                 ##### Calculate SWR/forest transmissivity
-                if ~tilt
+                if ~tilt & calc_swr
                     swrtot, swrdir, swr_dif, transfor = calculateSWR(mat2ev,loc_time,radius,sol_phi,
                                                                 sol_tht,Vf_w,g_coorpol,sol_sinelev)
                 end
@@ -274,13 +279,17 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
                 #export the data [append to netcdf]
                 if progress; start = time(); end
 
-                if ~tilt
+                if ~tilt & calc_swr
                     swr_tot[crx]     = np.array(swrtot)
                     swr_dir[crx]     = np.array(swrdir)
                     for_tau[crx]     = np.array(transfor)
                 end
                 Vf_weighted[crx] = np.array(Vf_w)
                 Vf_flat[crx]     = np.array(Vf_f)
+
+                if save_images
+                    SHIs[crx] = np.array(mat2ev)
+                end
 
                 if progress
                     elapsed = time() - start
@@ -294,14 +303,17 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
                 global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
                 writedlm(outdir*"/"*outtext,NaN)
 
-            # catch
-            #     writedlm(outdir*"/Error_"*string(Int(pts[crx,1]))*"_"*string(Int(pts[crx,2]))*".txt",NaN)
-            # end
+            catch
+                writedlm(outdir*"/Error_"*string(Int(pts[crx,1]))*"_"*string(Int(pts[crx,2]))*".txt",NaN)
+            end
 
         end #end crx
-    #
-    # finally
-    #     dataset.close()
-    #     writedlm(outdir*"/"*"done.txt",NaN)
-    # end
+
+    finally
+        dataset.close()
+        if save_images
+            images.close()
+        end
+        writedlm(outdir*"/"*"done.txt",NaN)
+    end
 end
