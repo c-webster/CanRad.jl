@@ -1,6 +1,7 @@
 
 # settings file
 
+addprocs(Sys.CPU_THREADS)
 
 
 

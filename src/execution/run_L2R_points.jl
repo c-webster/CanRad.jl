@@ -1,18 +1,18 @@
 
-wrkdir     = "C:/Users/v1cwebst/GoogleDrive/Data/LAS2Rad/Scripts/"
+# wrkdir     = "C:/Users/v1cwebst/GoogleDrive/Data/LAS2Rad/Scripts/"
 
-setf       = "C:/Users/v1cwebst/GoogleDrive/Data/LAS2Rad/Settings/LAS2Rad_Settings_Pts.jl"
+setf       = "C:/Users/webster/GDrive/Data/LAS2Rad/Settings/LAS2Rad_Settings_Pts.jl"
 
-ptsf       = "C:/Users/v1cwebst/GoogleDrive/Data/L2HEval/Data_Batches/FluelaSlopes/SegmentA/SegmentA_gridpts_Copy.txt"
+ptsf       = "E:/Data/L2HEval/Data_Batches/FluelaSlopes/SegmentA/SegmentA_gridpts_Copy.txt"
 
-basefolder = "C:/Users/v1cwebst/GoogleDrive/Data/L2HEval/Data_Batches/FluelaSlopes/SegmentA/"
+basefolder = "E:/Data/L2HEval/Data_Batches/FluelaSlopes/SegmentA/"
 
-exdir      = "C:/Users/v1cwebst/GoogleDrive/Data/LAS2Rad/temp/"
+exdir      = "C:/Users/webster/GDrive/Data/LAS2Rad/temp/"
 
 ###############################################################################
 ### BEGIN
 
-using CanRad
+using CanRad, DelimitedFiles
 
 include(setf)
 
