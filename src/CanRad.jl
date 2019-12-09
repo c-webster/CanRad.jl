@@ -30,6 +30,7 @@ include("LAS2Rad.jl")
 
 export
     # CanRad_Prep,
+    extension,
     readlas,
     importdtm,
     read_ascii,
