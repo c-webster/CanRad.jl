@@ -1,7 +1,7 @@
 module CanRad
 
 using FileIO, LasIO, DelimitedFiles, MAT, DataStructures,
-    Statistics, VectorizedRoutines, Dates, 
+    Statistics, VectorizedRoutines, Dates,
     Match, DataFrames, Formatting, Distributed
 
 using Conda, PyCall
@@ -17,8 +17,6 @@ function __init__()
     @eval global np        = pyimport("numpy")
 end
 
-# using RCall
-
 include("File_Functions.jl")
 include("Prepatory_Functions.jl")
 include("Can2Hemi_Functions.jl")
@@ -26,7 +24,6 @@ include("Solar_Functions.jl")
 include("CHM2Rad.jl")
 include("LAS2Rad.jl")
 # include("CanRad_Prep.jl")
-
 
 export
     # CanRad_Prep,
@@ -61,8 +58,6 @@ export
     np,
     LAS2Rad,
     CHM2Rad
-
-
 
 
 
