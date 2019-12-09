@@ -1,58 +1,73 @@
 
-bdr          = "M:/WORK_ALL/Data/LAS2Rad/"
+println("new")
 
-bdr          = "C:/Users/v1cwebst/GoogleDrive/Data/LAS2Rad/"
+using Distributed
 
-wrkdir       = bdr*"Scripts/"
+addprocs(Sys.CPU_THREADS)
 
-basefolder   = bdr*"Data_Areas/LaretLarge"
+@everywhere basefolder   = "D:/LAS2Rad/Data_Areas/Ukraine"
 
-segname      = "SegmentA"
+@everywhere ptsf         = basefolder*"/Ukraine_gridpts.txt"
 
-setf         = bdr*"Settings/LAS2Rad_Settings_LaretLarge.jl"
-
-lastoolspath = "C:/Workspace/LAStools/bin/"
-
+@everywhere include("C:\\Users\\webster\\.julia\\dev\\CanRad\\src\\Settings_Files/LAS2Rad_Settings_Ukraine.jl")
 
 ###############################################################################
 ### BEGIN
 
-include(wrkdir*"LAS2Rad_PKG_check.jl")
-include(wrkdir*"LAS2Rad_FunctionCall.jl")
-include(wrkdir*"LAS2Rad.jl")
-
-include(wrkdir*"extract_settings.jl")
-include(setf)
+@everywhere using CanRad, DelimitedFiles
+            using Formatting
 
 tsize = readdlm(basefolder*"/TileSize.txt")
 
-par_in, dat_in = LAS2Rad_Settings(basefolder,segname)
+segs = readdir(basefolder*"/Segments")
 
-limits = readdlm(basefolder*"/"*segname*"/"*segname*"_analysisarea.txt")
+if !ispath(basefolder*"/Tiles")
+    mkdir(basefolder*"/Tiles")
+end
 
-limx = collect(limits[1]:tsize[1]:limits[2])
-limy = collect(limits[3]:tsize[1]:limits[4])
+pts_all = Int.(readdlm(ptsf))
 
-pts_all = readdlm(basefolder*"/"*segname*"/"*segname*"_gridpts.txt")
+tdx = 0
 
-exdir = basefolder*"/"*segname*"/"*"Output"
+@everywhere ptsfname     = String[]
+@everywhere inputsegname = String[]
+
+for sdx in eachindex(segs)
+
+    limits = readdlm(basefolder*"/Segments"*"/"*segs[sdx]*"/"*segs[sdx]*"_analysisarea.txt")
+
+    limx = Int.(collect(limits[1]:tsize[1]:limits[2]))
+    limy = Int.(collect(limits[3]:tsize[1]:limits[4]))
+
+    for x in eachindex(limx[1:end-1]), y in eachindex(limy[1:end-1])
+        # create the tasks
+        idx = (limx[x] .<= pts_all[:,1] .< limx[x+1]) .&
+                (limy[y] .<= pts_all[:,2] .< limy[y+1])
+
+        if sum(idx) > 0
+            global tdx += 1
+            push!(ptsfname,sprintf1.("%03.$(0)f", tdx)*".txt")
+            # writedlm(basefolder*"/Tiles"*"/"*ptsfname[end],Int.(pts_all[idx,:]))
+
+            push!(inputsegname,segs[sdx])
+        end
+    end
+
+end
+
+@everywhere exdir = basefolder*"/Output/"
 if !ispath(exdir)
     mkdir(exdir)
 end
 
-# for x in eachindex(limx[1:end-1]), y in eachindex(limy[1:end-1])
-x=1; y=1
-    # create the tasks
-    idx = (limx[x] .<= pts_all[:,1] .< limx[x+1]) .&
-            (limy[y] .<= pts_all[:,2] .< limy[y+1])
+println(basefolder)
 
-    pts = pts_all[idx,:]
+@sync @distributed for x = 1:1:5# in eachindex(ptsfname)
 
-    start = time()
+        par_in, dat_in = LAS2Rad_Settings(basefolder,inputsegname[tdx])
 
-    LAS2Rad(pts,dat_in,par_in,exdir)
+        pts = readdlm(basefolder*"/Tiles"*"/"*ptsfname[tdx])
 
-    elapsed = time() - start
-    println("Segment elapsed time: ",round(elapsed1,digits=2)," seconds")
+        LAS2Rad(pts,dat_in,par_in,exdir)
 
-# end
+end
