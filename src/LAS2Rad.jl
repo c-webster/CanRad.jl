@@ -101,17 +101,16 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
     loc_time = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(int):
                                 Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS"))
 
-    sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts,loc_time,time_zone,coor_system)
-
-
-    # create the output files
-
-    swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,pts,loc_time,t1,t2,int)
+    if calc_swr
+        sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts,loc_time,time_zone,coor_system,utm_zone)
+        swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,pts,loc_time,t1,t2,int,calc_swr)
+    else
+         Vf_weighted, Vf_flat, dataset = createfiles(outdir,pts,loc_time,t1,t2,int,calc_swr)
+    end
 
     if save_images
         SHIs, images = create_exmat(outdir,pts,g_img)
     end
-
 
     if progress
         elapsed = time() - start
@@ -127,7 +126,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
 
     ###############################################################################
     # > Loop through the points
-    # try
+    try
 
         @simd for crx = 1:size(pts,1)
 
@@ -314,6 +313,5 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
         if save_images
             images.close()
         end
-        writedlm(outdir*"/"*"done.txt",NaN)
     end
 end

@@ -3,7 +3,7 @@ extension(url::String) = match(r"\.[A-Za-z0-9]+$", url).match
 function readlas(infile)
     if extension(infile) == ".laz"
         header, dsmdat = LazIO.load(infile)
-    elseif entension(infile) == ".las"
+    elseif extension(infile) == ".las"
         header, dsmdat = FileIO.load(infile)
     else
         error("Unknown DSM file extension")
@@ -37,15 +37,15 @@ function importdtm(dtmf,tilt)
         dtm = [dtm1 dtm2 dtm3 dtm4 dtm5]
         dtm_cellsize = dtmdat["cellsize"]
     else
-        if extension(infile) == ".mat"
+        if extension(dtmf) == ".mat"
             file = matopen(dtmf); dtmdat = read(file,"dtm"); close(file)
             dtm1 = dtmdat["x"]
             dtm2 = dtmdat["y"]
             dtm3 = dtmdat["z"]
             dtm = [dtm1 dtm2 dtm3]
             dtm_cellsize = dtmdat["cellsize"]
-        elseif extension(infile) == ".asc"
-            dtm, cellsize = read_ascii(infile)
+        elseif extension(dtmf) == ".asc"
+            dtm, cellsize = read_ascii(dtmf)
         end
     end
     return dtm, dtm_cellsize
@@ -77,7 +77,7 @@ function read_ascii(demf)
     return dem, cellsize
 end
 
-function createfiles(outdir,pts,loc_time,t1,t2,int)
+function createfiles(outdir,pts,loc_time,t1,t2,int,calc_swr)
     writedlm(outdir*"/Coords_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".txt",pts)
 
     file = matopen(outdir*"/Time_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".mat", "w")
@@ -94,21 +94,27 @@ function createfiles(outdir,pts,loc_time,t1,t2,int)
     locxy = dataset.createDimension("loc_XY",size(pts,1))
     locdt = dataset.createDimension("loc_DT",size(loc_time,1))
 
-    swr_tot = dataset.createVariable("SWR_tot",np.float32,("loc_XY","loc_DT"),zlib="True",
-                                        least_significant_digit=3)
-
-    swr_dir = dataset.createVariable("SWR_dir",np.float32,("loc_XY","loc_DT"),zlib="True",
-                                        least_significant_digit=3)
-
-    for_tau = dataset.createVariable("Forest_Transmissivity",np.float32,("loc_XY","loc_DT"),zlib="True",
-                                        least_significant_digit=3)
-
     Vf_weighted  = dataset.createVariable("Vf_weighted",np.float32,("loc_XY"),zlib="True",
                                         least_significant_digit=3)
     Vf_flat      = dataset.createVariable("Vf_flat",np.float32,("loc_XY"),zlib="True",
                                         least_significant_digit=3)
 
-    return swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset
+    if calc_swr
+        swr_tot = dataset.createVariable("SWR_tot",np.float32,("loc_XY","loc_DT"),zlib="True",
+                                            least_significant_digit=3)
+
+        swr_dir = dataset.createVariable("SWR_dir",np.float32,("loc_XY","loc_DT"),zlib="True",
+                                            least_significant_digit=3)
+
+        for_tau = dataset.createVariable("Forest_Transmissivity",np.float32,("loc_XY","loc_DT"),zlib="True",
+                                            least_significant_digit=3)
+
+        return swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset
+
+    else
+        return Vf_weighted, Vf_flat, dataset
+    end
+
 end
 
 

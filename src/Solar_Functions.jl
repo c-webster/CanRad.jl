@@ -159,7 +159,7 @@ function utm2deg(loc_x,loc_y,zone,hemi)
     return latitude, longitude
 end
 
-function calc_solar_track(pts,loc_time,time_zone,coor_system)
+function calc_solar_track(pts,loc_time,time_zone,coor_system,utm_zone="empty")
 
     loc_x = mean([maximum(filter(!isnan,pts[:,1])),minimum(filter(!isnan,pts[:,1]))])
     loc_y = mean([maximum(filter(!isnan,pts[:,2])),minimum(filter(!isnan,pts[:,2]))])
@@ -175,8 +175,7 @@ function calc_solar_track(pts,loc_time,time_zone,coor_system)
         lon = (2.6779094 + 4.728982 .* xd + 0.791484 .* xd .* yd + 0.1306 .* xd .* yd.^2 - 0.0436 .* xd.^3) .* 100 ./ 36
         lat = (16.9023892 + 3.238272 .* yd - 0.270978 .* xd.^2 - 0.002528 .* yd.^2 - 0.0447 .* xd.^2 .* yd - 0.0140 .* yd.^3) .* 100 ./ 36
     elseif @match(coor_system,"UTM")
-        utmz     = map(join, groupby(identity, utm_zone))
-        lat,lon  = utm2deg(loc_x,loc_y,parse(Float64,utmz[1]),utmz[2])
+        lat,lon  = utm2deg(loc_x,loc_y,parse(Float64split(utm_zone,' ')[1]),split(utm_zone,' ')[2])
     end
 
     # time conversion

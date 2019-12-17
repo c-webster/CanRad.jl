@@ -1,6 +1,6 @@
 module CanRad
 
-using FileIO, LasIO, DelimitedFiles, MAT, DataStructures,
+using FileIO, LasIO, LazIO, DelimitedFiles, MAT, DataStructures,
     Statistics, VectorizedRoutines, Dates,
     Match, DataFrames, Formatting, Distributed
 
@@ -16,6 +16,7 @@ function __init__()
     @eval global netcdf    = pyimport("netCDF4")
     @eval global np        = pyimport("numpy")
 end
+
 
 include("File_Functions.jl")
 include("Prepatory_Functions.jl")
@@ -34,6 +35,7 @@ export
     createfiles,
     extract,
     clipdat,
+    create_tiles,
     findelev,
     trunkpoints,
     preallo_trunks,

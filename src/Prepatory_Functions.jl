@@ -47,7 +47,7 @@ function create_tiles(basefolder,ptsf)
             if sum(idx) > 0
                 tdx += 1
                 push!(ptsfname,sprintf1.("%03.$(0)f", tdx)*".txt")
-                # writedlm(basefolder*"/Tiles"*"/"*ptsfname[end],Int.(pts_all[idx,:]))
+                writedlm(basefolder*"/Tiles"*"/"*ptsfname[end],Int.(pts_all[idx,:]))
 
                 push!(inputsegname,segs[sdx])
             end
