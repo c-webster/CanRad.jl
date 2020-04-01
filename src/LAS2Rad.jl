@@ -160,7 +160,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
                         tsmpol = vcat(tsmpol,tsmaddpol)
                     end
                     tsmcrt = pol2cart(tsmpol[:,1], tsmpol[:,2])
-                    tsmcrt, tsmrad = prepcrtdat(tsmcrt,tsmpol[:,3])
+                    tsmcrt, tsmrad = prepcrtdat(tsmcrt,tsmpol[:,3],3)
                 end
 
                 if branches
@@ -182,24 +182,17 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
 
                 #### Prepare surface data
                 if trunks && branches
-                    # datpol = vcat(dsmpol,tsmpol,bsmpol);
-                    datpol = vcat(hcat(dsmcrt,dsmpol[:,3]),hcat(bsmcrt,bsmpol[:,3]),hcat(tsmcrt,tsmrad))
+                    datcrt = vcat(dsmcrt,bsmcrt,tsmcrt)
+                    datrad = vcat(dsmpol[:,3],bsmpol[:,3],tsmrad)
                 elseif trunks && ~branches
-                    datpol = vcat(dsmpol,tsmpol)
+                    datcrt = vcat(dsmcrt,tsmcrt)
+                    datrad = vcat(dsmpol[:,3],tsmrad)
                 elseif ~trunks && branches
-                    datpol = vcat(dsmpol,bsmpol)
+                    datcrt = vcat(dsmcrt,bsmcrt)
+                    datrad = vcat(dsmpol[:,3],bsmpol[:,3])
                 else
                     datpol = copy(dsmpol)
                 end
-
-                if progress
-                    elapsed = time() - start
-                    if crx != 1; rm(outdir*"/ProgressLastPoint/"*progtext1); end
-                    global progtext1 = "1. Transferring to polar took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
-                    writedlm(outdir*"/ProgressLastPoint/"*progtext1,NaN)
-                end
-
-                if progress; start = time(); end
 
                 if tilt
                     slp = pts_slp[crx]
@@ -214,13 +207,13 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
                     slope = pts_slp[crx]
                 end
 
-                datcrt, datrad = prepcrtdat(datpol[:,1:2], datpol[:,3])
+                # datcrt, datrad = prepcrtdat(pol2cart(datpol[:,1],datpol[:,2]), datpol[:,3])
 
                 if progress
                     elapsed = time() - start
-                    if crx != 1; rm(outdir*"/ProgressLastPoint/"*progtext1a); end
-                    global progtext1a = "1. Recalculating KDTree took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
-                    writedlm(outdir*"/ProgressLastPoint/"*progtext1a,NaN)
+                    if crx != 1; rm(outdir*"/ProgressLastPoint/"*progtext1); end
+                    global progtext1 = "1. Transferring to polar took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
+                    writedlm(outdir*"/ProgressLastPoint/"*progtext1,NaN)
                 end
 
                 ######################
@@ -235,7 +228,8 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
                 # occupy matrix with surface points
                 for zdx = 1:1:size(rbins,1)-1
                     ridx = findall(rbins[zdx] .<= datrad[:,1] .< rbins[zdx+1])
-                    idx  = findpairs(kdtree,datcrt[ridx,:],tol[zdx],kdtreedims,40)
+                    ringcrt, _ = prepcrtdat(datcrt[ridx,:], datrad[ridx,:],2)
+                    idx  = findpairs(kdtree,ringcrt,tol[zdx],kdtreedims,40)
                     imdx = float(reshape(idx,(radius*2,radius*2)))
                     mat2ev[imdx.==1] .= 0
                 end
@@ -313,5 +307,6 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
         if save_images
             images.close()
         end
+        println("done with: "*taskID)
     end
 end

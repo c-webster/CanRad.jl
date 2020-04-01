@@ -275,9 +275,9 @@ function pol2cart(phi,tht)
     return datcrt
 end
 
-function prepcrtdat(matcrt,matrad)
+function prepcrtdat(matcrt,matrad,res)
 
-    matcrt = round.(matcrt,digits=1)
+    matcrt = round.(matcrt,digits=res)
     idx    = collect(1:1:size(matcrt,1))
 
     # remove duplicates dat

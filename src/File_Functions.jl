@@ -1,6 +1,6 @@
 extension(url::String) = match(r"\.[A-Za-z0-9]+$", url).match
 
-function readlas(infile)
+function readlas(infile,ground=nothing)
     if extension(infile) == ".laz"
         header, dsmdat = LazIO.load(infile)
     elseif extension(infile) == ".las"
@@ -78,7 +78,7 @@ function read_ascii(demf)
 end
 
 function createfiles(outdir,pts,loc_time,t1,t2,int,calc_swr)
-    writedlm(outdir*"/Coords_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".txt",pts)
+    # writedlm(outdir*"/Coords_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".txt",pts)
 
     file = matopen(outdir*"/Time_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".mat", "w")
     write(file,"coords",pts)
@@ -93,11 +93,18 @@ function createfiles(outdir,pts,loc_time,t1,t2,int,calc_swr)
 
     locxy = dataset.createDimension("loc_XY",size(pts,1))
     locdt = dataset.createDimension("loc_DT",size(loc_time,1))
+    ptsn  = dataset.createDimension("ptsn",2)
 
     Vf_weighted  = dataset.createVariable("Vf_weighted",np.float32,("loc_XY"),zlib="True",
                                         least_significant_digit=3)
     Vf_flat      = dataset.createVariable("Vf_flat",np.float32,("loc_XY"),zlib="True",
                                         least_significant_digit=3)
+    Coors        = dataset.createVariable("Coordinates",np.float32,("loc_XY","ptsn"),zlib="TRUE",
+                                        least_significant_digit=1)
+
+    for cx in eachindex(pts[:,1])
+     Coors[cx] = np.array(pts[cx,:])
+    end
 
     if calc_swr
         swr_tot = dataset.createVariable("SWR_tot",np.float32,("loc_XY","loc_DT"),zlib="True",
@@ -127,12 +134,19 @@ function create_exmat(outdir,pts,g_img)
     dims     = size(g_img)
 
     loc1  = images.createDimension("loc1",size(g_img)[1])
-    locxy = images.createDimension("locxy",size(pts,1))
-
     loc2  = images.createDimension("loc2",size(g_img)[2])
+    locxy = images.createDimension("locxy",size(pts,1))
+    ptsn  = images.createDimension("ptsn",2)
 
     SHIs  = images.createVariable("SHI",np.int8,("locxy","loc1","loc2"),zlib="TRUE",
                                     least_significant_digit=1)
+
+    Coors = images.createVariable("Coordinates",np.float32,("locxy","ptsn"),zlib="TRUE",
+                                    least_significant_digit=1)
+
+    for cx in eachindex(pts[:,1])
+     Coors[cx] = np.array(pts[cx,:])
+    end
 
     return SHIs, images
 
