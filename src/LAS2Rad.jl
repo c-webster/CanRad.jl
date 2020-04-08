@@ -17,7 +17,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
     ################################################################################
 
     # load the las
-    dsm = readlas(dsmf)
+    dsm = readlas(dsmf);
 
     # load the dtm
     dtm, dtm_cellsize = importdtm(dtmf,tilt)
@@ -30,13 +30,14 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
 
     # clip dsm within eval-peri of min/max pts
     dsm = clipdat(dsm,pts,surf_peri)
-    dtm = clipdat(dtm,dsm,surf_peri*4)
-    dem = clipdat(dem,dsm,terrain_peri)
+    bounds = Int.(floor.(hcat(vcat(minimum(dsm[:,1]),maximum(dsm[:,1])),vcat(minimum(dsm[:,2]),maximum(dsm[:,2])))))
+    dtm = clipdat(dtm,bounds,surf_peri*4)
+    dem = clipdat(dem,bounds,terrain_peri)
 
     # determine ground elevation of points
     pts_e    = findelev(dtm,pts[:,1],pts[:,2])
-    dsm[:,4] = findelev(dtm,dsm[:,1],dsm[:,2])
-    dsm[:,3] .-=  dsm[:,4]
+    # dsm[:,3] .-= findelev(dtm,dsm[:,1],dsm[:,2])
+    # dsm[:,3] .-=  dsm[:,4]
 
     ###############################################################################
     # > Generate extra canopy elements
@@ -47,19 +48,23 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
         dbh[:,4]/=2 # diameter to radius
         dbh[:,4]/=100 # cm to m
 
-        dbh   = clipdat(dbh,dsm,0)
+        dbh   = clipdat(dbh,bounds,0)
         dbh_e = findelev(dtm,dbh[:,1],dbh[:,2])
         tsm   = calculate_trunks(dbh,30,0.05,dbh_e)
+        tsm[:,3] .+= tsm[:,4]
+        tsm = tsm[:, 1:end .!= 4]
+
     end
 
     # load the ltc
     if branches
         ltc, _ = readdlm(ltcf,'\t',header=true)
         replace!(ltc, -9999=>NaN)
-        ltc = clipdat(ltc,dsm,0)
+        ltc = clipdat(ltc,bounds,0)
 
         bsm = make_branches(ltc)
-        bsm[:,4] = findelev(dtm,bsm[:,1],bsm[:,2])
+        bsm[:,3] .+= findelev(dtm,bsm[:,1],bsm[:,2])
+        bsm = bsm[:, 1:end .!= 4]
     end
 
 
@@ -88,13 +93,14 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
 
     # dem terrain mask
     if tershad < 2 && terrain == 2
-        dempol = dem2pol(dem,pts[:,1],pts[:,2],ch,terrain_peri,dem_cellsize,0)
+        demcrt = dem2pol(dem,pts[:,1],pts[:,2],ch,terrain_peri,dem_cellsize,0)
 
         # add dem into empty matrix
         demcrt = pol2cart(dempol[:,1],dempol[:,2])
         idx    = findpairs(kdtree,demcrt,1,kdtreedims)
         imdx   = float(reshape(idx,(radius*2,radius*2)))
         g_img[imdx.==1] .= 0
+
     end
 
     # calculate solar track
@@ -128,86 +134,62 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
     # > Loop through the points
     try
 
+        rbins = collect(0:(surf_peri-0)/5:surf_peri)
+        tol   = tolerance.*collect(reverse(0.75:0.05:1))
+
         @simd for crx = 1:size(pts,1)
 
-            try # catch statement to close dataset if error
+            # try # catch statement to close dataset if error
 
                 if progress; start = time(); end
 
+
                 #### transfer point clouds to polar coordinates
-                dsmpol = pcd2pol(dsm,pts[crx,1],pts[crx,2],pts_e[crx,1],surf_peri,ch)
-                dsmcrt = pol2cart(dsmpol[:,1], dsmpol[:,2])
+                if branches
+                    pt_dsm = getsurfdat(dsm,bsm,pts[crx,1],pts[crx,2],surf_peri);
+                else
+                    pt_dsm = dsm[dist(dsm,pts[crx,1],pts[crx,2]).< surf_peri,:];
+                end
+                pt_dsm = pcd2pol2cart(pt_dsm,pts[crx,1],pts[crx,2],pts_e[crx,1],surf_peri,"surface",ch,pts_slp[crx],0);
+                pt_dsm = prepcrtdat(pt_dsm,3);
 
                 if trunks
-                    tidx = findall((sqrt.(((dbh[:,1].-pts[crx,1]).^2) .+ ((dbh[:,2].-pts[crx,2]).^2))) .< 4)
-                    tsmpol = pcd2pol(tsm,pts[crx,1],pts[crx,2],pts_e[crx,1],surf_peri*0.5,ch)
+                    pt_tsm = pcd2pol2cart(tsm[dist(tsm,pts[crx,1],pts[crx,2]).< surf_peri*0.5,:],pts[crx,1],pts[crx,2],pts_e[crx,1],Int.(surf_peri*0.5),"surface",ch,pts_slp[crx],0);
+                    tidx = findall(dist(dbh,pts[crx,1],pts[crx,2]) .< 4)
                     if size(tidx,1) > 0
-                        hdt = sqrt.(((dbh[tidx,1].-pts[crx,1]).^2) .+ ((dbh[tidx,2].-pts[crx,2]).^2))
+                        hdt = dist(dbh[tidx,:],pts[crx,1],pts[crx,2])
                         npt  = zeros(size(tidx)) .* NaN
                         hint = zeros(size(tidx)) .* NaN
                         for tixt = 1:1:size(tidx,1)
                             if hdt[tixt] < 1
-                                npt[tixt] = 150; hint[tixt] = 0.005
+                                npt[tixt] = Int.(150); hint[tixt] = 0.005
                             else
-                                npt[tixt] = 100; hint[tixt] = 0.01
+                                npt[tixt] = Int.(100); hint[tixt] = 0.01
                             end
                         end
-
-                        tsmadd = calculate_trunks(dbh[tidx,:],npt,hint,dbh_e[tidx,:])
-
-                        tsmaddpol = pcd2pol(tsmadd,pts[crx,1],pts[crx,2],pts_e[crx,1],surf_peri*0.5,ch)
-
-                        tsmpol = vcat(tsmpol,tsmaddpol)
+                        pt_tsm = vcat(pt_tsm,pcd2pol2cart(calculate_trunks(dbh[tidx,:],npt,hint,dbh_e[tidx,:]),pts[crx,1],pts[crx,2],pts_e[crx,1],Int.(surf_peri*0.5),"surface",ch,0))
                     end
-                    tsmcrt = pol2cart(tsmpol[:,1], tsmpol[:,2])
-                    tsmcrt, tsmrad = prepcrtdat(tsmcrt,tsmpol[:,3],3)
-                end
-
-                if branches
-                    bsmpol = pcd2pol(bsm,pts[crx,1],pts[crx,2],pts_e[crx,1],surf_peri*0.5,ch)
-                    bsmcrt = pol2cart(bsmpol[:,1], bsmpol[:,2])
+                    pt_tsm = prepcrtdat(pt_tsm,3)
                 end
 
                 if tershad < 3
-                    dtmpol = pcd2pol(dtm,pts[crx,1],pts[crx,2],pts_e[crx,1],4*surf_peri,ch)
-                    dtmpol = calc_horizon_lines(1,3*surf_peri,dtmpol,pts_slp[crx])
-                    tercrt = pol2cart(dtmpol[:,1],dtmpol[:,2])
-
+                    pt_dtm =  pcd2pol2cart(dtm,pts[crx,1],pts[crx,2],pts_e[crx,1],Int.(3*dem_cellsize),"terrain",ch,pts_slp[crx],dtm_cellsize);
                     if tershad < 2 && terrain == 1
-                        dempol = dem2pol(dem,pts[crx,1],pts[crx,2],ch,terrain_peri,dem_cellsize,pts_slp[crx])
-                        demcrt = pol2cart(dempol[:,1],dempol[:,2])
-                        tercrt = prepterdat(tercrt,demcrt)
+                        # pt_dem = Array{Float64,2}(undef,size(dem,1),3)
+                        pt_dem = dem2pol(dem,pts[crx,1],pts[crx,2],ch,terrain_peri,dem_cellsize,pts_slp[crx])
+                        pt_dtm = prepterdat(vcat(pt_dtm,pt_dem));
                     end
                 end
 
-                #### Prepare surface data
-                if trunks && branches
-                    datcrt = vcat(dsmcrt,bsmcrt,tsmcrt)
-                    datrad = vcat(dsmpol[:,3],bsmpol[:,3],tsmrad)
-                elseif trunks && ~branches
-                    datcrt = vcat(dsmcrt,tsmcrt)
-                    datrad = vcat(dsmpol[:,3],tsmrad)
-                elseif ~trunks && branches
-                    datcrt = vcat(dsmcrt,bsmcrt)
-                    datrad = vcat(dsmpol[:,3],bsmpol[:,3])
-                else
-                    datpol = copy(dsmpol)
-                end
-
                 if tilt
-                    slp = pts_slp[crx]
-                    imcX, imcY = getimagecentre(slp,pts_asp[crx])
+                    imcX, imcY = getimagecentre(pts_slp[crx],pts_asp[crx])
                     gcrcrt = zeros(size(g_coorcrt)) .* NaN
                     gcrcrt[:,1] = g_coorcrt[:,1] .+ imcX
                     gcrcrt[:,2] = g_coorcrt[:,2] .+ imcY
                     kdtree = scipyspat.cKDTree(gcrcrt)
                     kdtreedims = size(gcrcrt,1)
-                else
-                    datpol[datpol[:,2] .> 90,2] .= 90
-                    slope = pts_slp[crx]
                 end
 
-                # datcrt, datrad = prepcrtdat(pol2cart(datpol[:,1],datpol[:,2]), datpol[:,3])
 
                 if progress
                     elapsed = time() - start
@@ -220,26 +202,26 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
                 ### Classify image
                 if progress; start = time(); end
 
-                mat2ev  = copy(g_img)
-
-                rbins = collect(0:(surf_peri-0)/5:surf_peri)
-                tol   = tolerance.*collect(reverse(0.75:0.05:1))
+                mat2ev  = copy(g_img);
 
                 # occupy matrix with surface points
                 for zdx = 1:1:size(rbins,1)-1
-                    ridx = findall(rbins[zdx] .<= datrad[:,1] .< rbins[zdx+1])
-                    ringcrt, _ = prepcrtdat(datcrt[ridx,:], datrad[ridx,:],2)
-                    idx  = findpairs(kdtree,ringcrt,tol[zdx],kdtreedims,40)
-                    imdx = float(reshape(idx,(radius*2,radius*2)))
+                    ridx = findall(rbins[zdx] .<= pt_dsm[:,3] .< rbins[zdx+1])
+                    imdx = reshape(findpairs(kdtree,pt_dsm[ridx,1:2],tol[zdx],kdtreedims,40),(radius*2,radius*2))
                     mat2ev[imdx.==1] .= 0
+                end
+
+                # add trunks
+                if trunks
+                    mat2ev = fillmat(kdtree,pt_tsm[:,1:2],2.0,kdtreedims,15,radius,mat2ev)
                 end
 
                 #occupy matrix with dtm
                 if tershad < 3
-                    mat2ev = fillmat(kdtree,tercrt,1,kdtreedims,radius,mat2ev)
+                    mat2ev = fillmat(kdtree,pt_dtm,1.0,kdtreedims,10,radius,mat2ev);
                 end
 
-                mat2ev[isnan.(g_rad)] .= 1
+                mat2ev[isnan.(g_rad)] .= 1;
 
                 if progress
                     elapsed = time() - start
@@ -282,6 +264,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
 
                 if save_images
                     SHIs[crx] = np.array(mat2ev)
+                    # SHIs[crx] = np.array(transpose(mat2ev))
                 end
 
                 if progress
@@ -296,9 +279,9 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
                 global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
                 writedlm(outdir*"/"*outtext,NaN)
 
-            catch
-                writedlm(outdir*"/Error_"*string(Int(pts[crx,1]))*"_"*string(Int(pts[crx,2]))*".txt",NaN)
-            end
+            # catch
+            #     writedlm(outdir*"/Error_"*string(Int(pts[crx,1]))*"_"*string(Int(pts[crx,2]))*".txt",NaN)
+            # end
 
         end #end crx
 

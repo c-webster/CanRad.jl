@@ -7,15 +7,14 @@ function extract(d::Dict)
     return expr
 end
 
-function clipdat(pc,pts,peri)
-    idxx = (minimum(pts[:,1])-peri).<pc[:,1].<(maximum(pts[:,1])+peri)
-    idxy = (minimum(pts[:,2])-peri).<pc[:,2].<(maximum(pts[:,2])+peri)
-    kpidx = Int.(idxx) .* Int.(idxy)
-    pcn = pc[kpidx.==1,:]
-    return pcn
+function clipdat(pc::Array{Float64,2},pts::Array{Int64,2},peri::Int64)
+    kpidx = Int.((minimum(pts[:,1])-peri).<pc[:,1].<(maximum(pts[:,1])+peri)) .*
+                Int.((minimum(pts[:,2])-peri).<pc[:,2].<(maximum(pts[:,2])+peri))
+    pc = pc[kpidx.==1,:]
+    return pc
 end
 
-function create_tiles(basefolder,ptsf)
+function create_tiles(basefolder::String,ptsf::String)
 
     tsize = readdlm(basefolder*"/TileSize.txt")
 

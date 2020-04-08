@@ -1,10 +1,10 @@
-function findelev(tmpc,x,y)
-    tmpc_clip = clipdat(tmpc,[x y],10)
+function findelev(tmpc::Array{Float64,2},x::Any,y::Any)
+    tmpc_clip = clipdat(tmpc,Int.(floor.([x y])),10)
     v = pyinterp.griddata(tmpc_clip[:,1:2], tmpc_clip[:,3], (x, y), method="linear")
-    return v
+    return round.(v,digits=2)
 end
 
-function trunkpoints(x1,y1,h,r,bh,npt,hint,e)
+function trunkpoints(x1::Float64,y1::Float64,h::Float64,r::Float64,bh::Float64,npt::Any,hint::Any,e::Float64)
     # lower trunk, below breast height, cylinder shape
     th = collect(0:(pi/npt[1]):(2*pi))
     xunit = (r * cos.(th) .+ x1)
@@ -32,12 +32,12 @@ function trunkpoints(x1,y1,h,r,bh,npt,hint,e)
     return xnew, ynew, znew, enew
 end
 
-function preallo_trunks(dat,npt,hint)
+function preallo_trunks(dat::Array{Float64,2},npt::Any,hint::Any)
     if size(dat,2) == 1
-        dims = zeros(size(dat,2)) .* NaN
+        dims = fill(NaN,size(dat,2))
         dat = dat'
     else
-        dims = zeros(size(dat,1)) .* NaN
+        dims = fill(NaN,size(dat,1))
     end
     for tix in eachindex(dims)
         x1 = dat[tix,1]
@@ -60,7 +60,7 @@ function preallo_trunks(dat,npt,hint)
     return dims
 end
 
-function calculate_trunks(dbh1,npt,hint,e)
+function calculate_trunks(dbh1::Array{Float64,2},npt::Any,hint::Any,e::Any)
     bh  = 1.5 # breast height
     dims =  preallo_trunks(dbh1,npt,hint)
 
@@ -72,7 +72,7 @@ function calculate_trunks(dbh1,npt,hint,e)
 
     @inbounds for tix = 1:1:endix
         if tix == 1
-            global outtsm = zeros(Int(sum(dims)),4) .* NaN
+            global outtsm = fill(NaN,Int(sum(dims)),4)
         end
 
         if size(dbh1,2) == 1
@@ -84,7 +84,7 @@ function calculate_trunks(dbh1,npt,hint,e)
         end
 
         if length(npt) > 1
-            xnew, ynew, znew, enew = trunkpoints(x1,y1,h,r,bh,npt[tix],hint[tix],e[tix])
+            xnew, ynew, znew, enew = trunkpoints(x1,y1,h,r,bh,Int.(npt[tix]),Float.(hint[tix]),e[tix])
         else
             xnew, ynew, znew, enew = trunkpoints(x1,y1,h,r,bh,npt,hint,e[tix])
         end
@@ -105,7 +105,7 @@ function calculate_trunks(dbh1,npt,hint,e)
     return outtsm
 end
 
-function make_branches(ltc)
+function make_branches(ltc::Array{Float64,2})
     spacing = 0.1
     ltc_ad = zeros(size(ltc[:,6],1)) .* NaN
 
@@ -144,7 +144,7 @@ function make_branches(ltc)
         end
     end
 
-    bsm = zeros(size(nwmatx,1)*size(nwmatx,2),4) .* NaN
+    bsm = fill(NaN,(size(nwmatx,1)*size(nwmatx,2)),4)
     bsm[:,1] = vec(nwmatx)
     bsm[:,2] = vec(nwmaty)
     bsm[:,3] = vec(nwmatz)
@@ -154,7 +154,7 @@ function make_branches(ltc)
     return bsm
 end
 
-function create_mat(radius)
+function create_mat(radius::Int64)
     tgrid = Matlab.meshgrid(collect(1:radius*2),collect(1:radius*2))
 
     grad  = sqrt.((tgrid[1] .- radius .- 1).^2 .+ (tgrid[2] .- radius .- 1).^2)
@@ -163,23 +163,27 @@ function create_mat(radius)
 
     gphi  = reverse(map(atan,(tgrid[2].-radius),(tgrid[1].-radius)),dims=1)
 
-    grid  = ones(size(gphi))
-    grid[grad .> radius] .= NaN
+    grid  = fill(1,(size(gphi)))
+    # grid[grad .> radius] .= NaN
     gcoors = [vec(gphi) vec(gtht)]
     gcoorcart = float([vec(tgrid[1]) vec(tgrid[2])])
 
     return grad, gcoors, gcoorcart, grid
 end
 
-function cart2sph(x,y,z)
-    hypotxy = hypot.(x,y)
-    r       = hypot.(hypotxy,z)
-    elev    = atan.(z,hypotxy)
-    az      = atan.(y,x)
-    return (az,elev,r)
+function getsurfdat(dsm::Array{Float64,2},bsm::Array{Float64,2},xcoor::Int64,ycoor::Int64,peri)
+    vcat(dsm[dist(dsm,xcoor,ycoor).<peri,:],bsm[dist(bsm,xcoor,ycoor).<peri*0.5,:])
 end
 
-function dem2pol(dem,pts_x,pts_y,ch,peri,dem_cellsize,slp)
+function cart2sph(in::Array{Float64,2})
+    out = Array{Float64,2}(undef,size(in,1),3)
+    out[:,1]    = atan.(in[:,2],in[:,1]) # az
+    out[:,2]    = atan.(in[:,3],hypot.(in[:,1],in[:,2])) # elev
+    out[:,3]    = hypot.(hypot.(in[:,1],in[:,2]),in[:,3]) # r
+    return out
+end
+
+function dem2pol(dem::Array{Float64,2},pts_x::Int64,pts_y::Int64,ch::Float64,peri::Int64,dem_cellsize::Float64,slp::Float64)
 
     if size(pts_x,1) > 1
         loc_x = mean([maximum(filter(!isnan,pts[:,1])),minimum(filter(!isnan,pts[:,1]))])
@@ -189,41 +193,24 @@ function dem2pol(dem,pts_x,pts_y,ch,peri,dem_cellsize,slp)
         loc_y = pts_y
     end
 
-    xpc = dem[:,1] .- loc_x
-    ypc = dem[:,2] .- loc_y
-    zpc = dem[:,3] .- (pyinterp.griddata(dem[:,1:2], dem[:,3], (loc_x, loc_y), method="linear")) .- ch
+    dem = dem[dist(dem,loc_x,loc_y).< peri,:]
+    dem[:,3] = dem[:,3] .- (pyinterp.griddata(dem[:,1:2], dem[:,3], (loc_x, loc_y), method="linear")) .- ch;
+    dem[:,1] = dem[:,1] .- loc_x;
+    dem[:,2] = dem[:,2] .- loc_y;
 
-    hdist = sqrt.(((dem[:,1] .- loc_x).^2) + ((dem[:,2] .- loc_y).^2))
+    dem = cart2sph(dem)
 
-    xpc[hdist .> peri] .= NaN
-
-    rows = findall(isnan,xpc)
-    xpc = xpc[setdiff(1:end, rows), :]
-    ypc = ypc[setdiff(1:end, rows), :]
-    zpc = zpc[setdiff(1:end, rows), :]
-
-    temppol = cart2sph(xpc,ypc,zpc)
-
-    dpol = zeros(size(xpc,1),3) .* NaN
-    dpol[:,1] = temppol[1] # azimuth (phi)
-    dpol[:,2] = (pi/2 .- temppol[2]) .*(180/pi) # zenith (theta)
-    # dpol[dpol[:,2] .> 90,2] .= 90
-    dpol[:,3] = temppol[3] # rad
-    dpol[dpol[:,3] .>  peri,3] .= NaN
-
-    # remove nans
-    kpidx = findall(.!isnan.(dpol[:,3]))
-    dpol   = (dpol[kpidx,:])
-    kpidx = findall(.!isnan.(dpol[:,2]))
-    dpol   = (dpol[kpidx,:])
+    dem = correct_sph(dem,peri);
 
     # calculate horizon lines
-    dempol = calc_horizon_lines(dem_cellsize,peri,dpol,slp)
+    dem = calc_horizon_lines(dem_cellsize*2,peri,dem,slp)
 
-    return dempol
+    @fastmath dem[:,1:2] = [dem[:,2] .* cos.(dem[:,1]) dem[:,2] .* sin.(dem[:,1])]
+
+    return dem
 end
 
-function fillterrain(rphi,rtht,slp)
+function fillterrain(rphi::Array{Float64,1},rtht::Array{Float64,1},slp::Float64)
 
     min_rphi = minimum(filter(!isnan,rtht))
     int = size(collect(min_rphi:0.5:(90+slp)),1)
@@ -236,80 +223,77 @@ function fillterrain(rphi,rtht,slp)
     return hcat(phi,tht) # azimuth, zenith
 end
 
-function pcd2pol(pcd,xcoor,ycoor,ecoor,peri,ch=0)
+dist(dat::Array{Float64,2},xcoor::Int64,ycoor::Int64) = @fastmath (sqrt.(((dat[:,1] .- xcoor).^2) +
+                        ((dat[:,2] .- ycoor).^2)))
 
-    pcd = clipdat(pcd,[xcoor ycoor],peri)
-    plc = zeros(size(pcd,1),3) .* NaN
 
-    plc[:,1] = pcd[:,1] .- xcoor
-    plc[:,2] = pcd[:,2] .- ycoor
-    if size(pcd,2) == 4
-        plc[:,3] = pcd[:,3] .+ pcd[:,4] .- ecoor .- ch
-    else
-        plc[:,3] = pcd[:,3] .- ecoor .- ch
+function normalise(pcd::Array{Float64,2},xcoor::Int64,ycoor::Int64,ecoor::Float64,ch=0.0::Float64)
+    pcd[:,1] .-= xcoor
+    pcd[:,2] .-= ycoor
+    pcd[:,3] = pcd[:,3] .- ecoor .- ch
+    return pcd
+end
+
+function correct_sph(pol::Array{Float64,2},peri::Int64)
+    @fastmath @views pol[:,2] = ((pi/2) .- pol[:,2]) * (180/pi) # zenith (theta)
+    pol[pol[:,2] .> 90,2] .= 90
+    pol = pol[pol[:,3] .< peri,:]
+    # return pol
+end
+
+function pcd2pol2cart(pcd::Array{Float64,2},xcoor::Int64,ycoor::Int64,ecoor::Float64,peri::Int64,dat::String,ch=0.0::Float64,slp=0.0::Float64,cellsize=0.0::Float64)
+
+    if dat=="terrain"
+        pcd = pcd[dist(pcd,xcoor,ycoor).< peri,:]
+    end
+    pcd = normalise(pcd,xcoor,ycoor,ecoor,ch)
+
+    # pol = cart2sph(pcd);
+    pol = correct_sph(cart2sph(pcd),peri);
+
+    # convert phi/tht to cartesian
+    if dat=="terrain"
+        pol = calc_horizon_lines(cellsize,peri,pol,slp)
     end
 
-    @fastmath kpidx = (sqrt.(((pcd[:,1] .- xcoor).^2) +
-                        ((pcd[:,2] .- ycoor).^2))) .< peri
-    plcn = copy(plc[kpidx.==1,:])
-
-    temppol = cart2sph(plcn[:,1],plcn[:,2],plcn[:,3])
-
-    pol = zeros(size(plcn,1),3) .* NaN
-    pol[:,1] = temppol[1] # azimuth (phi)
-    pol[:,2] = ((pi/2) .- temppol[2]) * (180/pi) # zenith (theta)
-    # pol[pol[:,2] .> 90,2] .= NaN
-    pol[:,3] = temppol[3] # rad
-    pol[pol[:,3] .>  peri,3] .= NaN
-
-    kpidx = findall(.!isnan.(pol[:,3]))
-    pol   = (pol[kpidx,:])
-    kpidx = findall(.!isnan.(pol[:,2]))
-    pol   = (pol[kpidx,:])
+    @fastmath @views pol[:,1:2] = [pol[:,2] .* cos.(pol[:,1]) pol[:,2] .* sin.(pol[:,1])]
 
     return pol
 end
 
-function pol2cart(phi,tht)
-    @fastmath datcrt = [tht .* cos.(phi) tht .* sin.(phi)]
-    return datcrt
-end
 
-function prepcrtdat(matcrt,matrad,res)
+function prepcrtdat(mat_in::Array{Float64,2},res::Int64)
 
-    matcrt = round.(matcrt,digits=res)
-    idx    = collect(1:1:size(matcrt,1))
+    mat_in = round.(mat_in,digits=res)
+    idx    = collect(1:1:size(mat_in,1))
 
     # remove duplicates dat
-    sdx = sortperm(matrad[:,1])
-    matrad = matrad[sdx,:]
-    idx2   = vec(idx[sdx,:])
+    sdx = Array{Int8,1}(undef,size(mat_in[:,3],1))
+    sdx = sortperm(mat_in[:,3])
+    mat_in[:,3] = mat_in[sdx,3]
+    idx2 = Array{Int8,1}(undef,size(mat_in,1))
+    idx2 = vec(idx[sdx,:])
 
-    kpdx   = findall(.!nonunique(convert(DataFrames.DataFrame,matcrt)))
-    matcrt = matcrt[kpdx,:]
-    matrad = matrad[kpdx,:]
+    kpdx   = Array{Int8,1}(undef,size(mat_in,1));
+    kpdx   = findall(.!nonunique(convert(DataFrames.DataFrame,mat_in[:,1:2])));
+    mat_in = mat_in[kpdx,:]
     idx2   = vec(idx2[kpdx,:])
 
-    dat1dx = findall(idx2 .<= size(matcrt,1))
-    datcrt = matcrt[dat1dx,:]
-    datrad = matrad[dat1dx,:]
+    mat_in = mat_in[findall(idx2 .<= size(mat_in,1)),:]
 
-    return datcrt, datrad
+    return mat_in
 end
 
-function prepterdat(datcrt1,datcrt2)
+function prepterdat(matcrt::Array{Float64,2})
 
-    matcrt = vcat(datcrt2,datcrt1)
     matcrt = round.(matcrt,digits = 1)
-    idx = collect(1:1:size(matcrt,1))
-
-    kpdx   = findall(.!nonunique(convert(DataFrames.DataFrame,matcrt)))
-    matcrt = matcrt[kpdx,:]
+    matcrt = matcrt[findall(.!nonunique(convert(DataFrames.DataFrame,matcrt))),:]
 
     return matcrt
 end
 
-function getimagecentre(slp,asp)
+
+function getimagecentre(slp::Float64,asp::Float64)
     if asp == 0 || asp == 360
         X = 0
         Y = slp
@@ -338,58 +322,66 @@ function getimagecentre(slp,asp)
     return X,Y
 end
 
-function findpairs(kdtree,b,t,dim,knum)
+function findpairs(kdtree::Any,datcrt::Array{Float64,2},tol::Float64,kdtreedims::Int64,knum::Int64)
 
-    distances, indices = scipyspat.cKDTree.query(kdtree,b, k=knum, n_jobs=-1)
-    d = distances .<= t
-
-    dx1  = Int.((float(indices[findall(float(d) .== 1)])))
-
-    lia = zeros(dim,1)
-    lia[dx1,:] .= 1
+    distances, indices = scipyspat.cKDTree.query(kdtree,datcrt, k=knum, n_jobs=-1)
+    lia = fill(0,kdtreedims,1)
+    lia[indices[distances .<= tol],:] .= 1
 
     return lia
 end
 
-function fillmat(kdtree,datcrt,tol,kdtreedims,radius,mat2ev)
-
-        idx = findpairs(kdtree,datcrt,tol,kdtreedims,10)
-        imdx = float(reshape(idx,(radius*2,radius*2)))
-        mat2ev[imdx.==1] .= 0
-
-        return mat2ev
+function fillmat(kdtree::Any,datcrt::Array{Float64,2},tol::Float64,kdtreedims::Int64,knum::Int64,radius::Int64,mat2ev::Array{Int64,2})
+    imdx = reshape(findpairs(kdtree,datcrt,tol,kdtreedims,knum),(radius*2,radius*2))
+    mat2ev[imdx.==1] .= 0
+    return mat2ev
 end
 
 function findmincol(row)
     return findmin(row)[2]
 end
 
-function calc_horizon_lines(cellsize,peri,pcdpol,slp)
+function frbins(pcd::Array{Float64,1},rbin1::Float64,rbin2::Float64)
+    return ((pcd .>= rbin1) .& (pcd .< rbin2))
+end
+
+function calcmintht(mintht::Array{Float64,2},rbins::Array{Float64,1},phi_bins::Array{Float64,1},idx::Array{Int64,1},
+                            pcdpol::Array{Float64,2},fix1::Array{Int64,1},temp::Array{Float64,2},tdx)
+
+    for rbix = length(rbins)-1:-1:1
+            fix1 = idx[frbins(pcdpol[:,3],rbins[rbix],rbins[rbix+1])]
+            if size(fix1) > (1,)
+                tdx = (minimum(pcdpol[fix1[sortperm(pcdpol[fix1,1])],1]) .<= phi_bins
+                                    .<= maximum(pcdpol[fix1[sortperm(pcdpol[fix1,1])],1]))
+                temp2 = copy(temp)
+                temp2[tdx] = LinearInterpolation(pcdpol[fix1[sortperm(pcdpol[fix1,1])],1],
+                            pcdpol[fix1[sortperm(pcdpol[fix1,1])],2])(phi_bins[tdx])
+                mintht = minimum(hcat(mintht,temp2),dims=2)
+            end
+    end
+    return mintht
+
+end
+
+
+function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol::Array{Float64,2},slp::Float64)
 
     rbins = collect(2*cellsize:sqrt(2).*cellsize:peri)
     phi_bins = collect(-pi+((pi/360)*3):pi/720:pi-((pi/360)*3))
 
-    global mintht = ones(size(phi_bins,1)) .* 90
+    idx = collect(1:1:size(pcdpol,1))
+    fix1 = Array{Int64,1}(undef,10000)
+    tdx = Array{Bool,size(phi_bins,1)}
+    mintht = float.(fill(90,size(phi_bins,1),1));
+    temp = copy(mintht);
 
-    for rbix = length(rbins)-1:-1:1
-        global mintht
-            fix1 = findall((pcdpol[:,3] .>= rbins[rbix]) .& (pcdpol[:,3] .< rbins[rbix+1]))
-            if size(fix1) > (1,)
-                fix2 = sortperm(pcdpol[fix1,1])
-                tdx = findall(minimum(pcdpol[fix1[fix2],1]) .<= phi_bins
-                                    .<= maximum(pcdpol[fix1[fix2],1]))
-
-                temp = ones(size(phi_bins,1)) .* 90
-                temp[tdx] =  pyinterp.interp1d(pcdpol[fix1[fix2],1],
-                            pcdpol[fix1[fix2],2],fill_value="extrapolate")(phi_bins[tdx])
-
-                mintht = minimum(hcat(mintht,temp),dims=2)
-            end
-    end
+    mintht = calcmintht(mintht,rbins,phi_bins,idx,pcdpol,fix1,temp,tdx);
 
     rphi = collect(-pi:pi/1080:pi)
-    rtht = pyinterp.interp1d([phi_bins[end]-2*pi; phi_bins; phi_bins[1]+2*pi],
-                        vec([mintht[end];mintht;mintht[1]]),fill_value="extrapolate")(rphi)
+    rtht = Array{Float64,1}(undef,size(rphi,1))
+
+    rtht = LinearInterpolation([phi_bins[end]-2*pi; phi_bins; phi_bins[1]+2*pi],
+                        vec([mintht[end];mintht;mintht[1]]))(rphi)
 
     pol = fillterrain(rphi,rtht,slp)
 

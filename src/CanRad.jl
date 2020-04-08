@@ -2,7 +2,7 @@ module CanRad
 
 using FileIO, LasIO, LazIO, DelimitedFiles, MAT, DataStructures,
     Statistics, VectorizedRoutines, Dates,
-    Match, DataFrames, Formatting, Distributed
+    Match, DataFrames, Formatting, Distributed, Interpolations
 
 using Conda, PyCall
 
@@ -37,22 +37,30 @@ export
     extract,
     clipdat,
     create_tiles,
+    getsurfdat,
     findelev,
     trunkpoints,
     preallo_trunks,
     calculate_trunks,
     make_branches,
     create_mat,
+    cart2sph,
     dem2pol,
     fillterrain,
-    pcd2pol,
-    pol2cart,
+    calculateVf,
+    calculateSWR,
+    dist,
+    normalise,
+    correct_sph,
+    pcd2pol2cart,
     prepcrtdat,
     prepterdat,
     getimagecentre,
     findpairs,
     fillmat,
     findmincol,
+    frbins,
+    calcmintht,
     calc_horizon_lines,
     calcThickness,
     pyinterp,

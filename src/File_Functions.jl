@@ -1,6 +1,6 @@
 extension(url::String) = match(r"\.[A-Za-z0-9]+$", url).match
 
-function readlas(infile,ground=nothing)
+function readlas(infile::String,ground=nothing)
     if extension(infile) == ".laz"
         header, dsmdat = LazIO.load(infile)
     elseif extension(infile) == ".las"
@@ -9,7 +9,7 @@ function readlas(infile,ground=nothing)
         error("Unknown DSM file extension")
     end
 
-    dsm = zeros(size(dsmdat,1),4) .* NaN
+    dsm = zeros(size(dsmdat,1),3) .* NaN
     dsm_c = zeros(size(dsmdat,1)) .* NaN
     for dx in eachindex(dsmdat)
         dsm_c[dx] = trunc(Int,float(classification(dsmdat[dx])))
@@ -26,7 +26,7 @@ function readlas(infile,ground=nothing)
     return dsm
 end
 
-function importdtm(dtmf,tilt)
+function importdtm(dtmf::String,tilt::Bool)
     if tilt
         file = matopen(dtmf); dtmdat = read(file,"dtm"); close(file)
         dtm1 = dtmdat["x"]
@@ -51,13 +51,13 @@ function importdtm(dtmf,tilt)
     return dtm, dtm_cellsize
 end
 
-function read_ascii(demf)
+function read_ascii(demf::String)
 
     f = open(demf)
-    ncols     = parse(Float64,split(readline(f))[2])
-    nrows     = parse(Float64,split(readline(f))[2])
-    xllcorner = parse(Float64,split(readline(f))[2])
-    yllcorner = parse(Float64,split(readline(f))[2])
+    ncols     = parse(Int64,split(readline(f))[2])
+    nrows     = parse(Int64,split(readline(f))[2])
+    xllcorner = parse(Int64,split(readline(f))[2])
+    yllcorner = parse(Int64,split(readline(f))[2])
     cellsize  = parse(Float64,split(readline(f))[2])
     nodatval  = parse(Float64,split(readline(f))[2])
     close(f)
@@ -77,7 +77,7 @@ function read_ascii(demf)
     return dem, cellsize
 end
 
-function createfiles(outdir,pts,loc_time,t1,t2,int,calc_swr)
+function createfiles(outdir::String,pts::Array{Int64,2},loc_time::Array{DateTime,1},t1::String,t2::String,int::Int64,calc_swr::Bool)
     # writedlm(outdir*"/Coords_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".txt",pts)
 
     file = matopen(outdir*"/Time_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".mat", "w")
@@ -125,7 +125,7 @@ function createfiles(outdir,pts,loc_time,t1,t2,int,calc_swr)
 end
 
 
-function create_exmat(outdir,pts,g_img)
+function create_exmat(outdir::String,pts::Array{Int64,2},g_img::Array{Int64,2})
 
     outfile  = outdir*"/SHIs_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".nc"
 
