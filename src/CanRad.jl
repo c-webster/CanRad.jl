@@ -32,6 +32,7 @@ export
     readlas,
     importdtm,
     read_ascii,
+    calc_solar_track,
     createfiles,
     create_exmat,
     extract,
@@ -67,6 +68,13 @@ export
     scipyspat,
     netcdf,
     np,
+    calcringratios,
+    calculateVf,
+    calcmm,
+    getsundxs,
+    calculateSWR,
+    utm2deg,
+    calc_solar_track,
     LAS2Rad,
     CHM2Rad
 

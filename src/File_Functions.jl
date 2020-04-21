@@ -77,17 +77,17 @@ function read_ascii(demf::String)
     return dem, cellsize
 end
 
-function createfiles(outdir::String,pts::Array{Int64,2},loc_time::Array{DateTime,1},t1::String,t2::String,int::Int64,calc_swr::Bool)
+function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},loc_time::Array{DateTime,1},t1::String,t2::String,int::Int64,calc_swr::Bool)
     # writedlm(outdir*"/Coords_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".txt",pts)
 
-    file = matopen(outdir*"/Time_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".mat", "w")
+    file = matopen(outdir*"/Time_"*outstr*".mat", "w")
     write(file,"coords",pts)
     write(file,"T1",t1)
     write(file,"int",int)
     write(file,"T2",t2)
     close(file)
 
-    outfile  = outdir*"/Output_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".nc"
+    outfile  = outdir*"/Output_"*outstr*".nc"
 
     dataset = netcdf.Dataset(outfile,"w",format="NETCDF4_CLASSIC")
 
@@ -125,9 +125,9 @@ function createfiles(outdir::String,pts::Array{Int64,2},loc_time::Array{DateTime
 end
 
 
-function create_exmat(outdir::String,pts::Array{Int64,2},g_img::Array{Int64,2})
+function create_exmat(outdir::String,outstr::String,pts::Array{Float64,2},g_img::Array{Int64,2})
 
-    outfile  = outdir*"/SHIs_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".nc"
+    outfile  = outdir*"/SHIs_"*outstr*".nc"
 
     images   = netcdf.Dataset(outfile,"w",format="NETCDF4_CLASSIC")
 

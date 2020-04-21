@@ -1,7 +1,7 @@
-function calc_ringratios(ring_tht,ring_radius,mat2ev,g_rad)
-    w2all     = zeros(size(ring_radius,1)-1) .* NaN
-    surf_area = zeros(size(ring_radius,1)-1) .* NaN
-    cos_corr  = zeros(size(ring_radius,1)-1) .* NaN
+function calc_ringratios(ring_tht::Array{Float64,1},ring_radius::Array{Float64,1},mat2ev::Array{Int64,2},g_rad::Array{Float64,2})
+    w2all     = fill(NaN,(size(ring_radius,1)-1))
+    surf_area = fill(NaN,(size(ring_radius,1)-1))
+    cos_corr  = fill(NaN,(size(ring_radius,1)-1))
 
     for rix = 1:1:size(ring_radius,1)-1
         inner_radius   = ring_radius[rix]
@@ -15,7 +15,7 @@ function calc_ringratios(ring_tht,ring_radius,mat2ev,g_rad)
     return w2all, surf_area, cos_corr
 end
 
-function calculateVf(mat2ev,g_rad)
+function calculateVf(mat2ev::Array{Int64,2},g_rad::Array{Float64,2},radius::Int64)
 
     lens_profile_tht  = collect(0:10:90)
     lens_profile_rpix = collect(0:1/9:1)
@@ -24,21 +24,23 @@ function calculateVf(mat2ev,g_rad)
 
     w2all, surf_area, cos_corr = calc_ringratios(ring_tht,ring_radius,mat2ev,g_rad)
 
-    Vf = zeros(1,2) .* NaN
+    Vf = fill(NaN,(1,2))
     Vfweighted = sum(w2all.*surf_area.*cos_corr) / sum(surf_area.*cos_corr)
     Vfflat = sum(w2all.*surf_area)
 
     return Vfweighted, Vfflat
 end
 
-function calcmm(mat2ev,radius,drad,six,dix,x,y)
+function calcmm(mat2ev::Array{Float64,2},radius::Int64,drad::Array{Float64,2},six::Int64,dix::Int64,
+                    x::Array{Float64,1},y::Array{Float64,1})
         dpix = drad[dix] / 90*radius*sqrt(pi)/2
         xmm  = Int.(collect(max(1,round(x[six]-dpix)):1:min(size(mat2ev,2),round(x[six]+dpix))))
         ymm  = Int.(collect(max(1,round(y[six]-dpix)):1:min(size(mat2ev,1),round(y[six]+dpix))))
     return xmm,ymm
 end
 
-function getsundxs(mat2ev,trans_for,xmm,ymm,mini,maxi,nolp,noap,dix,keepix,six)
+function getsundxs(mat2ev::Array{Float64,2},trans_for::Array{Float64,2},xmm::Array{Int64,1},ymm::Array{Int64,1},
+                    mini::Float64,maxi::Float64,nolp::Int64,noap::Int64,dix::Int64,keepix::Array{Int64,1},six::Int64)
         mat2ev[ymm,xmm] = min.(mat2ev[ymm,xmm],maxi)
         nolp1 = sum(mini .<= mat2ev[ymm,xmm] .<= maxi)
         noap1 = length(mat2ev[ymm,xmm])
@@ -46,15 +48,17 @@ function getsundxs(mat2ev,trans_for,xmm,ymm,mini,maxi,nolp,noap,dix,keepix,six)
     return mat2ev,nolp1,noap1,trans_for
 end
 
-function calculateSWR(mat2ev,loc_time,radius,sol_phi,sol_tht,Vf,g_coorpol,sol_sinelev)
+function calculateSWR(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1},radius::Int64,sol_phi::Array{Float64,1},
+                        sol_tht::Array{Float64,1},Vf::Float64,g_coorpol::Array{Float64,2},sol_sinelev::Array{Float64,1})
+
     im_centre         = size(mat2ev)./2
     drad              = [0.533 1.066 2.132]./2
-    trans_for         = zeros(size(loc_time,1),size(drad,2))
+    trans_for         = fill(0.0,(size(loc_time,1),size(drad,2)))
 
-    lens_profile_tht  = collect(0:10:90)
-    lens_profile_rpix = collect(0:1/9:1)
+    lens_profile_tht  = (0:10:90)
+    lens_profile_rpix = (0:1/9:1)
     dx                = findall(sol_tht .<= maximum(filter(!isnan,g_coorpol[:,2])))
-    prad              = ones(size(sol_tht,1)) .* NaN
+    prad              = fill(NaN,(size(sol_tht,1)))
     prad[dx]          = pyinterp.interp1d(lens_profile_tht,lens_profile_rpix*radius)(sol_tht[dx])
 
     keepix            = findall(sol_tht .<= 90)
@@ -114,7 +118,7 @@ function calculateSWR(mat2ev,loc_time,radius,sol_phi,sol_tht,Vf,g_coorpol,sol_si
     return swr_for_all_flat, swr_for_dir_flat, swr_for_dif, trans_for_wgt
 end
 
-function utm2deg(loc_x,loc_y,zone,hemi)
+function utm2deg(loc_x::Float64,loc_y::Float64,zone::SubString{String},hemi::SubString{String})
     # Credit: based on utm2lonlat found on Matlab file exchange; accessed on 2018/08/25
     # Copyright (c) 2013, Erwin N. All rights reserved.
     sa    = 6378137.000000
@@ -159,10 +163,7 @@ function utm2deg(loc_x,loc_y,zone,hemi)
     return latitude, longitude
 end
 
-function calc_solar_track(pts,loc_time,time_zone,coor_system,utm_zone="empty")
-
-    loc_x = mean([maximum(filter(!isnan,pts[:,1])),minimum(filter(!isnan,pts[:,1]))])
-    loc_y = mean([maximum(filter(!isnan,pts[:,2])),minimum(filter(!isnan,pts[:,2]))])
+function calc_solar_track(loc_x::Float64,loc_y::Float64,loc_time::Array{DateTime,1},time_zone::Int64,coor_system,utm_zone="empty")
 
     if @match(coor_system,"CH1903")
         xd  = (loc_x - 600000)/1000000

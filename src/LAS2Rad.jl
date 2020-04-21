@@ -1,4 +1,4 @@
-function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
+function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
 
     ################################################################################
@@ -6,11 +6,20 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
     eval(extract(dat_in))
     eval(extract(par_in))
 
+    pts = float.(pts)
+
     if progress; start = time(); end
 
-    global outdir = exdir*"/"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))
+    if batch
+        outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
+        global outdir = exdir*"/"*outstr
+
+    else
+        outstr = String(split(exdir,"/")[end])
+        global outdir = exdir
+    end
     if !ispath(outdir)
-        mkdir(outdir)
+        mkpath(outdir)
     end
     # writedlm(outdir*"/"*basename(taskID),taskID)
 
@@ -29,7 +38,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
     # > Preprocess DSM/DTM
 
     # clip dsm within eval-peri of min/max pts
-    dsm = clipdat(dsm,pts,surf_peri)
+    dsm = clipdat(dsm,Int.(floor.(pts)),surf_peri)
     bounds = Int.(floor.(hcat(vcat(minimum(dsm[:,1]),maximum(dsm[:,1])),vcat(minimum(dsm[:,2]),maximum(dsm[:,2])))))
     dtm = clipdat(dtm,bounds,surf_peri*4)
     dem = clipdat(dem,bounds,terrain_peri)
@@ -93,7 +102,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
 
     # dem terrain mask
     if tershad < 2 && terrain == 2
-        demcrt = dem2pol(dem,pts[:,1],pts[:,2],ch,terrain_peri,dem_cellsize,0)
+        demcrt = dem2pol(dem,pts[:,1],pts[:,2],ch,terrain_peri,dem_cellsize,0.0)
 
         # add dem into empty matrix
         demcrt = pol2cart(dempol[:,1],dempol[:,2])
@@ -108,14 +117,14 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
                                 Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS"))
 
     if calc_swr
-        sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts,loc_time,time_zone,coor_system,utm_zone)
-        swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,pts,loc_time,t1,t2,int,calc_swr)
+        # sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts,loc_time,time_zone,coor_system,utm_zone)
+        swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,loc_time,t1,t2,int,calc_swr)
     else
-         Vf_weighted, Vf_flat, dataset = createfiles(outdir,pts,loc_time,t1,t2,int,calc_swr)
+         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,loc_time,t1,t2,int,calc_swr)
     end
 
     if save_images
-        SHIs, images = create_exmat(outdir,pts,g_img)
+        SHIs, images = create_exmat(outdir,outstr,pts,g_img)
     end
 
     if progress
@@ -235,11 +244,12 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
                 if progress; start = time(); end
 
                 ##### Calculate Vf
-                Vf_w, Vf_f = calculateVf(mat2ev,g_rad)
+                Vf_w, Vf_f = calculateVf(mat2ev,g_rad,radius)
 
                 ##### Calculate SWR/forest transmissivity
                 if ~tilt & calc_swr
-                    swrtot, swrdir, swr_dif, transfor = calculateSWR(mat2ev,loc_time,radius,sol_phi,
+                    sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts[crx,1],pts[crx,2],loc_time,time_zone,coor_system,utm_zone)
+                    swrtot, swrdir, swr_dif, transfor = calculateSWR(float.(mat2ev),loc_time,radius,sol_phi,
                                                                 sol_tht,Vf_w,g_coorpol,sol_sinelev)
                 end
 
@@ -263,8 +273,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
                 Vf_flat[crx]     = np.array(Vf_f)
 
                 if save_images
-                    SHIs[crx] = np.array(mat2ev)
-                    # SHIs[crx] = np.array(transpose(mat2ev))
+                    SHIs[crx] = np.array(transpose(mat2ev))
                 end
 
                 if progress

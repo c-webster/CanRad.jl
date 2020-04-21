@@ -171,7 +171,7 @@ function create_mat(radius::Int64)
     return grad, gcoors, gcoorcart, grid
 end
 
-function getsurfdat(dsm::Array{Float64,2},bsm::Array{Float64,2},xcoor::Int64,ycoor::Int64,peri)
+function getsurfdat(dsm::Array{Float64,2},bsm::Array{Float64,2},xcoor::Float64,ycoor::Float64,peri::Int64)
     vcat(dsm[dist(dsm,xcoor,ycoor).<peri,:],bsm[dist(bsm,xcoor,ycoor).<peri*0.5,:])
 end
 
@@ -183,7 +183,7 @@ function cart2sph(in::Array{Float64,2})
     return out
 end
 
-function dem2pol(dem::Array{Float64,2},pts_x::Int64,pts_y::Int64,ch::Float64,peri::Int64,dem_cellsize::Float64,slp::Float64)
+function dem2pol(dem::Array{Float64,2},pts_x::Float64,pts_y::Float64,ch::Float64,peri::Int64,dem_cellsize::Float64,slp::Float64)
 
     if size(pts_x,1) > 1
         loc_x = mean([maximum(filter(!isnan,pts[:,1])),minimum(filter(!isnan,pts[:,1]))])
@@ -223,11 +223,11 @@ function fillterrain(rphi::Array{Float64,1},rtht::Array{Float64,1},slp::Float64)
     return hcat(phi,tht) # azimuth, zenith
 end
 
-dist(dat::Array{Float64,2},xcoor::Int64,ycoor::Int64) = @fastmath (sqrt.(((dat[:,1] .- xcoor).^2) +
+dist(dat::Array{Float64,2},xcoor::Float64,ycoor::Float64) = @fastmath (sqrt.(((dat[:,1] .- xcoor).^2) +
                         ((dat[:,2] .- ycoor).^2)))
 
 
-function normalise(pcd::Array{Float64,2},xcoor::Int64,ycoor::Int64,ecoor::Float64,ch=0.0::Float64)
+function normalise(pcd::Array{Float64,2},xcoor::Float64,ycoor::Float64,ecoor::Float64,ch=0.0::Float64)
     pcd[:,1] .-= xcoor
     pcd[:,2] .-= ycoor
     pcd[:,3] = pcd[:,3] .- ecoor .- ch
@@ -241,7 +241,7 @@ function correct_sph(pol::Array{Float64,2},peri::Int64)
     # return pol
 end
 
-function pcd2pol2cart(pcd::Array{Float64,2},xcoor::Int64,ycoor::Int64,ecoor::Float64,peri::Int64,dat::String,ch=0.0::Float64,slp=0.0::Float64,cellsize=0.0::Float64)
+function pcd2pol2cart(pcd::Array{Float64,2},xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,dat::String,ch=0.0::Float64,slp=0.0::Float64,cellsize=0.0::Float64)
 
     if dat=="terrain"
         pcd = pcd[dist(pcd,xcoor,ycoor).< peri,:]
