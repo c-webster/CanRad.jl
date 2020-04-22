@@ -117,7 +117,6 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                                 Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS"))
 
     if calc_swr
-        # sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts,loc_time,time_zone,coor_system,utm_zone)
         swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,loc_time,t1,t2,int,calc_swr)
     else
          Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,loc_time,t1,t2,int,calc_swr)

@@ -45,7 +45,7 @@ function importdtm(dtmf::String,tilt::Bool)
             dtm = [dtm1 dtm2 dtm3]
             dtm_cellsize = dtmdat["cellsize"]
         elseif extension(dtmf) == ".asc"
-            dtm, cellsize = read_ascii(dtmf)
+            dtm, dtm_cellsize = read_ascii(dtmf)
         end
     end
     return dtm, dtm_cellsize
@@ -56,8 +56,8 @@ function read_ascii(demf::String)
     f = open(demf)
     ncols     = parse(Int64,split(readline(f))[2])
     nrows     = parse(Int64,split(readline(f))[2])
-    xllcorner = parse(Int64,split(readline(f))[2])
-    yllcorner = parse(Int64,split(readline(f))[2])
+    xllcorner = parse(Float64,split(readline(f))[2])
+    yllcorner = parse(Float64,split(readline(f))[2])
     cellsize  = parse(Float64,split(readline(f))[2])
     nodatval  = parse(Float64,split(readline(f))[2])
     close(f)
@@ -65,14 +65,11 @@ function read_ascii(demf::String)
     demdat = readdlm(demf,skipstart=6)
     replace!(demdat, -9999=>NaN)
 
-    xdem  = collect(xllcorner:cellsize:(xllcorner+cellsize*(ncols-1))) .+ cellsize/2
-    ydem  = collect(yllcorner:cellsize:(yllcorner+cellsize*(nrows-1))) .+ cellsize/2
-    tgrid = Matlab.meshgrid(xdem,ydem)
+    GC.gc()
+    tgrid = Matlab.meshgrid(collect(xllcorner:cellsize:(xllcorner+cellsize*(ncols-1))) .+ cellsize/2,collect(yllcorner:cellsize:(yllcorner+cellsize*(nrows-1))) .+ cellsize/2)
 
-    dem      = zeros(size(demdat,1) * size(demdat,2),3) .* NaN
-    dem[:,1] = vec(tgrid[1])
-    dem[:,2] = vec(tgrid[2])
-    dem[:,3] = vec(reverse(demdat,dims=1))
+    GC.gc()
+    dem = hcat(vec(tgrid[1]),vec(tgrid[2]),vec(reverse(demdat,dims=1)))
 
     return dem, cellsize
 end
@@ -80,12 +77,7 @@ end
 function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},loc_time::Array{DateTime,1},t1::String,t2::String,int::Int64,calc_swr::Bool)
     # writedlm(outdir*"/Coords_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".txt",pts)
 
-    file = matopen(outdir*"/Time_"*outstr*".mat", "w")
-    write(file,"coords",pts)
-    write(file,"T1",t1)
-    write(file,"int",int)
-    write(file,"T2",t2)
-    close(file)
+    writedlm(outdir*"/Time_"*outstr*".txt",Dates.format.(loc_time, "yyyy-mm-dd HH:MM:SS"))
 
     outfile  = outdir*"/Output_"*outstr*".nc"
 

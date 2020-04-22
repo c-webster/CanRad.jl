@@ -1,8 +1,8 @@
 module CanRad
 
-using FileIO, LasIO, LazIO, DelimitedFiles, MAT, DataStructures,
-    Statistics, VectorizedRoutines, Dates,
-    Match, DataFrames, Formatting, Distributed, Interpolations
+using FileIO, LasIO, LazIO, DelimitedFiles, DataStructures,
+    Statistics, VectorizedRoutines, Dates, Interpolations,
+    Match, DataFrames, Formatting, Distributed
 
 using Conda, PyCall
 
