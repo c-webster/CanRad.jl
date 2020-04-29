@@ -21,7 +21,9 @@ function create_tiles(basefolder::String,ptsf::String)
     segs = readdir(basefolder*"/Segments")
 
     if !ispath(basefolder*"/Tiles")
-        mkdir(basefolder*"/Tiles")
+        try
+            mkdir(basefolder*"/Tiles"); catch
+        end
     end
 
     pts_all = Int.(readdlm(ptsf))
@@ -60,5 +62,29 @@ function create_tiles(basefolder::String,ptsf::String)
     end
 
     return ptsfname, inputsegname, exdir
+
+end
+
+function check_output(exdir,pts)
+
+    if batch
+        outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
+        global outdir = exdir*"/"*outstr
+    else
+        outstr = String(split(exdir,"/")[end])
+        global outdir = exdir
+    end
+    
+    if !ispath(outdir)
+
+        crxstart = parse(Int,(split(reduce(1,readdir(outdir)[findall(occursin.("Processing",readdir(outdir)))])))[4])
+        if crxstart == size(pts,1);
+            return true
+        else
+            return false
+        end
+
+    end
+
 
 end

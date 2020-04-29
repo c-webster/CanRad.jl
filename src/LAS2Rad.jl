@@ -13,7 +13,6 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if batch
         outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
         global outdir = exdir*"/"*outstr
-
     else
         outstr = String(split(exdir,"/")[end])
         global outdir = exdir
@@ -22,6 +21,11 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         mkpath(outdir)
     end
     # writedlm(outdir*"/"*basename(taskID),taskID)
+    if size(readdir(outdir),1) == 5
+        crxstart = parse(Int,(split(reduce(1,readdir(outdir)[findall(occursin.("Processing",readdir(outdir)))])))[4])
+        append   = true
+    else; crxstart = 1; append  = false
+    end
 
     ################################################################################
 
@@ -112,18 +116,19 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     end
 
-    # calculate solar track
     loc_time = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(int):
                                 Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS"))
 
+    # generate the output files
+
     if calc_swr
-        swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,loc_time,t1,t2,int,calc_swr)
+        swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,loc_time,t1,t2,int,calc_swr,append)
     else
-         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,loc_time,t1,t2,int,calc_swr)
+         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,loc_time,t1,t2,int,calc_swr,append)
     end
 
     if save_images
-        SHIs, images = create_exmat(outdir,outstr,pts,g_img)
+        SHIs, images = create_exmat(outdir,outstr,pts,g_img,append)
     end
 
     if progress
@@ -145,7 +150,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         rbins = collect(0:(surf_peri-0)/5:surf_peri)
         tol   = tolerance.*collect(reverse(0.75:0.05:1))
 
-        @simd for crx = 1:size(pts,1)
+        @simd for crx = crxstart:size(pts,1)
 
             # try # catch statement to close dataset if error
 

@@ -44,7 +44,7 @@ function importdtm(dtmf::String,tilt::Bool)
             dtm3 = dtmdat["z"]
             dtm = [dtm1 dtm2 dtm3]
             dtm_cellsize = dtmdat["cellsize"]
-        elseif extension(dtmf) == ".asc"
+        elseif extension(dtmf) == ".asc" || extension(dtmf) == ".txt"
             dtm, dtm_cellsize = read_ascii(dtmf)
         end
     end
@@ -74,70 +74,94 @@ function read_ascii(demf::String)
     return dem, cellsize
 end
 
-function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},loc_time::Array{DateTime,1},t1::String,t2::String,int::Int64,calc_swr::Bool)
-    # writedlm(outdir*"/Coords_"*string(Int(pts[1,1]))*"_"*string(Int(pts[1,2]))*".txt",pts)
-
-    writedlm(outdir*"/Time_"*outstr*".txt",Dates.format.(loc_time, "yyyy-mm-dd HH:MM:SS"))
+function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},loc_time::Array{DateTime,1},t1::String,t2::String,int::Int64,calc_swr::Bool,append::Bool)
 
     outfile  = outdir*"/Output_"*outstr*".nc"
 
-    dataset = netcdf.Dataset(outfile,"w",format="NETCDF4_CLASSIC")
+    if append
+        dataset  = netcdf.Dataset(outfile,"r+")
 
-    locxy = dataset.createDimension("loc_XY",size(pts,1))
-    locdt = dataset.createDimension("loc_DT",size(loc_time,1))
-    ptsn  = dataset.createDimension("ptsn",2)
+        Vf_weighted  = dataset.variables["Vf_weighted"]
+        Vf_flat      = dataset.variables["Vf_flat"]
 
-    Vf_weighted  = dataset.createVariable("Vf_weighted",np.float32,("loc_XY"),zlib="True",
-                                        least_significant_digit=3)
-    Vf_flat      = dataset.createVariable("Vf_flat",np.float32,("loc_XY"),zlib="True",
-                                        least_significant_digit=3)
-    Coors        = dataset.createVariable("Coordinates",np.float32,("loc_XY","ptsn"),zlib="TRUE",
-                                        least_significant_digit=1)
-
-    for cx in eachindex(pts[:,1])
-     Coors[cx] = np.array(pts[cx,:])
-    end
-
-    if calc_swr
-        swr_tot = dataset.createVariable("SWR_tot",np.float32,("loc_XY","loc_DT"),zlib="True",
-                                            least_significant_digit=3)
-
-        swr_dir = dataset.createVariable("SWR_dir",np.float32,("loc_XY","loc_DT"),zlib="True",
-                                            least_significant_digit=3)
-
-        for_tau = dataset.createVariable("Forest_Transmissivity",np.float32,("loc_XY","loc_DT"),zlib="True",
-                                            least_significant_digit=3)
-
-        return swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset
+        if calc_swr
+            swr_tot = dataset.variables["SWR_tot"]
+            swr_dir = dataset.variables["SWR_dir"]
+            for_tau = dataset.variables["Forest_Transmissivity"]
+            return swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset
+        else
+            return Vf_weighted, Vf_flat, dataset
+        end
 
     else
-        return Vf_weighted, Vf_flat, dataset
+
+        writedlm(outdir*"/Time_"*outstr*".txt",Dates.format.(loc_time, "yyyy.mm.dd HH:MM:SS"))
+
+        dataset = netcdf.Dataset(outfile,"w",format="NETCDF4_CLASSIC")
+
+        locxy = dataset.createDimension("loc_XY",size(pts,1))
+        locdt = dataset.createDimension("loc_DT",size(loc_time,1))
+        ptsn  = dataset.createDimension("ptsn",2)
+
+        Vf_weighted  = dataset.createVariable("Vf_weighted",np.float32,("loc_XY"),zlib="True",
+                                            least_significant_digit=3)
+        Vf_flat      = dataset.createVariable("Vf_flat",np.float32,("loc_XY"),zlib="True",
+                                            least_significant_digit=3)
+        Coors        = dataset.createVariable("Coordinates",np.float32,("loc_XY","ptsn"),zlib="TRUE",
+                                            least_significant_digit=1)
+
+        for cx in eachindex(pts[:,1])
+         Coors[cx] = np.array(pts[cx,:])
+        end
+
+        if calc_swr
+            swr_tot = dataset.createVariable("SWR_tot",np.float32,("loc_XY","loc_DT"),zlib="True",
+                                                least_significant_digit=3)
+
+            swr_dir = dataset.createVariable("SWR_dir",np.float32,("loc_XY","loc_DT"),zlib="True",
+                                                least_significant_digit=3)
+
+            for_tau = dataset.createVariable("Forest_Transmissivity",np.float32,("loc_XY","loc_DT"),zlib="True",
+                                                least_significant_digit=3)
+
+            return swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset
+
+        else
+            return Vf_weighted, Vf_flat, dataset
+        end
+
     end
 
 end
 
 
-function create_exmat(outdir::String,outstr::String,pts::Array{Float64,2},g_img::Array{Int64,2})
+function create_exmat(outdir::String,outstr::String,pts::Array{Float64,2},g_img::Array{Int64,2},append::Bool)
 
     outfile  = outdir*"/SHIs_"*outstr*".nc"
 
-    images   = netcdf.Dataset(outfile,"w",format="NETCDF4_CLASSIC")
+    if append
+        images = netcdf.Dataset(outfile,"r+")
+        SHIs   = images.variables["SHI"]
+    else
 
-    dims     = size(g_img)
+        images   = netcdf.Dataset(outfile,"w",format="NETCDF4_CLASSIC")
 
-    loc1  = images.createDimension("loc1",size(g_img)[1])
-    loc2  = images.createDimension("loc2",size(g_img)[2])
-    locxy = images.createDimension("locxy",size(pts,1))
-    ptsn  = images.createDimension("ptsn",2)
+        dims     = size(g_img)
 
-    SHIs  = images.createVariable("SHI",np.int8,("locxy","loc1","loc2"),zlib="TRUE",
-                                    least_significant_digit=1)
+        loc1  = images.createDimension("loc1",size(g_img)[1])
+        loc2  = images.createDimension("loc2",size(g_img)[2])
+        locxy = images.createDimension("locxy",size(pts,1))
+        ptsn  = images.createDimension("ptsn",2)
 
-    Coors = images.createVariable("Coordinates",np.float32,("locxy","ptsn"),zlib="TRUE",
-                                    least_significant_digit=1)
+        SHIs  = images.createVariable("SHI",np.int8,("locxy","loc1","loc2"),zlib="TRUE",
+                                        least_significant_digit=1)
 
-    for cx in eachindex(pts[:,1])
-     Coors[cx] = np.array(pts[cx,:])
+        Coors = images.createVariable("Coordinates",np.float32,("locxy","ptsn"),zlib="TRUE",
+                                        least_significant_digit=1)
+
+        for cx in eachindex(pts[:,1])
+         Coors[cx] = np.array(pts[cx,:])
+        end
     end
 
     return SHIs, images

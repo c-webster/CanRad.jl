@@ -84,7 +84,7 @@ function calculate_trunks(dbh1::Array{Float64,2},npt::Any,hint::Any,e::Any)
         end
 
         if length(npt) > 1
-            xnew, ynew, znew, enew = trunkpoints(x1,y1,h,r,bh,Int.(npt[tix]),Float.(hint[tix]),e[tix])
+            xnew, ynew, znew, enew = trunkpoints(x1,y1,h,r,bh,Int.(npt[tix]),float.(hint[tix]),e[tix])
         else
             xnew, ynew, znew, enew = trunkpoints(x1,y1,h,r,bh,npt,hint,e[tix])
         end
