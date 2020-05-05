@@ -28,10 +28,13 @@ include("LAS2Rad.jl")
 
 export
     # CanRad_Prep,
+    check_output,
     extension,
     readlas,
     importdtm,
     read_ascii,
+    loaddbh,
+    loadltc,
     calc_solar_track,
     createfiles,
     create_exmat,
@@ -46,6 +49,7 @@ export
     make_branches,
     create_mat,
     cart2sph,
+    filterbyradius,
     dem2pol,
     fillterrain,
     calculateVf,

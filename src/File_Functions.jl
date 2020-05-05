@@ -9,46 +9,49 @@ function readlas(infile::String,ground=nothing)
         error("Unknown DSM file extension")
     end
 
-    dsm = zeros(size(dsmdat,1),3) .* NaN
-    dsm_c = zeros(size(dsmdat,1)) .* NaN
+    dsm_x = fill(NaN,size(dsmdat))
+    dsm_y = fill(NaN,size(dsmdat))
+    dsm_z = fill(NaN,size(dsmdat))
+    dsm_c = fill(NaN,size(dsmdat))
     for dx in eachindex(dsmdat)
         dsm_c[dx] = trunc(Int,float(classification(dsmdat[dx])))
         if dsm_c[dx] == 2
             continue
         else
-            dsm[dx,1] = xcoord(dsmdat[dx],header)
-            dsm[dx,2] = ycoord(dsmdat[dx],header)
-            dsm[dx,3] = zcoord(dsmdat[dx],header)
+            dsm_x[dx] = xcoord(dsmdat[dx],header)
+            dsm_y[dx] = ycoord(dsmdat[dx],header)
+            dsm_z[dx] = zcoord(dsmdat[dx],header)
         end
     end
-    rows = findall(isnan,dsm[:,1])
-    dsm = dsm[setdiff(1:end, rows), :]
-    return dsm
+    rows = findall(isnan,dsm_x)
+    deleteat!(dsm_x,rows)
+    deleteat!(dsm_y,rows)
+    deleteat!(dsm_z,rows)
+    return dsm_x, dsm_y, dsm_z
 end
 
 function importdtm(dtmf::String,tilt::Bool)
     if tilt
         file = matopen(dtmf); dtmdat = read(file,"dtm"); close(file)
-        dtm1 = dtmdat["x"]
-        dtm2 = dtmdat["y"]
-        dtm3 = dtmdat["z"]
-        dtm4 = dtmdat["s"]
-        dtm5 = dtmdat["a"]
-        dtm = [dtm1 dtm2 dtm3 dtm4 dtm5]
+        dtm_x = dtmdat["x"]
+        dtm_y = dtmdat["y"]
+        dtm_z = dtmdat["z"]
+        dtm_s = dtmdat["s"]
+        dtm_a = dtmdat["a"]
         dtm_cellsize = dtmdat["cellsize"]
+        return dtm_x, dtm_y, dtm_z, dtm_s, dtm_a, dtm_cellsize
     else
         if extension(dtmf) == ".mat"
             file = matopen(dtmf); dtmdat = read(file,"dtm"); close(file)
-            dtm1 = dtmdat["x"]
-            dtm2 = dtmdat["y"]
-            dtm3 = dtmdat["z"]
-            dtm = [dtm1 dtm2 dtm3]
+            dtm_x = dtmdat["x"]
+            dtm_y = dtmdat["y"]
+            dtm_z = dtmdat["z"]
             dtm_cellsize = dtmdat["cellsize"]
         elseif extension(dtmf) == ".asc" || extension(dtmf) == ".txt"
-            dtm, dtm_cellsize = read_ascii(dtmf)
+            dtm_x, dtm_y, dtm_z, dtm_cellsize = read_ascii(dtmf)
         end
+    return dtm_x, dtm_y, dtm_z, dtm_cellsize
     end
-    return dtm, dtm_cellsize
 end
 
 function read_ascii(demf::String)
@@ -65,14 +68,39 @@ function read_ascii(demf::String)
     demdat = readdlm(demf,skipstart=6)
     replace!(demdat, -9999=>NaN)
 
-    GC.gc()
+    # GC.gc()
     tgrid = Matlab.meshgrid(collect(xllcorner:cellsize:(xllcorner+cellsize*(ncols-1))) .+ cellsize/2,collect(yllcorner:cellsize:(yllcorner+cellsize*(nrows-1))) .+ cellsize/2)
 
-    GC.gc()
-    dem = hcat(vec(tgrid[1]),vec(tgrid[2]),vec(reverse(demdat,dims=1)))
+    # GC.gc()
+    dem_x = vec(tgrid[1])
+    dem_y = vec(tgrid[2])
+    dem_z = vec(reverse(demdat,dims=1))
 
-    return dem, cellsize
+    return dem_x, dem_y, dem_z, cellsize
 end
+
+function loaddbh(fname::String,bounds::Array{Int64,2})
+    dat, _ = readdlm(fname,'\t',header=true)
+
+    dat_x, dat_y, dat_z, rmdx = clipdat(dat[:,1],dat[:,2],dat[:,3],bounds,0)
+
+    dat_r = deleteat!(dat[:,4],rmdx) # diameter at breast height
+    dat_r /= 2
+    dat_r /= 100
+
+    dat_h = deleteat!(dat[:,5],rmdx) # height
+
+    return dat_x, dat_y, dat_z, dat_r
+end
+
+function loadltc(fname::String,bounds::Array{Int64,2})
+    ltc, _ = readdlm(fname,'\t',header=true)
+    replace!(ltc, -9999=>NaN)
+    _, _, _, rmdx = clipdat(ltc[:,1],ltc[:,2],ltc[:,3],bounds,0)
+    ltc = ltc[setdiff(1:end, rmdx), :]
+    return ltc
+end
+
 
 function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},loc_time::Array{DateTime,1},t1::String,t2::String,int::Int64,calc_swr::Bool,append::Bool)
 

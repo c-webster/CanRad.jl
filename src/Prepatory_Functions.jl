@@ -7,11 +7,13 @@ function extract(d::Dict)
     return expr
 end
 
-function clipdat(pc::Array{Float64,2},pts::Array{Int64,2},peri::Int64)
-    kpidx = Int.((minimum(pts[:,1])-peri).<pc[:,1].<(maximum(pts[:,1])+peri)) .*
-                Int.((minimum(pts[:,2])-peri).<pc[:,2].<(maximum(pts[:,2])+peri))
-    pc = pc[kpidx.==1,:]
-    return pc
+function clipdat(pc_x::Array{Float64,1},pc_y::Array{Float64,1},pc_z::Array{Float64,1},pts::Array{Int64,2},peri::Int64)
+    rmidx = (pc_x.<(minimum(pts[:,1])-peri)) .| (pc_x.>(maximum(pts[:,1])+peri)) .|
+                (pc_y.<(minimum(pts[:,2])-peri)) .| (pc_y.>(maximum(pts[:,2])+peri))
+    deleteat!(pc_x,rmidx)
+    deleteat!(pc_y,rmidx)
+    deleteat!(pc_z,rmidx)
+    return pc_x, pc_y, pc_z, rmidx
 end
 
 function create_tiles(basefolder::String,ptsf::String)
@@ -58,33 +60,38 @@ function create_tiles(basefolder::String,ptsf::String)
 
     exdir = basefolder*"/Output/"
     if !ispath(exdir)
-        mkdir(exdir)
+        try
+            mkdir(exdir); catch
+        end
     end
 
     return ptsfname, inputsegname, exdir
 
 end
 
-function check_output(exdir,pts)
+function check_output(exdir,pts,batch)
 
     if batch
         outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
-        global outdir = exdir*"/"*outstr
+        outdir = exdir*"/"*outstr
     else
         outstr = String(split(exdir,"/")[end])
-        global outdir = exdir
+        outdir = exdir
     end
-    
-    if !ispath(outdir)
 
-        crxstart = parse(Int,(split(reduce(1,readdir(outdir)[findall(occursin.("Processing",readdir(outdir)))])))[4])
-        if crxstart == size(pts,1);
-            return true
-        else
-            return false
+    if ispath(outdir)
+        try
+            crxstart = parse(Int,(split(reduce(1,readdir(outdir)[findall(occursin.("Processing",readdir(outdir)))])))[4])
+            if crxstart == size(pts,1)
+                out = true
+            else
+                out = false
+            end
+        catch
+            out = false
         end
-
+    else
+        out = false
     end
-
-
+    return out
 end

@@ -24,7 +24,6 @@ function calculateVf(mat2ev::Array{Int64,2},g_rad::Array{Float64,2},radius::Int6
 
     w2all, surf_area, cos_corr = calc_ringratios(ring_tht,ring_radius,mat2ev,g_rad)
 
-    Vf = fill(NaN,(1,2))
     Vfweighted = sum(w2all.*surf_area.*cos_corr) / sum(surf_area.*cos_corr)
     Vfflat = sum(w2all.*surf_area)
 
@@ -234,15 +233,15 @@ function calc_solar_track(loc_x::Float64,loc_y::Float64,loc_time::Array{DateTime
     # calculate solar azimuth angle depending on hour angle
     solar_azimuth_angle            = zeros(size(hour_angle_deg)) .* NaN
     idx1                           = hour_angle_deg .> 0
-    solar_azimuth_angle[idx1.==1] .= mod.(round.((rad2deg.(acos.(((sin.(deg2rad.(lat)) .*
+    solar_azimuth_angle[idx1.==1] .= mod.(round.((rad2deg.(acos.(round.(((sin.(deg2rad.(lat)) .*
                                         cos.(deg2rad.(solar_zenith_angle_deg[idx1.==1]))) .-
                                          sin.(deg2rad.(sun_declin_deg[idx1.==1]))) ./ (cos.(deg2rad.(lat)) .*
-                                          sin.(deg2rad.(solar_zenith_angle_deg[idx1.==1]))))) .+ 180).*100000)./100000,360)
+                                          sin.(deg2rad.(solar_zenith_angle_deg[idx1.==1]))),digits=10))) .+ 180).*100000)./100000,360)
     idx2                           = hour_angle_deg .<= 0
-    solar_azimuth_angle[idx2.==1] .= mod.(round.((540 .- rad2deg.(acos.(((sin.(deg2rad.(lat)) .*
+    solar_azimuth_angle[idx2.==1] .= mod.(round.((540 .- rad2deg.(acos.(round.(((sin.(deg2rad.(lat)) .*
                                         cos.(deg2rad.(solar_zenith_angle_deg[idx2.==1]))) .-
                                          sin.(deg2rad.(sun_declin_deg[idx2.==1]))) ./ (cos.(deg2rad.(lat)) .*
-                                          sin.(deg2rad.(solar_zenith_angle_deg[idx2.==1])))))).*100000)./100000,360)
+                                          sin.(deg2rad.(solar_zenith_angle_deg[idx2.==1]))),digits=10)))).*100000)./100000,360)
 
     # convert solar position to phi/tht
     sol_tht                     = 90 .- solar_elev_corr_atm_ref_deg          # convert to zenith angle in degree, i.e. sun @ zenith is tht = 0; sun @ horizon is tht = 90
