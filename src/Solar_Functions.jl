@@ -118,7 +118,7 @@ function calculateSWR(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1},radiu
     return swr_for_all_flat, swr_for_dir_flat, swr_for_dif, trans_for_wgt
 end
 
-function utm2deg(loc_x::Float64,loc_y::Float64,zone::SubString{String},hemi::SubString{String})
+function utm2deg(loc_x::Float64,loc_y::Float64,zone::Float64,hemi::SubString{String})
     # Credit: based on utm2lonlat found on Matlab file exchange; accessed on 2018/08/25
     # Copyright (c) 2013, Erwin N. All rights reserved.
     sa    = 6378137.000000
@@ -126,10 +126,10 @@ function utm2deg(loc_x::Float64,loc_y::Float64,zone::SubString{String},hemi::Sub
     e2sq = ((((sa .^ 2 ) - (sb .^ 2 )).^ 0.5) ./ sb).^2
     c     = ( sa .^ 2 ) ./ sb;
 
-    if @match(hemi,"N")
+    if hemi == "N"
         X    = loc_x - 500000
         Y    = loc_y
-    elseif @match(hemi,"S")
+    elseif hemi == "S"
         X    = loc_x - 500000
         Y    = loc_y - 10000000
     end
@@ -165,18 +165,18 @@ end
 
 function calc_solar_track(loc_x::Float64,loc_y::Float64,loc_time::Array{DateTime,1},time_zone::Int64,coor_system,utm_zone="empty")
 
-    if @match(coor_system,"CH1903")
+    if coor_system == "CH1903"
         xd  = (loc_x - 600000)/1000000
         yd  = (loc_y - 200000)/1000000
         lon = (2.6779094 + 4.728982 .* xd + 0.791484 .* xd .* yd + 0.1306 .* xd .* yd.^2 - 0.0436 .* xd.^3) .* 100 ./ 36
         lat = (16.9023892 + 3.238272 .* yd - 0.270978 .* xd.^2 - 0.002528 .* yd.^2 - 0.0447 .* xd.^2 .* yd - 0.0140 .* yd.^3) .* 100 ./ 36
-    elseif @match(coor_system,"CH1903+")
+    elseif coor_system == "CH1903+"
         xd  = (loc_x - 2600000)/1000000
         yd  = (loc_y - 1200000)/1000000
         lon = (2.6779094 + 4.728982 .* xd + 0.791484 .* xd .* yd + 0.1306 .* xd .* yd.^2 - 0.0436 .* xd.^3) .* 100 ./ 36
         lat = (16.9023892 + 3.238272 .* yd - 0.270978 .* xd.^2 - 0.002528 .* yd.^2 - 0.0447 .* xd.^2 .* yd - 0.0140 .* yd.^3) .* 100 ./ 36
-    elseif @match(coor_system,"UTM")
-        lat,lon  = utm2deg(loc_x,loc_y,parse(Float64split(utm_zone,' ')[1]),split(utm_zone,' ')[2])
+    elseif coor_system == "UTM"
+        lat,lon  = utm2deg(loc_x,loc_y,parse(Float64,split(utm_zone,' ')[1]),split(utm_zone,' ')[2])
     end
 
     # time conversion
