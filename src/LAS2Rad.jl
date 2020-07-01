@@ -16,7 +16,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
         global outdir = exdir*"/"*outstr
     else
-        outstr = String(split(exdir,"/")[end])
+        outstr = "Output_"*String(split(exdir,"/")[end-1])
         global outdir = exdir
     end
     if !ispath(outdir)

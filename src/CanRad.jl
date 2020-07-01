@@ -80,7 +80,8 @@ export
     utm2deg,
     calc_solar_track,
     LAS2Rad,
-    CHM2Rad
+    CHM2Rad,
+    TLS2Rad
 
 
 
