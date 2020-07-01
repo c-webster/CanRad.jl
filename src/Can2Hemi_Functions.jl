@@ -1,4 +1,4 @@
-function findelev(tmpc_x::Array{Float64,1},tmpc_y::Array{Float64,1},tmpc_z::Array{Float64,1},x::Any,y::Any,peri::Int64=10)
+function findelev(tmpc_x::Array{Float64,1},tmpc_y::Array{Float64,1},tmpc_z::Array{Float64,1},x::Any,y::Any,peri::Int64=10,method::String="linear")
     pc_x, pc_y, pc_z, _ = clipdat(tmpc_x,tmpc_y,tmpc_z,Int.(floor.([x y])),peri)
     v = pyinterp.griddata(hcat(pc_x,pc_y), pc_z, (x, y), method="linear")
     return round.(v,digits=2)
@@ -40,7 +40,7 @@ function preallo_trunks(dat_x::Array{Float64,1},dat_y::Array{Float64,1},dat_z::A
     # else
         dims = fill(NaN,size(dat_x,1))
     # end
-    for tix in eachindex(dims)
+    @inbounds @simd for tix in eachindex(dims)
 
         if size(npt,1) > 1; nix = tix
         else; nix = 1; end
@@ -61,7 +61,7 @@ function calculate_trunks(dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_z:
     global tsm_x = fill(NaN,Int(sum(dims))); global tsm_y = fill(NaN,Int(sum(dims)))
     global tsm_z = fill(NaN,Int(sum(dims))); global tsm_e = fill(NaN,Int(sum(dims)))
 
-    @inbounds for tix = 1:1:size(dbh_x,1)
+    @inbounds @simd for tix = 1:1:size(dbh_x,1)
         global tsm_x, tsm_y, tsm_z, tsm_e
 
         if length(npt) > 1
@@ -124,7 +124,7 @@ function make_branches(ltc::Array{Float64,2})
     bsm_x = vec(nwmatx)
     bsm_y = vec(nwmaty)
     bsm_z = vec(nwmatz)
-    rows = findall(isnan,bsm_x)
+    rows = findall(isnan,bsm_z)
     deleteat!(bsm_x,rows)
     deleteat!(bsm_y,rows)
     deleteat!(bsm_z,rows)
@@ -179,10 +179,20 @@ function cart2sph(in_x::Array{Float64,1},in_y::Array{Float64,1},in_z::Array{Floa
     return filterbyradius(out_phi,out_tht,out_rad,peri)
 end
 
+function cart2pol(in_x::Array{Float64,1},in_y::Array{Float64,1})
+    out_phi    = atan.(in_y,in_x) # az
+    out_tht    = ((pi/2) .- (atan.(in_z,hypot.(in_x,in_y)))) * (180/pi) # elev/zenith
+    out_tht[out_tht.> 90] .= 90
+
+    return out_phi, out_tht
+end
+
+
 function fillterrain(rphi::Array{Float64,1},rtht::Array{Float64,1},slp::Float64)
 
     min_rphi = minimum(filter(!isnan,rtht))
     int = size(collect(min_rphi:0.5:(90+slp)),1)
+    if int==1; int=2; end
     temp1 = repeat(collect(range(0,stop=1,length=int))',outer=[size(rtht,1),1])
     temp2 = repeat((ones(size(rtht,1),1) .* (90+slp)) - rtht,outer=[1,int])
 
@@ -227,7 +237,7 @@ function pcd2pol2cart(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Arr
     # pol_phi, pol_tht = [pol_tht .* cos.(pol_phi) pol_tht .* sin.(pol_phi)]
 
     if dat=="terrain"
-        return pol_phi, pol_tht
+        return pol_phi, pol_tht # returns cartesian coordinates
     else
         return prepcrtdat(round.(pol_phi,digits=3),round.(pol_tht,digits=3),round.(pol_rad,digits=3))
     end
@@ -241,7 +251,6 @@ function filterbyradius(phi::Array{Float64,1},tht::Array{Float64,1},rad::Array{F
     rmdx = rad .> peri
     return deleteat!(phi,rmdx), deleteat!(tht,rmdx), deleteat!(rad,rmdx)
 end
-
 
 function prepcrtdat(mat_in_x::Array{Float64,1},mat_in_y::Array{Float64,1},mat_in_r::Array{Float64,1})
 
@@ -263,7 +272,6 @@ function prepcrtdat(mat_in_x::Array{Float64,1},mat_in_y::Array{Float64,1},mat_in
 
 end
 
-
 function prepterdat(matcrt_x::Array{Float64,1},matcrt_y::Array{Float64,1})
 
     matcrt_x = round.(matcrt_x,digits = 1)
@@ -274,7 +282,6 @@ function prepterdat(matcrt_x::Array{Float64,1},matcrt_y::Array{Float64,1})
     return deleteat!(matcrt_x,rmdx), deleteat!(matcrt_y,rmdx)
 
 end
-
 
 function getimagecentre(slp::Float64,asp::Float64)
     if asp == 0 || asp == 360
@@ -332,7 +339,7 @@ function calcmintht(mintht::Array{Float64,2},rbins::Array{Float64,1},phi_bins::A
                         pcdpol_phi::Array{Float64,1},pcdpol_tht::Array{Float64,1},pcdpol_rad::Array{Float64,1},
                         fix1::Array{Int64,1},temp::Array{Float64,2},tdx)
 
-    for rbix = length(rbins)-1:-1:1
+    @inbounds @simd for rbix = length(rbins)-1:-1:1
             fix1 = idx[frbins(pcdpol_rad,rbins[rbix],rbins[rbix+1])]
             if size(fix1) > (1,)
                 tdx = (minimum(pcdpol_phi[fix1[sortperm(pcdpol_phi[fix1])]]) .<= phi_bins
@@ -347,7 +354,6 @@ function calcmintht(mintht::Array{Float64,2},rbins::Array{Float64,1},phi_bins::A
 
 end
 
-
 function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Float64,1},
                             pcdpol_tht::Array{Float64,1},pcdpol_rad::Array{Float64,1},slp::Float64)
 
@@ -358,9 +364,8 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
     fix1 = Array{Int64,1}(undef,10000)
     tdx = Array{Bool,size(phi_bins,1)}
     mintht = float.(fill(90,size(phi_bins,1),1));
-    temp = copy(mintht);
 
-    mintht = calcmintht(mintht,rbins,phi_bins,idx,pcdpol_phi,pcdpol_tht,pcdpol_rad,fix1,temp,tdx);
+    mintht = calcmintht(mintht,rbins,phi_bins,idx,pcdpol_phi,pcdpol_tht,pcdpol_rad,fix1,copy(mintht),tdx);
 
     rphi = collect(-pi:pi/1080:pi)
     rtht = Array{Float64,1}(undef,size(rphi,1))
@@ -373,78 +378,59 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
     return pol_phi, pol_tht
 end
 
-function calcThickness(pcd,xcoor,ycoor,ecoor,peri1,peri2,cellsize)
-
-    pcdpol = pcd2pol(pcd,xcoor,ycoor,ecoor,peri2)
-
-    rbins = collect(peri1:sqrt(2).*cellsize:peri2)
-
-    phi_bins = collect(-pi+((pi/360)*3):pi/720:pi-((pi/360)*3)) # azimuth bins
-
-    global mintht = ones(size(phi_bins,1)) .* 90
-    global minrad = ones(size(phi_bins,1)) .* peri2
-    global thick  = zeros(size(temptht,1),90)
-
-    for rbix = length(rbins)-1:-1:1
-        global mintht, minrad
-            fix1 = findall((pcdpol[:,3] .>= rbins[rbix]) .& (pcdpol[:,3] .< rbins[rbix+1]))
-            if size(fix1) > (1,)
-                fix2 = sortperm(pcdpol[fix1,1])
-                tdx = findall(minimum(pcdpol[fix1[fix2],1]) .<= phi_bins
-                                    .<= maximum(pcdpol[fix1[fix2],1]))
-
-                temptht = ones(size(phi_bins,1)) .* 90
-                temptht[tdx] =  pyinterp.interp1d(pcdpol[fix1[fix2],1],
-                            pcdpol[fix1[fix2],2])(phi_bins[tdx])
-
-                flag = vec(mintht .> temptht)
-                minrad[flag.==1,:] .= mean([rbins[rbix],rbins[rbix+1]])
-                mintht = minimum(hcat(mintht,temptht),dims=2)
-
-                tempthick = zeros(size(temptht,1),90)
-                temptht = Int.(round.(temptht))
-                for tx = 1:1:size(temptht,1)
-                    if temptht[tx] == 90
-                        continue
-                    else
-                        tempthick[tx,1:temptht[tx]] .= cellsize
-                    end
-                end
-
-                thick = thick .+ tempthick
-
-            end
-    end
-
-    rphi = collect(-pi:pi/360:pi)
-    rtht = pyinterp.interp1d([phi_bins[end]-2*pi; phi_bins; phi_bins[1]+2*pi],
-                        vec([mintht[end];mintht;mintht[1]]),fill_value="extrapolate")(rphi)
-    rrad = pyinterp.interp1d([phi_bins[end]-2*pi; phi_bins; phi_bins[1]+2*pi],
-                        vec([minrad[end];minrad;minrad[1]]),fill_value="extrapolate")(rphi)
-
-    return rtht,rrad,thick
-
-end
 
 
 
-
-
-# function dem2pol(dem::Array{Float64,2},loc_x::Float64,loc_y::Float64,ch::Float64,peri::Int64,dem_cellsize::Float64,slp::Float64)
 #
-#     dem = dem[dist(dem,loc_x,loc_y).< peri,:]
-#     dem[:,3] = dem[:,3] .- (pyinterp.griddata(dem[:,1:2], dem[:,3], (loc_x, loc_y), method="linear")) .- ch;
-#     dem[:,1] = dem[:,1] .- loc_x;
-#     dem[:,2] = dem[:,2] .- loc_y;
+# function calcThickness(pcd,xcoor,ycoor,ecoor,peri1,peri2,cellsize)
 #
-#     dem = cart2sph(dem)
+#     pcdpol = pcd2pol(pcd,xcoor,ycoor,ecoor,peri2)
 #
-#     dem = correct_sph(dem,peri);
+#     rbins = collect(peri1:sqrt(2).*cellsize:peri2)
 #
-#     # calculate horizon lines
-#     dem = calc_horizon_lines(dem_cellsize*2,peri,dem,slp)
+#     phi_bins = collect(-pi+((pi/360)*3):pi/720:pi-((pi/360)*3)) # azimuth bins
 #
-#     @fastmath dem[:,1:2] = [dem[:,2] .* cos.(dem[:,1]) dem[:,2] .* sin.(dem[:,1])]
+#     global mintht = ones(size(phi_bins,1)) .* 90
+#     global minrad = ones(size(phi_bins,1)) .* peri2
+#     global thick  = zeros(size(temptht,1),90)
 #
-#     return dem
+#     for rbix = length(rbins)-1:-1:1
+#         global mintht, minrad
+#             fix1 = findall((pcdpol[:,3] .>= rbins[rbix]) .& (pcdpol[:,3] .< rbins[rbix+1]))
+#             if size(fix1) > (1,)
+#                 fix2 = sortperm(pcdpol[fix1,1])
+#                 tdx = findall(minimum(pcdpol[fix1[fix2],1]) .<= phi_bins
+#                                     .<= maximum(pcdpol[fix1[fix2],1]))
+#
+#                 temptht = ones(size(phi_bins,1)) .* 90
+#                 temptht[tdx] =  pyinterp.interp1d(pcdpol[fix1[fix2],1],
+#                             pcdpol[fix1[fix2],2])(phi_bins[tdx])
+#
+#                 flag = vec(mintht .> temptht)
+#                 minrad[flag.==1,:] .= mean([rbins[rbix],rbins[rbix+1]])
+#                 mintht = minimum(hcat(mintht,temptht),dims=2)
+#
+#                 tempthick = zeros(size(temptht,1),90)
+#                 temptht = Int.(round.(temptht))
+#                 for tx = 1:1:size(temptht,1)
+#                     if temptht[tx] == 90
+#                         continue
+#                     else
+#                         tempthick[tx,1:temptht[tx]] .= cellsize
+#                     end
+#                 end
+#
+#                 thick = thick .+ tempthick
+#
+#             end
+#     end
+#
+#     rphi = collect(-pi:pi/360:pi)
+#     rtht = pyinterp.interp1d([phi_bins[end]-2*pi; phi_bins; phi_bins[1]+2*pi],
+#                         vec([mintht[end];mintht;mintht[1]]),fill_value="extrapolate")(rphi)
+#     rrad = pyinterp.interp1d([phi_bins[end]-2*pi; phi_bins; phi_bins[1]+2*pi],
+#                         vec([minrad[end];minrad;minrad[1]]),fill_value="extrapolate")(rphi)
+#
+#     return rtht,rrad,thick
+#
 # end

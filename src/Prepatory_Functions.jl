@@ -16,7 +16,7 @@ function clipdat(pc_x::Array{Float64,1},pc_y::Array{Float64,1},pc_z::Array{Float
     return pc_x, pc_y, pc_z, rmidx
 end
 
-function create_tiles(basefolder::String,ptsf::String)
+function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
 
     tsize = readdlm(basefolder*"/TileSize.txt")
 
@@ -65,7 +65,23 @@ function create_tiles(basefolder::String,ptsf::String)
         end
     end
 
-    return ptsfname, inputsegname, exdir
+    tilenums = []
+    if !isempty(readdir(exdir))
+        for tdx = 1:size(ptsfname,1)
+                par_in, dat_in = settings_fun(basefolder,inputsegname[tdx])
+
+                pts = Int.(readdlm(basefolder*"/Tiles"*"/"*ptsfname[tdx]))
+
+                if !check_output(exdir,pts,true)
+                        push!(tilenums,tdx)
+                end
+        end
+    else
+            tilenums = collect(1:1:size(ptsfname,1))
+    end
+
+
+    return ptsfname, inputsegname, exdir, tilenums
 
 end
 

@@ -43,10 +43,14 @@ function importdtm(dtmf::String,tilt::Bool)
     else
         if extension(dtmf) == ".mat"
             file = matopen(dtmf); dtmdat = read(file,"dtm"); close(file)
-            dtm_x = dtmdat["x"]
-            dtm_y = dtmdat["y"]
-            dtm_z = dtmdat["z"]
+            dtm_x = vec(dtmdat["x"])
+            dtm_y = vec(dtmdat["y"])
+            dtm_z = vec(dtmdat["z"])
             dtm_cellsize = dtmdat["cellsize"]
+            rows = findall(isnan,dtm_z)
+            deleteat!(dtm_x,rows)
+            deleteat!(dtm_y,rows)
+            deleteat!(dtm_z,rows)
         elseif extension(dtmf) == ".asc" || extension(dtmf) == ".txt"
             dtm_x, dtm_y, dtm_z, dtm_cellsize = read_ascii(dtmf)
         end
@@ -69,12 +73,18 @@ function read_ascii(demf::String)
     replace!(demdat, -9999=>NaN)
 
     # GC.gc()
-    tgrid = Matlab.meshgrid(collect(xllcorner:cellsize:(xllcorner+cellsize*(ncols-1))) .+ cellsize/2,collect(yllcorner:cellsize:(yllcorner+cellsize*(nrows-1))) .+ cellsize/2)
+    xdem = collect(xllcorner:cellsize:(xllcorner+cellsize*(ncols-1))) .+ cellsize/2;
+    ydem = collect(yllcorner:cellsize:(yllcorner+cellsize*(nrows-1))) .+ cellsize/2;
+    tgrid = Matlab.meshgrid(xdem,ydem)
 
-    # GC.gc()
-    dem_x = vec(tgrid[1])
-    dem_y = vec(tgrid[2])
-    dem_z = vec(reverse(demdat,dims=1))
+    dem_x = vec(tgrid[1]);
+    dem_y = vec(tgrid[2]);
+    dem_z = vec(reverse(demdat,dims=1));
+
+    rows = findall(isnan,dem_z)
+    deleteat!(dem_x,rows)
+    deleteat!(dem_y,rows)
+    deleteat!(dem_z,rows)
 
     return dem_x, dem_y, dem_z, cellsize
 end

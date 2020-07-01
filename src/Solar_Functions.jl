@@ -48,7 +48,8 @@ function getsundxs(mat2ev::Array{Float64,2},trans_for::Array{Float64,2},xmm::Arr
 end
 
 function calculateSWR(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1},radius::Int64,sol_phi::Array{Float64,1},
-                        sol_tht::Array{Float64,1},Vf::Float64,g_coorpol::Array{Float64,2},sol_sinelev::Array{Float64,1})
+                        sol_tht::Array{Float64,1},Vf::Float64,g_coorpol::Array{Float64,2},sol_sinelev::Array{Float64,1},
+                        imcX::Float64,imcY::Float64)
 
     im_centre         = size(mat2ev)./2
     drad              = [0.533 1.066 2.132]./2
@@ -56,13 +57,13 @@ function calculateSWR(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1},radiu
 
     lens_profile_tht  = (0:10:90)
     lens_profile_rpix = (0:1/9:1)
-    dx                = findall(sol_tht .<= maximum(filter(!isnan,g_coorpol[:,2])))
+    keepix            = findall(sol_tht .<= maximum(filter(!isnan,g_coorpol[:,2])))
     prad              = fill(NaN,(size(sol_tht,1)))
-    prad[dx]          = pyinterp.interp1d(lens_profile_tht,lens_profile_rpix*radius)(sol_tht[dx])
+    prad[keepix]      = pyinterp.interp1d(lens_profile_tht,lens_profile_rpix*radius)(sol_tht[keepix])
 
-    keepix            = findall(sol_tht .<= 90)
-    x                 = im_centre[1] .+ sin.(deg2rad.(sol_phi[keepix])) .* prad[keepix]
-    y                 = im_centre[2] .+ cos.(deg2rad.(sol_phi[keepix])) .* prad[keepix]
+    # keepix            = findall(sol_tht .<= 90)
+    x                 = (im_centre[1] .+ sin.(deg2rad.(sol_phi[keepix])) .* prad[keepix]) .- (imcX / (90 / radius));
+    y                 = (im_centre[2] .+ cos.(deg2rad.(sol_phi[keepix])) .* prad[keepix]) .- (imcY / (90 / radius));
 
     for six = 1:1:size(x,1)
         # global mat2ev, trans_for
