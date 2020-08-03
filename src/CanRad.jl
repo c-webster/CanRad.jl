@@ -2,13 +2,13 @@ module CanRad
 
 using FileIO, LasIO, LazIO, DelimitedFiles, DataStructures,
     Statistics, VectorizedRoutines, Dates, Interpolations,
-    Match, DataFrames, Formatting, Distributed
+    Match, DataFrames, Formatting, Distributed, Distributions
 
 using Conda, PyCall
 
-Conda.add("scipy")
-Conda.add("netCDF4")
-Conda.add("numpy")
+# Conda.add("scipy")
+# Conda.add("netCDF4")
+# Conda.add("numpy")
 
 function __init__()
     @eval global pyinterp  = pyimport("scipy.interpolate")
@@ -24,64 +24,78 @@ include("Can2Hemi_Functions.jl")
 include("Solar_Functions.jl")
 include("CHM2Rad.jl")
 include("LAS2Rad.jl")
+include("LAS2Rad_slopes.jl")
+include("TLS2Rad.jl")
 # include("CanRad_Prep.jl")
 
 export
     # CanRad_Prep,
+    aggregate_data,
+    calc_horizon_lines,
+    calc_solar_track,
+    calc_solar_track,
+    calc_transmissivity,
+    calcCHM_Ptrans,
+    calcmintht,
+    calcmm,
+    calcPtrans,
+    calcPtrans_dist,
+    calcringratios,
+    calcThickness,
+    calculate_trunks,
+    calculateSWR,
+    calculateVf,
+    cart2sph,
     check_output,
+    CHM2Rad,
+    clipdat,
+    correct_sph,
+    create_exmat,
+    create_mat,
+    create_tiles,
+    createfiles,
+    createVariables,
+    dem2pol,
+    dist,
     extension,
-    readlas,
+    extract,
+    fillmat,
+    fillterrain,
+    filterbyradius,
+    findelev,
+    findmincol,
+    findpairs,
+    frbins,
+    get_constants,
+    getimagecentre,
+    getPhiTht,
+    getsundxs,
+    getsurfdat,
     importdtm,
-    read_ascii,
+    LAS2Rad,
+    LAS2Rad_slopes,
     loaddbh,
     loadltc,
-    calc_solar_track,
-    createfiles,
-    create_exmat,
-    extract,
-    clipdat,
-    create_tiles,
-    getsurfdat,
-    findelev,
-    trunkpoints,
-    preallo_trunks,
-    calculate_trunks,
     make_branches,
-    create_mat,
-    cart2sph,
-    filterbyradius,
-    dem2pol,
-    fillterrain,
-    calculateVf,
-    calculateSWR,
-    dist,
+    netcdf,
     normalise,
-    correct_sph,
+    np,
+    pcd2pol,
     pcd2pol2cart,
+    pol2cart,
+    preallo_trunks,
     prepcrtdat,
     prepterdat,
-    getimagecentre,
-    findpairs,
-    fillmat,
-    findmincol,
-    frbins,
-    calcmintht,
-    calc_horizon_lines,
-    calcThickness,
     pyinterp,
+    read_ascii,
+    readlas,
     scipyspat,
-    netcdf,
-    np,
-    calcringratios,
-    calculateVf,
-    calcmm,
-    getsundxs,
-    calculateSWR,
-    utm2deg,
-    calc_solar_track,
-    LAS2Rad,
-    CHM2Rad,
-    TLS2Rad
+    TLS2Rad,
+    trunkpoints,
+    utm2deg
+
+
+
 
 
 

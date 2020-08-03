@@ -1,4 +1,5 @@
-function findelev(tmpc_x::Array{Float64,1},tmpc_y::Array{Float64,1},tmpc_z::Array{Float64,1},x::Any,y::Any,peri::Int64=10,method::String="linear")
+function findelev(tmpc_x::Array{Float64,1},tmpc_y::Array{Float64,1},tmpc_z::Array{Float64,1},x::Any,y::Any,
+                        peri::Int64=10,method::String="linear")
     pc_x, pc_y, pc_z, _ = clipdat(tmpc_x,tmpc_y,tmpc_z,Int.(floor.([x y])),peri)
     v = pyinterp.griddata(hcat(pc_x,pc_y), pc_z, (x, y), method="linear")
     return round.(v,digits=2)
@@ -33,7 +34,8 @@ function trunkpoints(x1::Float64,y1::Float64,h::Float64,r::Float64,bh::Float64,n
     return xnew, ynew, znew, enew
 end
 
-function preallo_trunks(dat_x::Array{Float64,1},dat_y::Array{Float64,1},dat_z::Array{Float64,1},dat_r::Array{Float64,1},npt::Any,hint::Any)
+function preallo_trunks(dat_x::Array{Float64,1},dat_y::Array{Float64,1},dat_z::Array{Float64,1},
+            dat_r::Array{Float64,1},npt::Any,hint::Any)
     # if size(dat,2) == 1
         # dims = fill(NaN,size(dat,2))
         # dat = dat'
@@ -54,7 +56,8 @@ function preallo_trunks(dat_x::Array{Float64,1},dat_y::Array{Float64,1},dat_z::A
     return dims
 end
 
-function calculate_trunks(dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_z::Array{Float64,1},dbh_r::Array{Float64,1},npt::Any,hint::Any,e::Any)
+function calculate_trunks(dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_z::Array{Float64,1},
+                dbh_r::Array{Float64,1},npt::Any,hint::Any,e::Any)
     # bh  = 1.5 # breast height
     dims =  preallo_trunks(dbh_x,dbh_y,dbh_z,dbh_r,npt,hint)
 
@@ -153,6 +156,10 @@ function dist(dat_x::Array{Float64,1},dat_y::Array{Float64,1},xcoor::Float64,yco
             return @fastmath (sqrt.(((dat_x .- xcoor).^2) + ((dat_y .- ycoor).^2)))
 end
 
+function dist(dat_x::Float64,dat_y::Float64,xcoor::Float64,ycoor::Float64)
+            return @fastmath (sqrt.(((dat_x .- xcoor).^2) + ((dat_y .- ycoor).^2)))
+end
+
 function getsurfdat(dsm_x::Array{Float64,1},dsm_y::Array{Float64,1},dsm_z::Array{Float64,1},
                         bsm_x::Array{Float64,1},bsm_y::Array{Float64,1},bsm_z::Array{Float64,1},
                         xcoor::Float64,ycoor::Float64,peri::Int64)
@@ -216,7 +223,7 @@ function normalise(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{
     return pcd_x, pcd_y, pcd_z
 end
 
-function pcd2pol2cart(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},
+function pcd2pol(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},
                         xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,dat::String,
                         ch=0.0::Float64,slp=0.0::Float64,cellsize=0.0::Float64)
 
@@ -225,16 +232,27 @@ function pcd2pol2cart(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Arr
     end
     pcd_x, pcd_y, pcd_z = normalise(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,ch)
 
-    pol_phi, pol_tht, pol_rad = cart2sph(pcd_x,pcd_y,pcd_z,peri)
+    return cart2sph(pcd_x,pcd_y,pcd_z,peri)
+
+end
+
+function pcd2pol2cart(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},
+                        xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,dat::String,
+                        ch=0.0::Float64,slp=0.0::Float64,cellsize=0.0::Float64)
+
+
+    pol_phi, pol_tht, pol_rad = pcd2pol(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri,dat,ch,slp,cellsize)
 
     # convert phi/tht to cartesian
     if dat=="terrain"
         pol_phi, pol_tht = calc_horizon_lines(cellsize,peri,pol_phi,pol_tht,pol_rad,slp)
+    elseif dat=="chm"
+        rows = findall(vec(pol_rad).<(10 .* (sqrt(2)*cellsize))) # deletes the points right above the camera
+        deleteat!(pol_phi,rows); deleteat!(pol_tht,rows); deleteat!(pol_rad,rows)
     end
 
     # convert to cartesian
     pol_phi, pol_tht = pol2cart(pol_phi,pol_tht)
-    # pol_phi, pol_tht = [pol_tht .* cos.(pol_phi) pol_tht .* sin.(pol_phi)]
 
     if dat=="terrain"
         return pol_phi, pol_tht # returns cartesian coordinates
@@ -363,7 +381,7 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
     idx = collect(1:1:size(pcdpol_phi,1))
     fix1 = Array{Int64,1}(undef,10000)
     tdx = Array{Bool,size(phi_bins,1)}
-    mintht = float.(fill(90,size(phi_bins,1),1));
+    mintht = (fill(90.0,size(phi_bins,1),1));
 
     mintht = calcmintht(mintht,rbins,phi_bins,idx,pcdpol_phi,pcdpol_tht,pcdpol_rad,fix1,copy(mintht),tdx);
 
@@ -378,6 +396,145 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
     return pol_phi, pol_tht
 end
 
+
+function calcCHM_Ptrans(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},chm_lavd::Array{Float64,1},
+                        xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,ch::Float64,cellsize::Float64,dat::String="canopy")
+
+    pol_phi, pol_tht, pol_rad = pcd2pol(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri,dat,ch,0.0,cellsize)
+
+    # allocate variables for the radial loops in calcThickness
+    rbins = collect(4*cellsize:sqrt(2).*cellsize:peri)
+    phi_bins = collect(-pi+((pi/360)*3):pi/720:pi-((pi/360)*3))
+
+    idx, fix1, tdx, mintht, minrad, thick, sum_lavd_thick, canopy_thick, rdist = createVariables(pol_phi,phi_bins,peri)
+
+    sum_lavd_thick, sum_thick, rdist = calcThickness(mintht,rbins,phi_bins,idx,pol_phi,pol_tht,pol_rad,
+                                    chm_lavd,fix1,copy(mintht),copy(thick),canopy_thick,tdx,sum_lavd_thick,cellsize,rdist);
+
+    # remove all points where canopy thickness is only one Rbin
+    pt_chm_x, pt_chm_y, rdist = calcPtrans(sum_lavd_thick, phi_bins, sum_thick, cellsize, rdist)
+
+    pt_chm_x_thick, pt_chm_y_thick = calcPtrans_dist(canopy_thick, phi_bins, sum_thick)
+
+    return pt_chm_x, pt_chm_y, rdist, pt_chm_x_thick, pt_chm_y_thick
+end
+
+function calcPtrans(sum_lavd_thick::Array{Float64,2},phi_bins::Array{Float64,1},sum_thick::Array{Float64,2},cellsize::Float64,rdist::Array{Float64,1})
+    Ptrans = exp.(-0.5 * sum_lavd_thick)
+    phi_bins = collect(-pi:pi/714:pi); push!(phi_bins,pi) # tidy up phi_bins so it starts and ends at pi
+
+    # solve pt based on average pt and random distribution
+    mean_Ptrans = mean(Ptrans[(Ptrans .> 0) .& (Ptrans .<1)])
+    rand_Ptrans = rand(Uniform(0,1),size(Ptrans))
+
+    Ptrans[Ptrans .>= rand_Ptrans] .= 1
+    Ptrans[Ptrans .< rand_Ptrans] .= 0
+    # Ptrans[sum_thick .<= (2 .* (sqrt(2)*cellsize))] .= 1
+    # Ptrans[sum_thick .> 15] .= 1 # where the canopy is thick, just give it zero tranmissivity
+
+    pt_chm_x, pt_chm_y, rdist = getPhiTht(phi_bins,Ptrans,rdist)
+
+    return pt_chm_x, pt_chm_y, rdist
+end
+
+function calcPtrans_dist(canopy_thick::Array{Float64,2},phi_bins::Array{Float64,1},sum_thick::Array{Float64,2})
+
+    canopy_thick[sum_thick .> 15] .= 0
+    canopy_thick[sum_thick .<= 15] .= 1
+    phi = repeat(phi_bins,90);
+    tht = repeat(90.0:-1:1,inner=size(phi_bins,1))
+    rows = findall(vec(canopy_thick).==1)
+    deleteat!(phi,rows)
+    deleteat!(tht,rows)
+
+    return pol2cart(phi,float.(tht))
+end
+
+function getPhiTht(phi_bins::Array{Float64,1},Ptrans::Array{Float64,2},rdist::Array{Float64,1})
+    phi = repeat(phi_bins,90);
+    tht = repeat(90.0:-1:1,inner=size(phi_bins,1))
+
+    for thtdx = 1:size(phi_bins,1):size(tht,1)-size(phi_bins,1)
+        tht[thtdx:thtdx+size(phi_bins,1)-1] = rand(Uniform(tht[thtdx]-1,tht[thtdx]),size(thtdx:thtdx+size(phi_bins,1)-1))
+    end
+
+    temp = sortperm(phi)
+    for phidx = 1:size(Ptrans,1):size(phi,1)-size(Ptrans,1)
+        phi[temp[phidx:phidx+89]] = rand(Uniform(phi[temp[phidx]]-0.01,phi[temp[phidx]+1]),size(phidx:phidx+89))
+    end
+
+    # remove regions of sky where transmissivity = 0
+    rows = findall(vec(Ptrans).==1)
+    deleteat!(phi,rows)
+    deleteat!(tht,rows)
+    deleteat!(rdist,rows)
+
+    pt_chm_x, pt_chm_y = pol2cart(phi,float.(tht))
+
+    return pt_chm_x, pt_chm_y, rdist
+end
+
+function createVariables(pol_phi::Array{Float64,1},phi_bins::Array{Float64,1},peri::Int64)
+    idx = collect(1:1:size(pol_phi,1))
+    fix1 = Array{Int64,1}(undef,10000)
+    tdx = Array{Bool,size(phi_bins,1)}
+    mintht = fill(90.0,size(phi_bins,1),1)
+    minrad = float.(fill(peri,size(phi_bins,1),1))
+    thick  = fill(0.0,size(phi_bins,1),1)
+    sum_lavd_thick = fill(0.0,size(phi_bins,1),90)
+    tempthick = fill(0.0,(size(phi_bins,1),90))
+    rdist = fill(float(peri),(size(phi_bins,1),90))
+    return idx, fix1, tdx, mintht, minrad, thick, sum_lavd_thick, tempthick, rdist
+end
+
+function calcThickness(mintht::Array{Float64,2},rbins::Array{Float64,1},phi_bins::Array{Float64,1},idx::Array{Int64,1},
+                        pol_phi::Array{Float64,1},pol_tht::Array{Float64,1},pol_rad::Array{Float64,1},chm_lavd::Array{Float64,1},
+                        fix1::Array{Int64,1},temp_mintht::Array{Float64,2},thick::Array{Float64,2},
+                        sum_thick::Array{Float64,2},tdx,sum_lavd_thick::Array{Float64,2},cellsize::Float64,rdist::Array{Float64,2})
+
+    for rbix = length(rbins)-1:-1:1
+        # global mintht, minrad, sum_lavd_thick, tempthicks, temp
+        fix1 = idx[frbins(pol_rad,rbins[rbix],rbins[rbix+1])]
+        if size(fix1) > (1,)
+            tdx = (minimum(pol_phi[fix1[sortperm(pol_phi[fix1])]]) .<= phi_bins
+                                .<= maximum(pol_phi[fix1[sortperm(pol_phi[fix1])]]))
+            temptht = copy(temp_mintht) # copy(mintht)
+            temptht[tdx] = LinearInterpolation(pol_phi[fix1[sortperm(pol_phi[fix1])]],
+                        pol_tht[fix1[sortperm(pol_phi[fix1])]])(phi_bins[tdx])
+            if sum(isnan.(temptht)) > 0; temptht[isnan.(temptht)] .= 90.0; end
+
+            temp_lavd = copy(thick) # copy(temp2)
+            temp_lavd[tdx] = LinearInterpolation(pol_phi[fix1[sortperm(pol_phi[fix1])]],
+                        chm_lavd[fix1[sortperm(pol_phi[fix1])]])(phi_bins[tdx])
+
+            tempthick = fill(0.0,(size(temptht,1),90));
+            temptht = Int.(round.(temptht));
+            len = size(temptht,1)
+
+            for tx = 1:1:len
+                # smooth the horizon line
+                if tx !== 1; lo = temptht[tx-1]; else; lo = temptht[end]; end
+                if tx !== len; hi = temptht[tx+1]; else; hi = temptht[1]; end
+
+                temptht[tx] = Int(round(mean([lo,temptht[tx],hi])))
+
+                if 90 - temptht[tx] == 0
+                    tempthick[tx,:] .= 0
+                else
+                    tempthick[tx,1:(90-temptht[tx])] .= sqrt(2)*cellsize
+                    rdist[tx,1:(90-temptht[tx])] .= rbins[rbix]
+                end
+            end
+
+            sum_lavd_thick = sum_lavd_thick .+ (tempthick .* temp_lavd)
+
+            sum_thick = sum_thick .+ tempthick
+
+        end
+    end
+
+    return sum_lavd_thick, sum_thick, vec(rdist)
+end
 
 
 
@@ -410,7 +567,7 @@ end
 #                 minrad[flag.==1,:] .= mean([rbins[rbix],rbins[rbix+1]])
 #                 mintht = minimum(hcat(mintht,temptht),dims=2)
 #
-#                 tempthick = zeros(size(temptht,1),90)
+#                 tempthick = fill(0.0,(size(temptht,1),90))
 #                 temptht = Int.(round.(temptht))
 #                 for tx = 1:1:size(temptht,1)
 #                     if temptht[tx] == 90

@@ -28,9 +28,17 @@ function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
         end
     end
 
-    pts_all = Int.(readdlm(ptsf))
+    pts_full = Int.(readdlm(ptsf))
+
+    analysis_limits = readdlm(basefolder*"/AnalysisAreaLimits.txt")
+
+    pts_idx = (analysis_limits[1] .<= pts_full[:,1] .< analysis_limits[2]) .&
+            (analysis_limits[3] .<= pts_full[:,2] .< analysis_limits[4])
+
+    pts_all = pts_full[pts_idx,:]
 
     tdx = 0
+
 
     ptsfname     = String[]
     inputsegname = String[]
@@ -41,6 +49,9 @@ function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
 
         limx = Int.(collect(limits[1]:tsize[1]:limits[2]))
         limy = Int.(collect(limits[3]:tsize[1]:limits[4]))
+
+        if limy[end] < limits[4]; push!(limy,limy[end].+tsize[1]); end
+        if limx[end] < limits[2]; push!(limx,limx[end].+tsize[1]); end
 
         for x in eachindex(limx[1:end-1]), y in eachindex(limy[1:end-1])
             # create the tasks
@@ -110,4 +121,19 @@ function check_output(exdir,pts,batch)
         out = false
     end
     return out
+end
+
+
+function get_constants(g_img::Array{Int64,2},loc_time::Array{DateTime,1})
+
+    drad      = [0.533 1.066 2.132]./2
+    im_centre = size(g_img,1)./2
+
+    lens_profile_tht  = (0:10:90)
+    lens_profile_rpix = (0:1/9:1)
+
+    trans_for = fill(0.0,size(loc_time,1),3)
+
+    return drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for
+
 end
