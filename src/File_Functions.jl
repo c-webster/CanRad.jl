@@ -112,7 +112,7 @@ function loadltc(fname::String,bounds::Array{Int64,2})
 end
 
 
-function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_trans::Bool,
+function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_trans::Bool,calc_swr::Int64,
             append_file::Bool,loc_time=nothing)
 
     outfile  = outdir*"/Output_"*outstr*".nc"
@@ -155,19 +155,25 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
         end
 
         if calc_trans
-            locdt = dataset.createDimension("loc_DT",size(loc_time,1))
 
-            # swr_tot = dataset.createVariable("SWR_tot",np.float32,("loc_XY","loc_DT"),zlib="True",
-            #                                     least_significant_digit=3)
-            #
-            # swr_dir = dataset.createVariable("SWR_dir",np.float32,("loc_XY","loc_DT"),zlib="True",
-            #                                     least_significant_digit=3)
+            locdt = dataset.createDimension("loc_DT",size(loc_time,1))
 
             for_tau = dataset.createVariable("Forest_Transmissivity",np.float32,("loc_XY","loc_DT"),zlib="True",
                                                 least_significant_digit=3)
 
-            return for_tau, Vf_weighted, Vf_flat, dataset
+            if calc_swr > 0
 
+                swr_tot = dataset.createVariable("SWR_tot",np.float32,("loc_XY","loc_DT"),zlib="True",
+                                                    least_significant_digit=3)
+
+                swr_dir = dataset.createVariable("SWR_dir",np.float32,("loc_XY","loc_DT"),zlib="True",
+                                                    least_significant_digit=3)
+
+                return swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset
+
+            else
+                return for_tau, Vf_weighted, Vf_flat, dataset
+            end
         else
             return Vf_weighted, Vf_flat, dataset
         end

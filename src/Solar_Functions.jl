@@ -80,9 +80,10 @@ function calc_transmissivity(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1
 end
 
 
-function calculateSWR(trans_for_wgt::Array{Float64,2},sol_sinelev::Array{Float64,1},loc_time::Array{DateTime,1})
+function calculateSWR(trans_for_wgt::Array{Float64,1},sol_sinelev::Array{Float64,1},sol_tht::Array{Float64,1},
+    sol_phi::Array{Float64,1},loc_time::Array{DateTime,1},swr_open::Array{Float64,1},Vf::Float64)
 
-    swr_open =  max.(1367*sol_sinelev,0)
+    # swr_open =  max.(1367*sol_sinelev,0)
 
     trans_atm      = swr_open./max.(1367*sol_sinelev,0)
     dif_frac       = ones(size(loc_time))

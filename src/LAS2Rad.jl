@@ -49,6 +49,16 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
             dem_x, dem_y, dem_z, dem_cellsize = read_ascii(demf)
         end
     end
+
+    # Load SWR data
+    if calc_swr == 2
+        swrdat   = readdlm(swrf)
+        tstep    = Dates.value(Dates.Minute(Dates.DateTime(swrdat[3,1].*" ".*swrdat[3,2],"dd.mm.yyyy HH:MM:SS")-Dates.DateTime(swrdat[2,1].*" ".*swrdat[2,2],"dd.mm.yyyy HH:MM:SS")))
+        t1       = swrdat[1,1].*" ".*swrdat[1,2]
+        t2       = swrdat[end,1].*" ".*swrdat[end,2]
+        swr_open = float.(swrdat[:,3])
+    end
+
     ###############################################################################
     # > Preprocess DSM/DTM
 
@@ -111,11 +121,15 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     # generate the output files
     if calc_trans
-        loc_time = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS"))
-        loc_time_agg = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS")-Dates.Minute(tstep))
-        for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,false,loc_time_agg)
+        loc_time = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
+        loc_time_agg = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS")-Dates.Minute(tstep))
+        if calc_swr > 0
+            swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,false,loc_time_agg)
+        else
+            for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,false,loc_time_agg)
+        end
     else
-         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,false)
+         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,false)
     end
 
     # calculate horizon matrix for grid-cell
@@ -261,11 +275,16 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 Vf_w, Vf_f = calculateVf(mat2ev,g_rad,radius)
 
                 ##### Calculate SWR/forest transmissivity
-                if ~tilt & calc_trans
+                if calc_trans
                     sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts_x[crx],pts_y[crx],loc_time,time_zone,coor_system,utm_zone)
-                    transfor = calc_transmissivity(float.(mat2ev),loc_time,tstep,radius,sol_phi,sol_tht,g_coorpol,imcX,imcY,drad,
+                    transfor = calc_transmissivity(float.(mat2ev),loc_time,tstep,radius,sol_phi,sol_tht,g_coorpol,0.0,0.0,drad,
                                             im_centre,trans_for,lens_profile_tht,lens_profile_rpix)
-                end
+                    if calc_swr == 1
+                        swrtot, swrdir, _ = calculateSWR(transfor,sol_sinelev,sol_tht,sol_phi,loc_time,max.(1367*sol_sinelev,0),Vf_w)
+                    elseif calc_swr == 2
+                        swrtot, swrdir, _ = calculateSWR(transfor,sol_sinelev,sol_tht,sol_phi,loc_time,swr_open,Vf_w)
+                    end
+                endjulia
 
                 if progress
                     elapsed = time() - start
@@ -278,11 +297,16 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 #export the data [append to netcdf]
                 if progress; start = time(); end
 
-                if ~tilt & calc_trans
-                    for_tau[crx]     = np.array(vec(aggregate_data(loc_time,loc_time_agg,transfor,tstep)))
-                end
                 Vf_weighted[crx] = np.array(Vf_w)
                 Vf_flat[crx]     = np.array(Vf_f)
+
+                if calc_trans
+                    for_tau[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,transfor,tstep)))
+                    if calc_swr > 0
+                        swr_tot[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,swrtot,tstep)))
+                        swr_dir[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,swrdir,tstep)))
+                    end
+                end
 
                 if save_images
                     SHIs[crx] = np.array(transpose(mat2ev))

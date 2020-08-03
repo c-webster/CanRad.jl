@@ -44,13 +44,22 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100)
     chm_z     = chm_z + (findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),chm_x,chm_y))
 
+    # Load SWR data
+    if calc_swr == 2
+        swrdat   = readdlm(swrf)
+        tstep    = Dates.value(Dates.Minute(Dates.DateTime(swrdat[3,1].*" ".*swrdat[3,2],"dd.mm.yyyy HH:MM:SS")-Dates.DateTime(swrdat[2,1].*" ".*swrdat[2,2],"dd.mm.yyyy HH:MM:SS")))
+        t1       = swrdat[1,1].*" ".*swrdat[1,2]
+        t2       = swrdat[end,1].*" ".*swrdat[end,2]
+        swr_open = float.(swrdat[:,3])
+    end
+
     ###############################################################################
     # > Calculate slope and aspect from dtm data
     if tilt
         pts_slp = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_s),pts_x,pts_y)
         pts_asp = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_a),pts_x,pts_y)
     else
-        pts_slp = zeros(size(pts_x))
+        pts_slp = fill(0.0,size(pts_x,1))
     end
 
     # create an empty matrix for Vf calculation
@@ -64,12 +73,17 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     # create the output files
     if calc_trans
-        loc_time = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS"))
-        loc_time_agg = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS")-Dates.Minute(tstep))
-        for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,false,loc_time_agg)
+        loc_time = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
+        loc_time_agg = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS")-Dates.Minute(tstep))
+        if calc_swr > 0
+            swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,false,loc_time_agg)
+        else
+            for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,false,loc_time_agg)
+        end
     else
-         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,false)
+         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,false)
     end
+
     if save_images
         SHIs, images = create_exmat(outdir,outstr,pts,g_img,append)
     end
@@ -100,7 +114,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for = get_constants(g_img,loc_time)
     end
 
-    try
+    # try
         @simd for crx = crxstart:size(pts_x,1)
 
             ######################
@@ -150,7 +164,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             # mat2ev = fillmat(kdtree,hcat(pt_chm_x,pt_chm_y),1.0,kdtreedims,10,radius,mat2ev);
 
             mat2ev[isnan.(g_rad)] .= 1;
-            writedlm("C:/Users/webster/GDrive/Temp/LAS2Rad/temp.txt",mat2ev)
 
             elapsed = time() - start
 
@@ -174,6 +187,11 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts_x[crx],pts_y[crx],loc_time,time_zone,coor_system,utm_zone)
                 transfor = calc_transmissivity(float.(mat2ev),loc_time,tstep,radius,sol_phi,sol_tht,g_coorpol,0.0,0.0,drad,
                                         im_centre,trans_for,lens_profile_tht,lens_profile_rpix)
+                if calc_swr == 1
+                    swrtot, swrdir, _ = calculateSWR(transfor,sol_sinelev,sol_tht,sol_phi,loc_time,max.(1367*sol_sinelev,0),Vf_w)
+                elseif calc_swr == 2
+                    swrtot, swrdir, _ = calculateSWR(transfor,sol_sinelev,sol_tht,sol_phi,loc_time,swr_open,Vf_w)
+                end
             end
 
             if progress
@@ -192,6 +210,10 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
             if calc_trans
                 for_tau[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,transfor,tstep)))
+                if calc_swr > 0
+                    swr_tot[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,swrtot,tstep)))
+                    swr_dir[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,swrdir,tstep)))
+                end
             end
 
             if save_images
@@ -217,11 +239,11 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
         println("done with: "*taskID)
 
-    catch
-        dataset.close()
-        if save_images; images.close(); end
-        println(taskID*" failed")
-
-    end
+    # catch
+    #     dataset.close()
+    #     if save_images; images.close(); end
+    #     println(taskID*" failed")
+    #
+    # end
 
 end

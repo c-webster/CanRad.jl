@@ -33,7 +33,6 @@ export
     aggregate_data,
     calc_horizon_lines,
     calc_solar_track,
-    calc_solar_track,
     calc_transmissivity,
     calcCHM_Ptrans,
     calcmintht,
