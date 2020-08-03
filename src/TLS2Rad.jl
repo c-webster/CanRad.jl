@@ -1,4 +1,4 @@
-function TLS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
+function TLS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
 
     ################################################################################
@@ -16,7 +16,7 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
         outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
         global outdir = exdir*"/"*outstr
     else
-        outstr = "Output_"*String(split(exdir,"/")[end-1])
+        outstr = String(split(exdir,"/")[end-1])
         global outdir = exdir
     end
 
@@ -35,8 +35,8 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
 
     # clip dsm within eval-peri of min/max pts
     dsm_x, dsm_y, dsm_z, _ = clipdat(dsm_x,dsm_y,dsm_z,Int.(floor.(pts)),surf_peri)
-    bounds = Int.(floor.(hcat(vcat(minimum(dsm_x),maximum(dsm_x)),vcat(minimum(dsm_y),maximum(dsm_y)))))
-    dtm_x, dtm_y, dtm_z, _ = clipdat(dtm_x,dtm_y,dtm_z,bounds,surf_peri)
+    limits = Int.(floor.(hcat(vcat(minimum(dsm_x),maximum(dsm_x)),vcat(minimum(dsm_y),maximum(dsm_y)))))
+    dtm_x, dtm_y, dtm_z, _ = clipdat(dtm_x,dtm_y,dtm_z,limits,surf_peri)
 
     pts_e     = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x,pts_y)
 
@@ -55,12 +55,13 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
     end
 
     # generate the output files
-    loc_time = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(int):Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS"))
+    if calc_trans
+        loc_time_fullres = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS"))
+        loc_time_agg = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS")-Dates.Minute(tstep))
+        for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,false,loc_time_agg)
 
-    if calc_swr
-        swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,loc_time,t1,t2,int,calc_swr,false)
     else
-         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,loc_time,t1,t2,int,calc_swr,false)
+         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,false)
     end
 
     if save_images
@@ -70,23 +71,29 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
     if progress
         elapsed = time() - start
         progtextinit = "0. Pre-calc took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
-        if ispath(outdir*"/"*"ProgressLastPoint/")
-            rm(outdir*"/"*"ProgressLastPoint/",recursive=true)
-            mkdir(outdir*"/"*"ProgressLastPoint/")
+        if ispath(outdir*"/ProgressLastPoint/")
+            rm(outdir*"/ProgressLastPoint/",recursive=true)
+            mkdir(outdir*"/ProgressLastPoint/")
         else
-            mkdir(outdir*"/"*"ProgressLastPoint/")
+            mkdir(outdir*"/ProgressLastPoint/")
         end
-        writedlm(outdir*"/"*"ProgressLastPoint/"*progtextinit,NaN)
+        writedlm(outdir*"/ProgressLastPoint/"*progtextinit,NaN)
     end
 
     ###############################################################################
     # > Loop through the points
-    try
+    # try
 
-        rbins = collect(0:(surf_peri-0)/5:surf_peri)
-        tol   = tolerance.*collect(reverse(0.75:0.05:1))
+        rbins = collect(0:(surf_peri-0)/10:surf_peri)
+        tol   = tolerance.*collect(reverse(0.5:0.05:1))
+
+        if calc_trans
+            drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for = get_constants(g_img,loc_time_fullres)
+        end
 
         @simd for crx = 1:size(pts_x,1)
+
+            if progress; start = time(); end
 
             pt_dsm_x, pt_dsm_y, pt_dsm_z = getsurfdat(dsm_x,dsm_y,dsm_z,pts_x[crx],pts_y[crx],surf_peri);
 
@@ -105,7 +112,7 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
             if progress; start = time(); end
 
             mat2ev  = copy(g_img);
-            
+
             # occupy matrix with surface points
             for zdx = 1:1:size(rbins,1)-1
                 ridx = findall(rbins[zdx] .<= pt_dsm_z .< rbins[zdx+1])
@@ -130,10 +137,11 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
             Vf_w, Vf_f = calculateVf(mat2ev,g_rad,radius)
 
             ##### Calculate SWR/forest transmissivity
-            if ~tilt & calc_swr
-                sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts_x[crx],pts_y[crx],loc_time,time_zone,coor_system,utm_zone)
-                swrtot, swrdir, swr_dif, transfor = calculateSWR(float.(mat2ev),loc_time,radius,sol_phi,
-                                                            sol_tht,Vf_w,g_coorpol,sol_sinelev,imcX,imcY)
+            sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts_x[crx],pts_y[crx],loc_time_fullres,time_zone,coor_system,utm_zone)
+
+            if ~tilt & calc_trans
+                transfor = calc_transmissivity(float.(mat2ev),loc_time_fullres,tstep,radius,sol_phi,sol_tht,g_coorpol,0.0,0.0,drad,
+                                    im_centre,trans_for,lens_profile_tht,lens_profile_rpix)
             end
 
             if progress
@@ -147,10 +155,9 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
             #export the data [append to netcdf]
             if progress; start = time(); end
 
-            if ~tilt & calc_swr
-                swr_tot[crx]     = np.array(swrtot)
-                swr_dir[crx]     = np.array(swrdir)
-                for_tau[crx]     = np.array(transfor)
+            if ~tilt & calc_trans
+                # for_tau[crx]     = np.array(transfor)
+                for_tau[crx]     = np.array(vec(aggregate_data(loc_time_fullres,loc_time_agg,transfor,tstep)))
             end
             Vf_weighted[crx] = np.array(Vf_w)
             Vf_flat[crx]     = np.array(Vf_f)
@@ -179,8 +186,8 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID=empty)
 
         println("done with: "*taskID)
 
-    catch
-        dataset.close()
-        if save_images; images.close(); end
-    end
+    # catch
+    #     dataset.close()
+    #     if save_images; images.close(); end
+    # end
 end
