@@ -47,38 +47,40 @@ function getsundxs(mat2ev::Array{Float64,2},trans_for::Array{Float64,2},xmm::Arr
     return mat2ev,nolp1,noap1,trans_for
 end
 
-function calculateSWR(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1},radius::Int64,sol_phi::Array{Float64,1},
-                        sol_tht::Array{Float64,1},Vf::Float64,g_coorpol::Array{Float64,2},sol_sinelev::Array{Float64,1},
-                        imcX::Float64,imcY::Float64)
+function calc_transmissivity(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1},tstep::Int64,radius::Int64,
+                    sol_phi::Array{Float64,1},sol_tht::Array{Float64,1},g_coorpol::Array{Float64,2},
+                    imcX::Float64,imcY::Float64,drad::Array{Float64,2},im_centre::Float64,trans_for::Array{Float64,2},
+                    lens_profile_tht::StepRange{Int64,Int64},lens_profile_rpix::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}})
 
-    im_centre         = size(mat2ev)./2
-    drad              = [0.533 1.066 2.132]./2
-    trans_for         = fill(0.0,(size(loc_time,1),size(drad,2)))
 
-    lens_profile_tht  = (0:10:90)
-    lens_profile_rpix = (0:1/9:1)
-    keepix            = findall(sol_tht .<= maximum(filter(!isnan,g_coorpol[:,2])))
+    keepix            = findall(sol_tht .<= 90)
     prad              = fill(NaN,(size(sol_tht,1)))
-    prad[keepix]      = pyinterp.interp1d(lens_profile_tht,lens_profile_rpix*radius)(sol_tht[keepix])
+    prad[keepix]      = LinearInterpolation(lens_profile_tht,lens_profile_rpix*radius)(sol_tht[keepix])
 
-    # keepix            = findall(sol_tht .<= 90)
-    x                 = (im_centre[1] .+ sin.(deg2rad.(sol_phi[keepix])) .* prad[keepix]) .- (imcX / (90 / radius));
-    y                 = (im_centre[2] .+ cos.(deg2rad.(sol_phi[keepix])) .* prad[keepix]) .- (imcY / (90 / radius));
+    x                 = (im_centre .+ sin.(deg2rad.(sol_phi[keepix])) .* prad[keepix]) .- (imcX / (90 / radius));
+    y                 = (im_centre .+ cos.(deg2rad.(sol_phi[keepix])) .* prad[keepix]) .- (imcY / (90 / radius));
 
-    for six = 1:1:size(x,1)
+    @inbounds @simd for six = 1:1:size(x,1)
         # global mat2ev, trans_for
         xmm, ymm = calcmm(mat2ev,radius,drad,six,1,x,y)
-        mat2ev,nolp1,noap1,trans_for = getsundxs(mat2ev,trans_for,xmm,ymm,0.6,0.6,0,0,1,keepix,six)
+        _,nolp1,noap1,trans_for = getsundxs(mat2ev,trans_for,xmm,ymm,0.6,0.6,0,0,1,keepix,six)
 
         xmm, ymm = calcmm(mat2ev,radius,drad,six,2,x,y)
-        mat2ev,nolp2,noap2,trans_for = getsundxs(mat2ev,trans_for,xmm,ymm,0.6,0.61,nolp1,noap1,2,keepix,six)
+        _,nolp2,noap2,trans_for = getsundxs(mat2ev,trans_for,xmm,ymm,0.6,0.61,nolp1,noap1,2,keepix,six)
 
         xmm, ymm = calcmm(mat2ev,radius,drad,six,3,x,y)
-        mat2ev,_,_,trans_for = getsundxs(mat2ev,trans_for,xmm,ymm,0.61,0.62,nolp2,noap2,3,keepix,six)
+        _,_,_,trans_for = getsundxs(mat2ev,trans_for,xmm,ymm,0.61,0.62,nolp2,noap2,3,keepix,six)
     end
 
     trans_for[isnan.(trans_for)] .== 0
     trans_for_wgt = (trans_for[:,1].*60 + trans_for[:,2]*30 + trans_for[:,3].*10)./100
+
+    return trans_for_wgt
+
+end
+
+
+function calculateSWR(trans_for_wgt::Array{Float64,2},sol_sinelev::Array{Float64,1},loc_time::Array{DateTime,1})
 
     swr_open =  max.(1367*sol_sinelev,0)
 
@@ -115,8 +117,25 @@ function calculateSWR(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1},radiu
 
     swr_for_all_flat = swr_for_dif + swr_for_dir_flat
     swr_for_all_incl = swr_for_dif + swr_for_dir_incl
-    return swr_for_all_flat, swr_for_dir_flat, swr_for_dif, trans_for_wgt
+    return swr_for_all_flat, swr_for_dir_flat, swr_for_dif
 end
+
+
+function aggregate_data(loc_time::Array{DateTime,1},loc_time_agg::Array{DateTime,1},dat::Array{Float64,1},tstep::Int64)
+
+    agg_dat = fill(0.0,(size(loc_time_agg,1),1))
+    tdx_step = (1:Int.((tstep/2)):size(dat,1))
+    t_agg_int = Int.((tstep/2)-1)
+
+    for tdx = 1:size(agg_dat,1)-1
+        agg_dat[tdx] = mean(dat[tdx_step[tdx]:tdx_step[tdx]+t_agg_int])
+    end
+
+    return agg_dat
+
+end
+
+
 
 function utm2deg(loc_x::Float64,loc_y::Float64,zone::Float64,hemi::SubString{String})
     # Credit: based on utm2lonlat found on Matlab file exchange; accessed on 2018/08/25
@@ -250,6 +269,7 @@ function calc_solar_track(loc_x::Float64,loc_y::Float64,loc_time::Array{DateTime
     sol_phi[sol_phi.>=360]      = sol_phi[sol_phi .>= 360] .- 360
     sol_phi[sol_phi.<0]         = sol_phi[sol_phi .< 0] .+ 360                            #convert to azimuth angle in degree, so that 0ï¿½ is North, 90ï¿½ is East, 180ï¿½ is South, and 270ï¿½ is East
     sol_sin_elev                = sin.(solar_elev_corr_atm_ref_deg./360 .*2 .* pi) # sin of elevation angle
+
 
     return sol_tht, sol_phi, sol_sin_elev
 end
