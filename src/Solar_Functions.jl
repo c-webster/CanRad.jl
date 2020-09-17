@@ -30,21 +30,21 @@ function calculateVf(mat2ev::Array{Int64,2},g_rad::Array{Float64,2},radius::Int6
     return Vfweighted, Vfflat
 end
 
-function calcmm(mat2ev::Array{Float64,2},radius::Int64,drad::Array{Float64,2},six::Int64,dix::Int64,
-                    x::Array{Float64,1},y::Array{Float64,1})
-        dpix = drad[dix] / 90*radius*sqrt(pi)/2
-        xmm  = Int.(collect(max(1,round(x[six]-dpix)):1:min(size(mat2ev,2),round(x[six]+dpix))))
-        ymm  = Int.(collect(max(1,round(y[six]-dpix)):1:min(size(mat2ev,1),round(y[six]+dpix))))
+function calcmm(mat2ev::Array{Float64,2},radius::Int64,drad::Float64,
+                    x::Float64,y::Float64)
+        dpix = drad / 90*radius*sqrt(pi)/2
+        xmm  = Int.(max(1,round(x-dpix)):1:min(size(mat2ev,2),round(x+dpix)))
+        ymm  = Int.(max(1,round(y-dpix)):1:min(size(mat2ev,1),round(y+dpix)))
     return xmm,ymm
 end
 
 function getsundxs(mat2ev::Array{Float64,2},trans_for::Array{Float64,2},xmm::Array{Int64,1},ymm::Array{Int64,1},
-                    mini::Float64,maxi::Float64,nolp::Int64,noap::Int64,dix::Int64,keepix::Array{Int64,1},six::Int64)
+                    mini::Float64,maxi::Float64,nolp::Int64,noap::Int64,dix::Int64,keepix::Int64)
         mat2ev[ymm,xmm] = min.(mat2ev[ymm,xmm],maxi)
         nolp1 = sum(mini .<= mat2ev[ymm,xmm] .<= maxi)
         noap1 = length(mat2ev[ymm,xmm])
-        trans_for[keepix[six],dix] = (nolp1-nolp)/(noap1-noap)
-    return mat2ev,nolp1,noap1,trans_for
+        trans_for[keepix,dix] = (nolp1-nolp)/(noap1-noap)
+    return nolp1,noap1,trans_for
 end
 
 function calc_transmissivity(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1},tstep::Int64,radius::Int64,
@@ -62,14 +62,14 @@ function calc_transmissivity(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1
 
     @inbounds @simd for six = 1:1:size(x,1)
         # global mat2ev, trans_for
-        xmm, ymm = calcmm(mat2ev,radius,drad,six,1,x,y)
-        _,nolp1,noap1,trans_for = getsundxs(mat2ev,trans_for,xmm,ymm,0.6,0.6,0,0,1,keepix,six)
+        xmm, ymm = calcmm(mat2ev,radius,0.2665,x[six],y[six])
+        nolp1,noap1,trans_for = getsundxs(mat2ev,trans_for,xmm,ymm,0.6,0.6,0,0,1,keepix[six])
 
-        xmm, ymm = calcmm(mat2ev,radius,drad,six,2,x,y)
-        _,nolp2,noap2,trans_for = getsundxs(mat2ev,trans_for,xmm,ymm,0.6,0.61,nolp1,noap1,2,keepix,six)
-
-        xmm, ymm = calcmm(mat2ev,radius,drad,six,3,x,y)
-        _,_,_,trans_for = getsundxs(mat2ev,trans_for,xmm,ymm,0.61,0.62,nolp2,noap2,3,keepix,six)
+        # xmm, ymm = calcmm2(mat2ev,radius,0.533,x[six],y[six])
+        # nolp2,noap2,trans_for = getsundxs2(mat2ev,trans_for,xmm,ymm,0.6,0.61,nolp1,noap1,2,keepix[six])
+        #
+        # xmm, ymm = calcmm2(mat2ev,radius,1.066,x[six],y[six])
+        # _,_,trans_for = getsundxs2(mat2ev,trans_for,xmm,ymm,0.61,0.62,nolp2,noap2,3,keepix[six])
     end
 
     trans_for[isnan.(trans_for)] .== 0
