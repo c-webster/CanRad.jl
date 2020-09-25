@@ -89,24 +89,24 @@ function read_ascii(demf::String)
     return dem_x, dem_y, dem_z, cellsize
 end
 
-function loaddbh(fname::String,bounds::Array{Int64,2})
+function loaddbh(fname::String,limits::Array{Int64,2},peri::Int64)
     dat, _ = readdlm(fname,'\t',header=true)
 
-    dat_x, dat_y, dat_z, rmdx = clipdat(dat[:,1],dat[:,2],dat[:,3],bounds,0)
+    dat_x, dat_y, dat_z, rmdx = clipdat(dat[:,1],dat[:,2],dat[:,3],limits,peri)
 
     dat_r = deleteat!(dat[:,4],rmdx) # diameter at breast height
     dat_r /= 2
     dat_r /= 100
 
-    dat_h = deleteat!(dat[:,5],rmdx) # height
+    # dat_h = deleteat!(dat[:,5],rmdx) # height
 
     return dat_x, dat_y, dat_z, dat_r
 end
 
-function loadltc(fname::String,bounds::Array{Int64,2})
+function loadltc(fname::String,limits::Array{Int64,2},peri::Int64)
     ltc, _ = readdlm(fname,'\t',header=true)
     replace!(ltc, -9999=>NaN)
-    _, _, _, rmdx = clipdat(ltc[:,1],ltc[:,2],ltc[:,3],bounds,0)
+    _, _, _, rmdx = clipdat(ltc[:,1],ltc[:,2],ltc[:,3],limits,peri)
     ltc = ltc[setdiff(1:end, rmdx), :]
     return ltc
 end
@@ -124,9 +124,9 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
         Vf_flat      = dataset.variables["Vf_flat"]
 
         if calc_trans
-            swr_tot = dataset.variables["SWR_tot"]
+            # swr_tot = dataset.variables["SWR_tot"]
             # swr_dir = dataset.variables["SWR_dir"]
-            # for_tau = dataset.variables["Forest_Transmissivity"]
+            for_tau = dataset.variables["Forest_Transmissivity"]
             return for_tau, Vf_weighted, Vf_flat, dataset
         else
             return Vf_weighted, Vf_flat, dataset

@@ -132,7 +132,7 @@ function get_constants(g_img::Array{Int64,2},loc_time::Array{DateTime,1})
     lens_profile_tht  = (0:10:90)
     lens_profile_rpix = (0:1/9:1)
 
-    trans_for = fill(0.0,size(loc_time,1),3)
+    trans_for = fill(0.0,size(loc_time,1))
 
     return drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for
 

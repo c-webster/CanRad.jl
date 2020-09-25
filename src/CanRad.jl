@@ -3,6 +3,7 @@ module CanRad
 using FileIO, LasIO, LazIO, DelimitedFiles, DataStructures,
     Statistics, VectorizedRoutines, Dates, Interpolations,
     Match, DataFrames, Formatting, Distributed, Distributions
+    # PolygonOps, StaticArrays
 
 using Conda, PyCall
 
@@ -90,6 +91,7 @@ export
     readlas,
     scipyspat,
     TLS2Rad,
+    # trunk_locs,
     trunkpoints,
     utm2deg
 

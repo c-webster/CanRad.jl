@@ -1,4 +1,4 @@
-function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
+function LAS2Rad_slopes(pts,dat_in,par_in,exdir,taskID="task")
 
 
     ################################################################################
@@ -23,14 +23,6 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         mkpath(outdir)
     end
 
-    # writedlm(outdir*"/"*basename(taskID),taskID)
-    # if size(readdir(outdir),1) == 5
-    #     crxstart = parse(Int,(split(reduce(1,readdir(outdir)[findall(occursin.("Processing",readdir(outdir)))])))[4])+1
-    #     global outtext  = reduce(1,readdir(outdir)[findall(occursin.("Processing",readdir(outdir)))])
-    #     append   = true
-    # else; crxstart = 1; append  = false
-    # end
-
     crxstart = 1; append_file  = false
 
     ################################################################################
@@ -39,6 +31,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     dsm_x, dsm_y, dsm_z = readlas(dsmf)
 
     # load the dtm
+    if tershad < 3
         if tilt
             dtm_x, dtm_y, dtm_z, dtm_s, dtm_a, dtm_cellsize = importdtm(dtmf,tilt)
         else
@@ -49,23 +42,14 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         if tershad < 2
             dem_x, dem_y, dem_z, dem_cellsize = read_ascii(demf)
         end
-
-    # Load SWR data
-    # if calc_trans && calc_swr == 2
-    #     swrdat   = readdlm(swrf)
-    #     tstep    = Dates.value(Dates.Minute(Dates.DateTime(swrdat[3,1].*" ".*swrdat[3,2],"dd.mm.yyyy HH:MM:SS")-Dates.DateTime(swrdat[2,1].*" ".*swrdat[2,2],"dd.mm.yyyy HH:MM:SS")))
-    #     t1       = swrdat[1,1].*" ".*swrdat[1,2]
-    #     t2       = swrdat[end,1].*" ".*swrdat[end,2]
-    #     swr_open = float.(swrdat[:,3])
-    # end
-
+    end
     ###############################################################################
     # > Preprocess DSM/DTM
 
     # clip dsm within eval-peri of min/max pts
     dsm_x, dsm_y, dsm_z, _ = clipdat(dsm_x,dsm_y,dsm_z,Int.(floor.(pts)),surf_peri)
     limits = Int.(floor.(hcat(vcat(minimum(dsm_x),maximum(dsm_x)),vcat(minimum(dsm_y),maximum(dsm_y)))))
-    dtm_x, dtm_y, dtm_z, _ = clipdat(dtm_x,dtm_y,dtm_z,limits,surf_peri*4)
+    dtm_x, dtm_y, dtm_z, _ = clipdat(dtm_x,dtm_y,dtm_z,limits,surf_peri)
     if tershad < 2; dem_x, dem_y, dem_z, _ = clipdat(dem_x,dem_y,dem_z,limits,terrain_peri); end
 
     # determine ground elevation of points
@@ -77,24 +61,18 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     # load the dbh
     if trunks
-        dbh_x, dbh_y, dbh_z, dbh_r = loaddbh(dbhf,limits,50)
-        if !isempty(dbh_x)
-            dbh_e = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),dbh_x,dbh_y)
-            tsm_x, tsm_y, tsm_z  = calculate_trunks(dbh_x,dbh_y,dbh_z,dbh_r,30,0.1,dbh_e)
-            trunks_2 = true
-        else
-            trunks_2 = false
-        end
-    else
-        trunks_2 = false
+        dbh_x, dbh_y, dbh_z, dbh_r = loaddbh(dbhf,limits)
+        dbh_e = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),dbh_x,dbh_y)
+
+        tsm_x, tsm_y, tsm_z  = calculate_trunks(dbh_x,dbh_y,dbh_z,dbh_r,30,0.1,dbh_e)
     end
 
     # load the ltc
     if branches
-        ltc = loadltc(ltcf,limits,25)
+        ltc = loadltc(ltcf,limits)
 
         bsm_x, bsm_y, bsm_z = make_branches(ltc)
-        bsm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),bsm_x,bsm_y)
+        bsm_z .+= findelev((dtm_x),(dtm_y),(dtm_z),bsm_x,bsm_y)
     end
 
     ###############################################################################
@@ -121,23 +99,16 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         kdtreedims = size(g_coorcrt,1)
     end
 
-    # generate the output files
-    if calc_trans
-        loc_time = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
-        loc_time_agg = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS")-Dates.Minute(tstep))
-        if calc_swr > 0
-            swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg)
-        else
-            for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg)
-        end
-    else
-         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
-    end
 
-    # calculate horizon matrix for grid-cell
-    if tershad < 2 && terrain == 2
-        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean.(pts_x),mean.(pts_y),mean.(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
-    end
+    # generate the output files
+    loc_time = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(int):Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS"))
+
+        swr_tot_s, swr_dir_s, for_tau_s, _, _, dataset_s = createfiles(outdir,outstr*"_SOUTH",pts,calc_trans,false,loc_time)
+        swr_tot_w, swr_dir_w, for_tau_w, _, _, dataset_w = createfiles(outdir,outstr*"_WEST",pts,calc_trans,false,loc_time)
+        swr_tot_n, swr_dir_n, for_tau_n, _, _, dataset_n = createfiles(outdir,outstr*"_NORTH",pts,calc_trans,false,loc_time)
+        swr_tot_e, swr_dir_e, for_tau_e, _, _, dataset_e = createfiles(outdir,outstr*"_EAST",pts,calc_trans,false,loc_time)
+
+        Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,false)
 
     if save_images
         SHIs, images = create_exmat(outdir,outstr,pts,g_img,append_file)
@@ -146,13 +117,13 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if progress
         elapsed = time() - start
         progtextinit = "0. Pre-calc took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
-        if ispath(outdir*"/ProgressLastPoint/")
-            rm(outdir*"/ProgressLastPoint/",recursive=true)
-            mkdir(outdir*"/ProgressLastPoint/")
+        if ispath(outdir*"/"*"ProgressLastPoint/")
+            rm(outdir*"/"*"ProgressLastPoint/",recursive=true)
+            mkdir(outdir*"/"*"ProgressLastPoint/")
         else
-            mkdir(outdir*"/ProgressLastPoint/")
+            mkdir(outdir*"/"*"ProgressLastPoint/")
         end
-        writedlm(outdir*"/ProgressLastPoint/"*progtextinit,NaN)
+        writedlm(outdir*"/"*"ProgressLastPoint/"*progtextinit,NaN)
     end
 
     ###############################################################################
@@ -160,11 +131,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     # try
 
         rbins = collect(0:(surf_peri-0)/5:surf_peri)
-        tol   = tolerance.*collect(reverse(0.75:0.05:1))
-
-        if calc_trans
-            drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for = get_constants(g_img,loc_time)
-        end
+        tol   = tolerance.*collect(reverse(0.5:0.1:1))
 
         @simd for crx = crxstart:size(pts_x,1)
 
@@ -181,9 +148,9 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 end
                 pt_dsm_x, pt_dsm_y, pt_dsm_z = pcd2pol2cart(pt_dsm_x,pt_dsm_y,pt_dsm_z,pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"surface",ch,pts_slp[crx],0);
 
-                if trunks_2
-                    pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(tsm_x,tsm_y,tsm_z,pts_x[crx],pts_y[crx],Int.(surf_peri*0.5))
-                    tidx = findall(dist(dbh_x,dbh_y,pts[crx,1],pts[crx,2]) .< 4)
+                if trunks
+                    pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(tsm_x,tsm_y,tsm_z,pts_x[crx],pts_y[crx],Int.(surf_peri*0.3))
+                    tidx = findall(dist(dbh_x,dbh_y,pts[crx,1],pts[crx,2]) .< 3)
                     if size(tidx,1) > 0
                         hdt  = dist(dbh_x[tidx],dbh_y[tidx],pts[crx,1],pts[crx,2])
                         npt  = fill(NaN,(size(tidx)))
@@ -207,10 +174,8 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
                 if tershad < 3
                     pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(300),"terrain",ch,pts_slp[crx],dtm_cellsize);
-                    if tershad < 2
-                        if terrain == 1
+                    if tershad < 2 && terrain == 1
                         pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri,"terrain",ch,pts_slp[crx],dem_cellsize);
-                        end
                         pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_dem_x),append!(pt_dtm_y,pt_dem_y));
                     else
                         pt_dtm_x, pt_dtm_y = prepterdat(pt_dtm_x,pt_dtm_y)
@@ -251,7 +216,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 end
 
                 # add trunks
-                if trunks_2
+                if trunks
                     mat2ev = fillmat(kdtree,hcat(pt_tsm_x,pt_tsm_y),2.0,kdtreedims,15,radius,mat2ev)
                 end
 
@@ -277,16 +242,11 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 Vf_w, Vf_f = calculateVf(mat2ev,g_rad,radius)
 
                 ##### Calculate SWR/forest transmissivity
-                if calc_trans
-                    sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts_x[crx],pts_y[crx],loc_time,time_zone,coor_system,utm_zone)
-                    transfor = calc_transmissivity(float.(mat2ev),loc_time,tstep,radius,sol_phi,sol_tht,g_coorpol,0.0,0.0,drad,
-                                            im_centre,trans_for,lens_profile_tht,lens_profile_rpix)
-                    if calc_swr == 1
-                        swrtot, swrdir, _ = calculateSWR(transfor,sol_sinelev,sol_tht,sol_phi,loc_time,max.(1367*sol_sinelev,0),Vf_w)
-                    elseif calc_swr == 2
-                        swrtot, swrdir, _ = calculateSWR(transfor,sol_sinelev,sol_tht,sol_phi,loc_time,swr_open,Vf_w)
-                    end
-                end
+                sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts_x[crx],pts_y[crx],loc_time,time_zone,coor_system,utm_zone)
+                swrtot_s, swrdir_s, _, transfor_s = calculateSWR(float.(mat2ev),loc_time,radius,sol_phi,sol_tht,Vf_w,g_coorpol,sol_sinelev,imcX,imcY)
+                swrtot_w, swrdir_w, _, transfor_w = calculateSWR(float.(mat2ev),loc_time,radius,sol_phi.-270,sol_tht,Vf_w,g_coorpol,sol_sinelev,imcX,imcY)
+                swrtot_n, swrdir_n, _, transfor_n = calculateSWR(float.(mat2ev),loc_time,radius,sol_phi.-180,sol_tht,Vf_w,g_coorpol,sol_sinelev,imcX,imcY)
+                swrtot_e, swrdir_e, _, transfor_e = calculateSWR(float.(mat2ev),loc_time,radius,sol_phi.-90,sol_tht,Vf_w,g_coorpol,sol_sinelev,imcX,imcY)
 
                 if progress
                     elapsed = time() - start
@@ -299,16 +259,14 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 #export the data [append to netcdf]
                 if progress; start = time(); end
 
+                if ~tilt & calc_swr
+                    swr_tot_s[crx] = np.array(swrtot_s); swr_dir_s[crx] = np.array(swrdir_s); for_tau_s[crx] = np.array(transfor_s)
+                    swr_tot_w[crx] = np.array(swrtot_w); swr_dir_w[crx] = np.array(swrdir_w); for_tau_w[crx] = np.array(transfor_w)
+                    swr_tot_n[crx] = np.array(swrtot_n); swr_dir_n[crx] = np.array(swrdir_n); for_tau_n[crx] = np.array(transfor_n)
+                    swr_tot_e[crx] = np.array(swrtot_e); swr_dir_e[crx] = np.array(swrdir_e); for_tau_e[crx] = np.array(transfor_e)
+                end
                 Vf_weighted[crx] = np.array(Vf_w)
                 Vf_flat[crx]     = np.array(Vf_f)
-
-                if calc_trans
-                    for_tau[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,transfor,tstep)))
-                    if calc_swr > 0
-                        swr_tot[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,swrtot,tstep)))
-                        swr_dir[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,swrdir,tstep)))
-                    end
-                end
 
                 if save_images
                     SHIs[crx] = np.array(transpose(mat2ev))
@@ -333,9 +291,13 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         end #end crx
 
         dataset.close()
+        dataset_s.close()
+        dataset_w.close()
+        dataset_n.close()
+        dataset_e.close()
         if save_images; images.close(); end
 
-        println("done with "*taskID)
+        println("done with: "*taskID)
 
     # catch
     #     dataset.close()
