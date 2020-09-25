@@ -38,18 +38,18 @@ function calcmm(mat2ev::Array{Float64,2},radius::Int64,drad::Float64,
     return xmm,ymm
 end
 
-function getsundxs(mat2ev::Array{Float64,2},trans_for::Array{Float64,2},xmm::Array{Int64,1},ymm::Array{Int64,1},
+function getsundxs(mat2ev::Array{Float64,2},trans_for::Array{Float64,1},xmm::Array{Int64,1},ymm::Array{Int64,1},
                     mini::Float64,maxi::Float64,nolp::Int64,noap::Int64,dix::Int64,keepix::Int64)
         mat2ev[ymm,xmm] = min.(mat2ev[ymm,xmm],maxi)
         nolp1 = sum(mini .<= mat2ev[ymm,xmm] .<= maxi)
         noap1 = length(mat2ev[ymm,xmm])
-        trans_for[keepix,dix] = (nolp1-nolp)/(noap1-noap)
+        trans_for[keepix] = (nolp1-nolp)/(noap1-noap)
     return nolp1,noap1,trans_for
 end
 
 function calc_transmissivity(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1},tstep::Int64,radius::Int64,
                     sol_phi::Array{Float64,1},sol_tht::Array{Float64,1},g_coorpol::Array{Float64,2},
-                    imcX::Float64,imcY::Float64,drad::Array{Float64,2},im_centre::Float64,trans_for::Array{Float64,2},
+                    imcX::Float64,imcY::Float64,im_centre::Float64,trans_for::Array{Float64,1},
                     lens_profile_tht::StepRange{Int64,Int64},lens_profile_rpix::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}})
 
 
@@ -73,9 +73,9 @@ function calc_transmissivity(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1
     end
 
     trans_for[isnan.(trans_for)] .== 0
-    trans_for_wgt = (trans_for[:,1].*60 + trans_for[:,2]*30 + trans_for[:,3].*10)./100
+    # trans_for_wgt = (trans_for[:,1].*60 + trans_for[:,2]*30 + trans_for[:,3].*10)./100
 
-    return trans_for_wgt
+    return trans_for
 
 end
 
