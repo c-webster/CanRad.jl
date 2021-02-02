@@ -1,5 +1,4 @@
-function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
-
+function LAS2Rad_terrain(pts,dat_in,par_in,exdir,taskID="task")
 
     ################################################################################
     # Initialise
@@ -16,11 +15,10 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if progress; start = time(); end
 
     if batch
-        # outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
-        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3][1:end-4]
+        outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
         global outdir = exdir*"/"*outstr
     else
-        outstr = String(split(exdir,"/")[end-1])
+        outstr = String(split(exdir,"/")[end])
         global outdir = exdir
     end
     if !ispath(outdir)
@@ -42,16 +40,12 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     # load the las
     dsm_x, dsm_y, dsm_z = readlas(dsmf)
 
-    # load the dtm
-    if tershad < 3
-        if tilt; dtm_x, dtm_y, dtm_z, dtm_s, dtm_a, dtm_cellsize = importdtm(dtmf,tilt)
-        else; dtm_x, dtm_y, dtm_z, dtm_cellsize = importdtm(dtmf,tilt); end
-    end
-
     # load the dem
-    if tershad < 2
-        dem_x, dem_y, dem_z, dem_cellsize = read_ascii(demf)
-    end
+    dat = readdlm(dtmf)
+    dem_x = dat[:,1]
+    dem_y = dat[:,2]
+    dem_z = dat[:,3]
+    dem_cellsize = dem_y[2] - dem_y[1]
 
     # load the buildings
     if buildings
@@ -74,15 +68,16 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     dsm_x, dsm_y, dsm_z, _ = clipdat(dsm_x,dsm_y,dsm_z,pts[:,1:2],surf_peri)
     limits = Int.(floor.(hcat(vcat(minimum(dsm_x),maximum(dsm_x)),vcat(minimum(dsm_y),maximum(dsm_y)))))
 
-    if tershad < 3; dtm_x, dtm_y, dtm_z, _ = clipdat(dtm_x,dtm_y,dtm_z,limits,surf_peri*4); end
     if tershad < 2; dem_x, dem_y, dem_z, _ = clipdat(dem_x,dem_y,dem_z,limits,terrain_peri); end
 
-    # determine ground elevation of points
-    if tershad == 3;
-        if size(pts,2) > 2; pts_e = pts[:,3]; else;  pts_e = fill(0.0,size(pts_x)); end
-    else; pts_e = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x,pts_y); end
+    pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100)
 
-    if tershad < 2; pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100); end
+    # determine ground elevation of points
+    pts_e = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100)
+
+    dsm_z = dsm_z + findelev(copy(dem_x),copy(dem_y),copy(dem_z),dsm_x,dsm_y)
+
+    rsm_z = rsm_z + findelev(copy(dem_x),copy(dem_y),copy(dem_z),rsm_x,rsm_y)
 
     ###############################################################################
     # > Generate extra canopy elements
@@ -163,15 +158,14 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
          Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
     end
 
+    # calculate horizon matrix for grid-cell
+    if tershad < 2 && terrain == 2
+        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean.(pts_x),mean.(pts_y),mean.(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
+    end
+
     if save_images
         SHIs, images = create_exmat(outdir,outstr,pts,g_img,append_file)
     end
-
-    # calculate horizon matrix for grid-cell
-    if tershad < 2 && terrain == 2
-        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
-    end
-
 
     if progress
         elapsed = time() - start
@@ -211,49 +205,16 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 end
                 pt_dsm_x, pt_dsm_y, pt_dsm_z = pcd2pol2cart(pt_dsm_x,pt_dsm_y,pt_dsm_z,pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"surface",ch,pts_slp[crx],0);
 
-                if trunks_2
-                    pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(tsm_x,tsm_y,tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5))
-                    tidx = findall(dist(dbh_x,dbh_y,pts[crx,1],pts[crx,2]) .< 5)
-                    if size(tidx,1) > 0
-                        hdt  = dist(dbh_x[tidx],dbh_y[tidx],pts[crx,1],pts[crx,2])
-                        npt  = fill(NaN,(size(tidx)))
-                        hint = fill(NaN,(size(tidx)))
-                        for tixt = 1:1:size(tidx,1)
-                            if hdt[tixt] < 1
-                                npt[tixt] = Int.(150); hint[tixt] = 0.005
-                            else
-                                npt[tixt] = Int.(100); hint[tixt] = 0.01
-                            end
-                        end
-                        tsm_tmp = calculate_trunks(dbh_x[tidx],dbh_y[tidx],dbh_z[tidx],dbh_r[tidx],npt,hint,dbh_e[tidx])
-                        pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(append!(pt_tsm_x,tsm_tmp[1]),append!(pt_tsm_y,tsm_tmp[2]),append!(pt_tsm_z,tsm_tmp[3]),
-                                                            pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",ch,pts_slp[crx],0);
-
-                    else
-                        pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(pt_tsm_x,pt_tsm_y,pt_tsm_z,
-                                                            pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",ch,pts_slp[crx],0);
-                    end
-                end
-
-                if tershad < 3
-                    pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(300),"terrain",ch,pts_slp[crx],dtm_cellsize);
-                    if tershad < 2
-                        if terrain == 1
-                        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri,"terrain",ch,pts_slp[crx],dem_cellsize);
-                        end
-                        pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_dem_x),append!(pt_dtm_y,pt_dem_y));
-                    else
-                        pt_dtm_x, pt_dtm_y = prepterdat(pt_dtm_x,pt_dtm_y)
-                    end
-                end
+                pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri,"terrain",ch,pts_slp[crx],dem_cellsize);
+                pt_dtm_x, pt_dtm_y = prepterdat(pt_dem_x,pt_dem_y)
 
                 if buildings
                     pt_rsm_x, pt_rsm_y =  pcd2pol2cart(copy(rsm_x),copy(rsm_y),copy(rsm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(50),"terrain",ch,pts_slp[crx],rsm_cellsize);
-                    if tershad < 3
+                    # if tershad < 3
                         pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_rsm_x),append!(pt_dtm_y,pt_rsm_y));
-                    else
-                        pt_dtm_x, pt_dtm_y = prepterdat(pt_rsm_x,pt_rsm_y)
-                    end
+                    # else
+                        # pt_dtm_x, pt_dtm_y = prepterdat(pt_rsm_x,pt_rsm_y)
+                    # end
                 end
 
                 if tilt
@@ -286,11 +247,6 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                     ridx = findall(rbins[zdx] .<= pt_dsm_z .< rbins[zdx+1])
                     imdx = reshape(findpairs(kdtree,hcat(pt_dsm_x[ridx],pt_dsm_y[ridx]),tol[zdx],kdtreedims,40),(radius*2,radius*2))
                     mat2ev[imdx.==1] .= 0
-                end
-
-                # add trunks
-                if trunks_2
-                    mat2ev = fillmat(kdtree,hcat(pt_tsm_x,pt_tsm_y),2.0,kdtreedims,15,radius,mat2ev)
                 end
 
                 #occupy matrix with dtm

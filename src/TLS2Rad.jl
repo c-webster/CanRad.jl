@@ -24,6 +24,8 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         mkpath(outdir)
     end
 
+    crxstart = 1; append_file  = false
+
     ###############################################################################
     # > Preprocess DSM/DTM
 
@@ -56,16 +58,19 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     # generate the output files
     if calc_trans
-        loc_time_fullres = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS"))
-        loc_time_agg = collect(Dates.DateTime(t1,"yyyy.mm.dd HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"yyyy.mm.dd HH:MM:SS")-Dates.Minute(tstep))
-        for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,false,loc_time_agg)
-
+        loc_time = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
+        loc_time_agg = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
+        if calc_swr > 0
+            swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg)
+        else
+            for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg)
+        end
     else
-         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,false)
+         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
     end
 
     if save_images
-        SHIs, images = create_exmat(outdir,outstr,pts,g_img,false)
+        SHIs, images = create_exmat(outdir,outstr,pts,g_img,append_file)
     end
 
     if progress
@@ -88,14 +93,14 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         tol   = tolerance.*collect(reverse(0.5:0.05:1))
 
         if calc_trans
-            drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for = get_constants(g_img,loc_time_fullres)
+            drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for = get_constants(g_img,loc_time)
         end
 
         @simd for crx = 1:size(pts_x,1)
 
             if progress; start = time(); end
 
-            pt_dsm_x, pt_dsm_y, pt_dsm_z = getsurfdat(dsm_x,dsm_y,dsm_z,pts_x[crx],pts_y[crx],surf_peri);
+            pt_dsm_x, pt_dsm_y, pt_dsm_z = getsurfdat(dsm_x,dsm_y,dsm_z,pts_x[crx],pts_y[crx],pts_e[crx],surf_peri);
 
             pt_dsm_x, pt_dsm_y, pt_dsm_z = pcd2pol2cart(pt_dsm_x,pt_dsm_y,pt_dsm_z,pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"surface");
 
@@ -137,12 +142,18 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID="task")
             Vf_w, Vf_f = calculateVf(mat2ev,g_rad,radius)
 
             ##### Calculate SWR/forest transmissivity
-            sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts_x[crx],pts_y[crx],loc_time_fullres,time_zone,coor_system,utm_zone)
 
-            if ~tilt & calc_trans
-                transfor = calc_transmissivity(float.(mat2ev),loc_time_fullres,tstep,radius,sol_phi,sol_tht,g_coorpol,0.0,0.0,drad,
-                                    im_centre,trans_for,lens_profile_tht,lens_profile_rpix)
+            if calc_trans
+                sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts_x[crx],pts_y[crx],loc_time,time_zone,coor_system,utm_zone)
+                transfor = calc_transmissivity(float.(mat2ev),loc_time,tstep,radius,sol_phi,sol_tht,g_coorpol,0.0,0.0,
+                                        im_centre,trans_for,lens_profile_tht,lens_profile_rpix)
+                if calc_swr == 1
+                    swrtot, swrdir, _ = calculateSWR(transfor,sol_sinelev,sol_tht,sol_phi,loc_time,max.(1367*sol_sinelev,0),Vf_w)
+                elseif calc_swr == 2
+                    swrtot, swrdir, _ = calculateSWR(transfor,sol_sinelev,sol_tht,sol_phi,loc_time,swr_open,Vf_w)
+                end
             end
+
 
             if progress
                 elapsed = time() - start
@@ -155,12 +166,16 @@ function TLS2Rad(pts,dat_in,par_in,exdir,taskID="task")
             #export the data [append to netcdf]
             if progress; start = time(); end
 
-            if ~tilt & calc_trans
-                # for_tau[crx]     = np.array(transfor)
-                for_tau[crx]     = np.array(vec(aggregate_data(loc_time_fullres,loc_time_agg,transfor,tstep)))
-            end
             Vf_weighted[crx] = np.array(Vf_w)
             Vf_flat[crx]     = np.array(Vf_f)
+
+            if calc_trans
+                for_tau[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,transfor,tstep)))
+                if calc_swr > 0
+                    swr_tot[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,swrtot,tstep)))
+                    swr_dir[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,swrdir,tstep)))
+                end
+            end
 
             if save_images
                 SHIs[crx] = np.array(transpose(mat2ev))

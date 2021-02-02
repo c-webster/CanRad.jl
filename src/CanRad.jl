@@ -3,7 +3,7 @@ module CanRad
 using FileIO, LasIO, LazIO, DelimitedFiles, DataStructures,
     Statistics, VectorizedRoutines, Dates, Interpolations,
     Match, DataFrames, Formatting, Distributed, Distributions
-    # PolygonOps, StaticArrays
+     # PolygonOps, StaticArrays
 
 using Conda, PyCall
 
@@ -27,6 +27,7 @@ include("CHM2Rad.jl")
 include("LAS2Rad.jl")
 include("LAS2Rad_slopes.jl")
 include("TLS2Rad.jl")
+include("LAS2Rad_terrain.jl")
 # include("CanRad_Prep.jl")
 
 export
@@ -49,6 +50,7 @@ export
     check_output,
     CHM2Rad,
     clipdat,
+    compatability_check,
     correct_sph,
     create_exmat,
     create_mat,
@@ -57,6 +59,7 @@ export
     createVariables,
     dem2pol,
     dist,
+    dist3d,
     extension,
     extract,
     fillmat,
@@ -71,11 +74,14 @@ export
     getPhiTht,
     getsundxs,
     getsurfdat,
+    getsurfdat_lavd,
     importdtm,
     LAS2Rad,
+    LAS2Rad_terrain,
     LAS2Rad_slopes,
     loaddbh,
-    loadltc,
+    loadltc_laz,
+    loadltc_txt,
     make_branches,
     netcdf,
     normalise,

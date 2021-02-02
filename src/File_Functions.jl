@@ -1,6 +1,6 @@
 extension(url::String) = match(r"\.[A-Za-z0-9]+$", url).match
 
-function readlas(infile::String,ground=nothing)
+function readlas(infile::String)
     if extension(infile) == ".laz"
         header, dsmdat = LazIO.load(infile)
     elseif extension(infile) == ".las"
@@ -9,25 +9,27 @@ function readlas(infile::String,ground=nothing)
         error("Unknown DSM file extension")
     end
 
-    dsm_x = fill(NaN,size(dsmdat))
-    dsm_y = fill(NaN,size(dsmdat))
-    dsm_z = fill(NaN,size(dsmdat))
-    dsm_c = fill(NaN,size(dsmdat))
-    for dx in eachindex(dsmdat)
-        dsm_c[dx] = trunc(Int,float(classification(dsmdat[dx])))
-        if dsm_c[dx] == 2
-            continue
-        else
-            dsm_x[dx] = xcoord(dsmdat[dx],header)
-            dsm_y[dx] = ycoord(dsmdat[dx],header)
-            dsm_z[dx] = zcoord(dsmdat[dx],header)
+        dsm_x = fill(NaN,size(dsmdat))
+        dsm_y = fill(NaN,size(dsmdat))
+        dsm_z = fill(NaN,size(dsmdat))
+        dsm_c = fill(NaN,size(dsmdat))
+        for dx in eachindex(dsmdat)
+            dsm_c[dx] = trunc(Int,float(classification(dsmdat[dx])))
+            if dsm_c[dx] == 2
+                continue
+            else
+                dsm_x[dx] = xcoord(dsmdat[dx],header)
+                dsm_y[dx] = ycoord(dsmdat[dx],header)
+                dsm_z[dx] = zcoord(dsmdat[dx],header)
+            end
         end
-    end
-    rows = findall(isnan,dsm_x)
-    deleteat!(dsm_x,rows)
-    deleteat!(dsm_y,rows)
-    deleteat!(dsm_z,rows)
-    return dsm_x, dsm_y, dsm_z
+        rows = findall(isnan,dsm_x)
+        deleteat!(dsm_x,rows)
+        deleteat!(dsm_y,rows)
+        deleteat!(dsm_z,rows)
+
+        return dsm_x, dsm_y, dsm_z
+
 end
 
 function importdtm(dtmf::String,tilt::Bool)
@@ -52,41 +54,44 @@ function importdtm(dtmf::String,tilt::Bool)
             deleteat!(dtm_y,rows)
             deleteat!(dtm_z,rows)
         elseif extension(dtmf) == ".asc" || extension(dtmf) == ".txt"
-            dtm_x, dtm_y, dtm_z, dtm_cellsize = read_ascii(dtmf)
+                dtm_x, dtm_y, dtm_z, dtm_cellsize = read_ascii(dtmf,true)
         end
     return dtm_x, dtm_y, dtm_z, dtm_cellsize
     end
 end
 
-function read_ascii(demf::String)
+function read_ascii(fname::String,delete_rows=true::Bool)
 
-    f = open(demf)
-    ncols     = parse(Int64,split(readline(f))[2])
-    nrows     = parse(Int64,split(readline(f))[2])
-    xllcorner = parse(Float64,split(readline(f))[2])
-    yllcorner = parse(Float64,split(readline(f))[2])
-    cellsize  = parse(Float64,split(readline(f))[2])
-    nodatval  = parse(Float64,split(readline(f))[2])
-    close(f)
+        f = open(fname)
+        ncols     = parse(Int64,split(readline(f))[2])
+        nrows     = parse(Int64,split(readline(f))[2])
+        xllcorner = parse(Float64,split(readline(f))[2])
+        yllcorner = parse(Float64,split(readline(f))[2])
+        cellsize  = parse(Float64,split(readline(f))[2])
+        nodatval  = parse(Float64,split(readline(f))[2])
+        close(f)
 
-    demdat = readdlm(demf,skipstart=6)
-    replace!(demdat, -9999=>NaN)
+        dat = readdlm(fname,skipstart=6)
+        replace!(dat, -9999=>NaN)
 
-    # GC.gc()
-    xdem = collect(xllcorner:cellsize:(xllcorner+cellsize*(ncols-1))) .+ cellsize/2;
-    ydem = collect(yllcorner:cellsize:(yllcorner+cellsize*(nrows-1))) .+ cellsize/2;
-    tgrid = Matlab.meshgrid(xdem,ydem)
+        # GC.gc()
+        xdat = collect(xllcorner:cellsize:(xllcorner+cellsize*(ncols-1))) .+ cellsize/2;
+        ydat = collect(yllcorner:cellsize:(yllcorner+cellsize*(nrows-1))) .+ cellsize/2;
+        tgrid = Matlab.meshgrid(xdat,ydat)
 
-    dem_x = vec(tgrid[1]);
-    dem_y = vec(tgrid[2]);
-    dem_z = vec(reverse(demdat,dims=1));
+        dat_x = vec(tgrid[1]);
+        dat_y = vec(tgrid[2]);
+        dat_z = vec(reverse(dat,dims=1));
 
-    rows = findall(isnan,dem_z)
-    deleteat!(dem_x,rows)
-    deleteat!(dem_y,rows)
-    deleteat!(dem_z,rows)
+        if delete_rows
+            rows = findall(isnan,dat_z)
+            deleteat!(dat_x,rows)
+            deleteat!(dat_y,rows)
+            deleteat!(dat_z,rows)
+        end
 
-    return dem_x, dem_y, dem_z, cellsize
+    return dat_x, dat_y, dat_z, cellsize
+
 end
 
 function loaddbh(fname::String,limits::Array{Int64,2},peri::Int64)
@@ -100,14 +105,56 @@ function loaddbh(fname::String,limits::Array{Int64,2},peri::Int64)
 
     # dat_h = deleteat!(dat[:,5],rmdx) # height
 
-    return dat_x, dat_y, dat_z, dat_r
+    if size(dat,2) == 5
+        dat_tc = deleteat!(dat[:,5],rmdx)
+    else
+        dat_tc = fill(NaN,size(dat_x))
+    end
+
+    return dat_x, dat_y, dat_z, dat_r, dat_tc
 end
 
-function loadltc(fname::String,limits::Array{Int64,2},peri::Int64)
+function loadltc_txt(fname::String,limits::Array{Int64,2},peri::Int64)
     ltc, _ = readdlm(fname,'\t',header=true)
     replace!(ltc, -9999=>NaN)
     _, _, _, rmdx = clipdat(ltc[:,1],ltc[:,2],ltc[:,3],limits,peri)
-    ltc = ltc[setdiff(1:end, rmdx), :]
+    ltc = ltc[setdiff(1:end, findall(rmdx.==1)), :]
+    return ltc
+end
+
+
+
+function loadltc_laz(fname::String,limits::Array{Int64,2},peri::Int64,
+            dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_e::Array{Float64,1},
+            lastc::Array{Float64,1})
+
+        # calculate random branch angle for each tree
+        ang = rand(Uniform(60,100),size(lastc,1)) # Norway Spruce
+
+        header, ltcdat = LazIO.load(fname)
+        ltc = fill(NaN,size(ltcdat,1),8)
+        ltc_c = fill(NaN,size(ltcdat,1),1)
+        for dx in eachindex(ltcdat)
+            ltc_c[dx] = trunc(Int,float(classification(ltcdat[dx])))
+            if ltc_c[dx] == 2
+                continue
+            else
+                ltc[dx,1] = xcoord(ltcdat[dx],header) #lasx
+                ltc[dx,2] = ycoord(ltcdat[dx],header) #lasy
+                ltc[dx,3] = zcoord(ltcdat[dx],header) #lasx
+                ltc[dx,7] = Int64.(LasIO.intensity(ltcdat[dx])) # treeclass
+                tree_dx = (lastc .== ltc[dx,7])
+                if sum(tree_dx) > 0
+                    ltc[dx,4] = dbh_x[tree_dx][1] #treex
+                    ltc[dx,5] = dbh_y[tree_dx][1] #treey
+                    ltc[dx,6] = dist(ltc[dx,1],ltc[dx,2],ltc[dx,4],ltc[dx,5])
+                    ltc[dx,8] = ang[tree_dx][1]
+                end
+            end
+        end
+        ltc = ltc[setdiff(1:end, findall(isnan.(ltc[:,4]).==1)), :]
+        _, _, _, rmdx = clipdat(ltc[:,1],ltc[:,2],ltc[:,3],limits,peri)
+        ltc = ltc[setdiff(1:end, findall(rmdx.==1)), :]
     return ltc
 end
 
@@ -150,8 +197,12 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
         Coors        = dataset.createVariable("Coordinates",np.float32,("loc_XY","ptsn"),zlib="TRUE",
                                             least_significant_digit=1)
 
-        for cx in eachindex(pts[:,1])
-         Coors[cx] = np.array(pts[cx,:])
+        if size(pts,1) == 1
+            Coors = np.array(pts[1,1:2])
+        else
+            for cx in eachindex(pts[:,1])
+             Coors[cx] = np.array(pts[cx,:])
+            end
         end
 
         if calc_trans
@@ -207,9 +258,14 @@ function create_exmat(outdir::String,outstr::String,pts::Array{Float64,2},g_img:
         Coors = images.createVariable("Coordinates",np.float32,("locxy","ptsn"),zlib="TRUE",
                                         least_significant_digit=1)
 
-        for cx in eachindex(pts[:,1])
-         Coors[cx] = np.array(pts[cx,:])
+        if size(pts,1) == 1
+            Coors = np.array(pts[1,1:2])
+        else
+            for cx in eachindex(pts[:,1])
+             Coors[cx] = np.array(pts[cx,:])
+            end
         end
+
     end
 
     return SHIs, images

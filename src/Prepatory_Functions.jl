@@ -1,3 +1,20 @@
+function compatability_check(dat_in,par_in)
+
+    eval(extract(dat_in))
+    eval(extract(par_in))
+
+    if !@isdefined(buildings)
+        par_in["buildings"] = false
+    end
+
+    if !@isdefined(horizon_line)
+        par_in["horizon_line"] = 0
+    end
+
+    return dat_in, par_in
+
+end
+
 function extract(d::Dict)
     expr = quote end
     for (k, v) in d
@@ -8,6 +25,15 @@ function extract(d::Dict)
 end
 
 function clipdat(pc_x::Array{Float64,1},pc_y::Array{Float64,1},pc_z::Array{Float64,1},pts::Array{Int64,2},peri::Int64)
+    rmidx = (pc_x.<(minimum(pts[:,1])-peri)) .| (pc_x.>(maximum(pts[:,1])+peri)) .|
+                (pc_y.<(minimum(pts[:,2])-peri)) .| (pc_y.>(maximum(pts[:,2])+peri))
+    deleteat!(pc_x,rmidx)
+    deleteat!(pc_y,rmidx)
+    deleteat!(pc_z,rmidx)
+    return pc_x, pc_y, pc_z, rmidx
+end
+
+function clipdat(pc_x::Array{Float64,1},pc_y::Array{Float64,1},pc_z::Array{Float64,1},pts,peri::Int64)
     rmidx = (pc_x.<(minimum(pts[:,1])-peri)) .| (pc_x.>(maximum(pts[:,1])+peri)) .|
                 (pc_y.<(minimum(pts[:,2])-peri)) .| (pc_y.>(maximum(pts[:,2])+peri))
     deleteat!(pc_x,rmidx)
@@ -28,7 +54,7 @@ function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
         end
     end
 
-    pts_full = Int.(readdlm(ptsf))
+    pts_full = (readdlm(ptsf))
 
     analysis_limits = readdlm(basefolder*"/AnalysisAreaLimits.txt")
 
@@ -39,16 +65,15 @@ function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
 
     tdx = 0
 
-
     ptsfname     = String[]
     inputsegname = String[]
 
-    for sdx in eachindex(segs)
+    for segname in segs
 
-        limits = readdlm(basefolder*"/Segments"*"/"*segs[sdx]*"/"*segs[sdx]*"_analysisarea.txt")
+        limits = readdlm(basefolder*"/Segments"*"/"*segname*"/"*segname*"_analysisarea.txt")
 
-        limx = Int.(collect(limits[1]:tsize[1]:limits[2]))
-        limy = Int.(collect(limits[3]:tsize[1]:limits[4]))
+        limx = (collect(limits[1]:tsize[1]:limits[2]))
+        limy = (collect(limits[3]:tsize[1]:limits[4]))
 
         if limy[end] < limits[4]; push!(limy,limy[end].+tsize[1]); end
         if limx[end] < limits[2]; push!(limx,limx[end].+tsize[1]); end
@@ -60,28 +85,28 @@ function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
 
             if sum(idx) > 0
                 tdx += 1
-                push!(ptsfname,sprintf1.("%03.$(0)f", tdx)*".txt")
-                writedlm(basefolder*"/Tiles"*"/"*ptsfname[end],Int.(pts_all[idx,:]))
-
-                push!(inputsegname,segs[sdx])
+                # push!(ptsfname,sprintf1.("%03.$(0)f",tdx)*".txt")
+                push!(ptsfname,sprintf1.("%03.$(0)f",tdx)*"_"*sprintf1.("%03.$(0)f", limx[x])*"_"*sprintf1.("%03.$(0)f", limy[y])*".txt")
+                writedlm(basefolder*"/Tiles"*"/"*ptsfname[end],pts_all[idx,:])
+                push!(inputsegname,segname)
             end
         end
 
     end
 
     exdir = basefolder*"/Output/"
-    if !ispath(exdir)
-        try
-            mkdir(exdir); catch
-        end
-    end
+    # if !ispath(exdir)
+    #     try
+    #         mkdir(exdir); catch
+    #     end
+    # end
 
     tilenums = []
-    if !isempty(readdir(exdir))
+    if ispath(exdir) && !isempty(readdir(exdir))
         for tdx = 1:size(ptsfname,1)
                 par_in, dat_in = settings_fun(basefolder,inputsegname[tdx])
 
-                pts = Int.(readdlm(basefolder*"/Tiles"*"/"*ptsfname[tdx]))
+                pts = (readdlm(basefolder*"/Tiles"*"/"*ptsfname[tdx]))
 
                 if !check_output(exdir,pts,true)
                         push!(tilenums,tdx)
