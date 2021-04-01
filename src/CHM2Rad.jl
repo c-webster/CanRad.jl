@@ -203,7 +203,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
             # prep the data for occupying the matrix
 
-            elapsed = time() - start
 
             if progress
                 elapsed = time() - start
@@ -229,7 +228,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             # end
             # mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts,pt_chm_y_pts),4.0,kdtreedims,30,radius,mat2ev);
             mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x_thick,pt_dtm_x),vcat(pt_chm_y_thick,pt_dtm_y)),1.5,kdtreedims,10,radius,mat2ev);
-            # mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.0,kdtreedims,10,radius,mat2ev);
+            mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.0,kdtreedims,10,radius,mat2ev);
 
             if trunks_2
                 mat2ev = fillmat(kdtree,hcat(pt_tsm_x,pt_tsm_y),2.0,kdtreedims,15,radius,mat2ev)

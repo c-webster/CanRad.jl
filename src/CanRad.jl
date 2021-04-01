@@ -1,6 +1,6 @@
 module CanRad
 
-using FileIO, LasIO, LazIO, DelimitedFiles, DataStructures,
+using LasIO, LazIO, DelimitedFiles, DataStructures,
     Statistics, VectorizedRoutines, Dates, Interpolations,
     Match, DataFrames, Formatting, Distributed, Distributions
      # PolygonOps, StaticArrays
@@ -100,10 +100,5 @@ export
     # trunk_locs,
     trunkpoints,
     utm2deg
-
-
-
-
-
 
 end # module
