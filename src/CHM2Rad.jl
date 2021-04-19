@@ -33,7 +33,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     # Import terrain/surface data and clip
     chm_x, chm_y, chm_z, chm_cellsize = read_ascii(chmf,true)
 
-    _, _, chm_lavd, _ = read_ascii(lavdf,true) .* chm_cellsize
+    _, _, chm_lavd, _ = read_ascii(lavdf,true) .* (1^2 .* chm_cellsize^2) # converts lavd (m^2) relative to chm cellsize
 
     _, _, chm_b, _ = read_ascii(cbhf,true)
 
