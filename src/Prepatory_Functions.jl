@@ -87,7 +87,7 @@ function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
                 tdx += 1
                 # push!(ptsfname,sprintf1.("%03.$(0)f",tdx)*".txt")
                 push!(ptsfname,sprintf1.("%03.$(0)f",tdx)*"_"*sprintf1.("%03.$(0)f", limx[x])*"_"*sprintf1.("%03.$(0)f", limy[y])*".txt")
-                f = open(basefolder*"/Tiles"*"/"*ptsfname[end],"a")
+                f = open(basefolder*"/Tiles"*"/"*ptsfname[end],"w")
                     writedlm(f,sprintf1.("%7.$(2)f",pts_all[idx,:]))
                 close(f)
                 push!(inputsegname,segname)
