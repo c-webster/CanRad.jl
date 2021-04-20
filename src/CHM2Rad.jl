@@ -159,9 +159,10 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             if progress; start = time(); end
 
             pt_chm_x, pt_chm_y, pt_chm_r, pt_chm_x_thick, pt_chm_y_thick = calcCHM_Ptrans(copy(chm_x),copy(chm_y),copy(chm_z),
-                                copy(chm_b),copy(chm_lavd),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,ch,chm_cellsize)
+                                copy(chm_b),copy(chm_lavd),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,ch,chm_cellsize) # calculated points
 
-            pt_chm_x_pts, pt_chm_y_pts, pt_chm_r_pts = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"chm",ch,pts_slp[crx],chm_cellsize)
+            pt_chm_x_pts, pt_chm_y_pts, pt_chm_r_pts = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],
+                                pts_e[crx],surf_peri,"chm",ch,pts_slp[crx],chm_cellsize) # pts from the CHM
 
             if trunks_2
                 pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(tsm_x,tsm_y,tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5))
@@ -187,22 +188,21 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 end
             end
 
-
-            pt_dtm_x, pt_dtm_y = pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],3*surf_peri,"terrain",ch,pts_slp[crx],dtm_cellsize);
-
             #  100% opaque canopy:
-            pt_chm_x, pt_chm_y = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"terrain",ch,pts_slp[crx],chm_cellsize)
-            pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_chm_x,pt_dtm_x),append!(pt_chm_y,pt_dtm_y,));
+            # pt_chm_x, pt_chm_y = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"terrain",ch,pts_slp[crx],chm_cellsize)
+            # pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_chm_x,pt_dtm_x),append!(pt_chm_y,pt_dtm_y,));
 
-            if terrain == 1 && tershad < 2 && horizon_line == 0
-                pt_dem_x, pt_dem_y = pcd2pol2cart(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri,"terrain",ch,pts_slp[crx],dem_cellsize);
+            if tershad < 3
+                pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(300),"terrain",ch,pts_slp[crx],dtm_cellsize);
+                if tershad < 2
+                    if terrain == 1 && horizon_line == 0
+                        pt_dem_x, pt_dem_y = pcd2pol2cart(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri,"terrain",ch,pts_slp[crx],dem_cellsize);
+                    end
+                    pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_dem_x),append!(pt_dtm_y,pt_dem_y));
+                else
+                    pt_dtm_x, pt_dtm_y = prepterdat(pt_dtm_x,pt_dtm_y)
+                end
             end
-            if terrain == 2 && tershad < 2
-                pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_dem_x),append!(pt_dtm_y,pt_dem_y));
-            end
-
-            # prep the data for occupying the matrix
-
 
             if progress
                 elapsed = time() - start
@@ -219,16 +219,16 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             mat2ev  = copy(g_img);
 
             #occupy matrix with dtm
-            # for zdx = 1:1:size(rbins,1)-1
-            #     # global mat2ev
-            #     ridx   = findall(rbins[zdx] .<= pt_chm_r .< rbins[zdx+1])
-            #     # ridx2  = findall(rbins[zdx] .<= pt_chm_r_pts .< rbins[zdx+1])
-            #     mat2ev = fillmat(kdtree,hcat(pt_chm_x[ridx],pt_chm_y[ridx]),tol[zdx],kdtreedims,30,radius,mat2ev);
-            #     # mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x[ridx],p.t_chm_x_pts[ridx2]),vcat(pt_chm_y[ridx],pt_chm_y_pts[ridx2])),tol[zdx],kdtreedims,50,radius,mat2ev);
-            # end
-            # mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts,pt_chm_y_pts),4.0,kdtreedims,30,radius,mat2ev);
-            mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x_thick,pt_dtm_x),vcat(pt_chm_y_thick,pt_dtm_y)),1.5,kdtreedims,10,radius,mat2ev);
-            mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.0,kdtreedims,10,radius,mat2ev);
+            for zdx = 1:1:size(rbins,1)-1
+                # global mat2ev
+                ridx   = findall(rbins[zdx] .<= pt_chm_r .< rbins[zdx+1])
+                # ridx2  = findall(rbins[zdx] .<= pt_chm_r_pts .< rbins[zdx+1]) # include canopy surface points
+                mat2ev = fillmat(kdtree,hcat(pt_chm_x[ridx],pt_chm_y[ridx]),tol[zdx],kdtreedims,30,radius,mat2ev);
+                # mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x[ridx],p.t_chm_x_pts[ridx2]),vcat(pt_chm_y[ridx],pt_chm_y_pts[ridx2])),tol[zdx],kdtreedims,50,radius,mat2ev);
+            end
+            mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts,pt_chm_y_pts),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
+            mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x_thick,pt_dtm_x),vcat(pt_chm_y_thick,pt_dtm_y)),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
+            # mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.0,kdtreedims,10,radius,mat2ev); # use this line if plotting opaque canpoy
 
             if trunks_2
                 mat2ev = fillmat(kdtree,hcat(pt_tsm_x,pt_tsm_y),2.0,kdtreedims,15,radius,mat2ev)
