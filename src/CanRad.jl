@@ -2,7 +2,8 @@ module CanRad
 
 using LasIO, LazIO, DelimitedFiles, DataStructures,
     Statistics, VectorizedRoutines, Dates, Interpolations,
-    Match, DataFrames, Formatting, Distributed, Distributions
+    Match, DataFrames, Formatting, Distributed, Distributions,
+    SpatialFileIO
      # PolygonOps, StaticArrays
 
 using Conda, PyCall
