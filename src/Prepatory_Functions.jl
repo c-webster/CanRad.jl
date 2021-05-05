@@ -96,30 +96,7 @@ function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
 
     end
 
-    exdir = basefolder*"/Output/"
-    # if !ispath(exdir)
-    #     try
-    #         mkdir(exdir); catch
-    #     end
-    # end
-
-    # tilenums = []
-    # if ispath(exdir) && !isempty(readdir(exdir))
-    #     for tdx = 1:size(ptsfname,1)
-    #             par_in, dat_in = settings_fun(basefolder,inputsegname[tdx])
-    #
-    #             pts = (readdlm(basefolder*"/Tiles"*"/"*ptsfname[tdx]))
-    #
-    #             if !check_output(exdir,pts,true)
-    #                     push!(tilenums,tdx)
-    #             end
-    #     end
-    # else
-            tilenums = collect(1:1:size(ptsfname,1))
-    # end
-
-
-    return ptsfname, inputsegname, exdir, tilenums
+    return ptsfname, inputsegname, basefolder*"/Output/", collect(1:1:size(ptsfname,1))
 
 end
 
