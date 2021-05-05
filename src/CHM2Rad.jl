@@ -35,7 +35,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     _, _, chm_lavd, _ = read_ascii(lavdf,true)#(1^2 .* chm_cellsize^2) # converts lavd (m^2) relative to chm cellsize
 
-    chm_lavd[chm_lavd .> 0] .= median(chm_lavd)
+    chm_lavd[chm_z .> 0] .= median(chm_lavd)
 
     _, _, chm_b, _ = read_ascii(cbhf,true)
 
