@@ -150,7 +150,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for = get_constants(g_img,loc_time)
     end
 
-    try
+#     try
         @simd for crx = crxstart:size(pts_x,1)
 
             ######################
@@ -310,12 +310,12 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
         println("done with "*taskID)
 
-    catch
-        dataset.close()
-        if save_images; images.close(); end
-        println(taskID*" failed")
+#     catch
+#         dataset.close()
+#         if save_images; images.close(); end
+#         println(taskID*" failed")
 
-    end
+#     end
 
     # else
     #     error("error with dimension of input data in "*chmf)
