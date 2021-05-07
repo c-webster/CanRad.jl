@@ -273,9 +273,9 @@ function pcd2pol2cart(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Arr
     # convert phi/tht to cartesian
     if dat=="terrain"
         pol_phi, pol_tht = calc_horizon_lines(cellsize,peri,pol_phi,pol_tht,pol_rad,slp)
-    # elseif dat=="chm"
-    #     rows = findall(vec(pol_rad).<(2 .* (sqrt(2)*cellsize))) # deletes the points right above the camera
-    #     deleteat!(pol_phi,rows); deleteat!(pol_tht,rows); deleteat!(pol_rad,rows)
+    elseif dat=="chm"
+        rows = findall(vec(pol_rad).<(4 .* (sqrt(2)*cellsize))) # deletes the points right above the camera
+        deleteat!(pol_phi,rows); deleteat!(pol_tht,rows); deleteat!(pol_rad,rows)
     end
 
     # convert to cartesian
