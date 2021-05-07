@@ -226,7 +226,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 mat2ev = fillmat(kdtree,hcat(pt_chm_x[ridx],pt_chm_y[ridx]),tol[zdx],kdtreedims,30,radius,mat2ev);
                 # mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x[ridx],p.t_chm_x_pts[ridx2]),vcat(pt_chm_y[ridx],pt_chm_y_pts[ridx2])),tol[zdx],kdtreedims,50,radius,mat2ev);
             end
-#             mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts,pt_chm_y_pts),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
+            mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts,pt_chm_y_pts),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
             mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x_thick,pt_dtm_x),vcat(pt_chm_y_thick,pt_dtm_y)),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
             # mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.0,kdtreedims,10,radius,mat2ev); # use this line if plotting opaque canpoy
 
