@@ -236,8 +236,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
             mat2ev[isnan.(g_rad)] .= 1;
 
-            elapsed = time() - start
-
             if progress
                 elapsed = time() - start
                 if crx != 1; try; rm(outdir*"/ProgressLastPoint/"*progtext2); catch; end; end
