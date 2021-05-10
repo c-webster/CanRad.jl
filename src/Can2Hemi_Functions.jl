@@ -537,8 +537,8 @@ function calcPtrans(sum_lavd_thick::Array{Float64,2},phi_bins::Array{Float64,1},
     mean_Ptrans = mean(Ptrans[(Ptrans .> 0) .& (Ptrans .< 1)])
     rand_Ptrans = rand(Uniform(0,1),size(Ptrans))
 
-    Ptrans[Ptrans .>= rand_Ptrans] .= 1
-    Ptrans[Ptrans .< rand_Ptrans] .= 0
+    Ptrans[Ptrans .>= mean_Ptrans] .= 1
+    Ptrans[Ptrans .< mean_Ptrans] .= 0
     Ptrans[sum_thick .<= (2 .* (sqrt(2)*cellsize))] .= 1
 
     pt_chm_x, pt_chm_y, rdist = getPhiTht(phi_bins,Ptrans,rdist)
