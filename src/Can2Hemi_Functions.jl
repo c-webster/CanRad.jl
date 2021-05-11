@@ -439,7 +439,7 @@ function calcCHM_Ptrans(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::A
     # phi_bins = collect(-pi+((pi/360)*3):pi/360:pi-((pi/360)*3))
   
 #     phi_bins = collect(-pi:pi/360:pi)
-    phi_bins = [float.(pi);collect(-pi:pi/45:pi);float.(-pi)]
+    phi_bins = [float.(pi);collect(-pi:pi/360:pi);float.(-pi)]
 
     sum_lavd_thick, sum_thick, rdist = calcThickness(collect(4*cellsize:sqrt(2).*cellsize:peri),phi_bins,
                                             can_phi,can_tht,can_rad,lavd,bse_phi,bse_tht,bse_rad,
@@ -537,7 +537,7 @@ function calcPtrans(sum_lavd_thick::Array{Float64,2},phi_bins::Array{Float64,1},
 
     # solve pt based on average pt and random distribution
     mean_Ptrans = mean(Ptrans[(Ptrans .> 0) .& (Ptrans .< 1)])
-    rand_Ptrans = rand(Uniform(0,1),size(Ptrans))
+#     rand_Ptrans = rand(Uniform(0,1),size(Ptrans))
 
     Ptrans[Ptrans .>= mean_Ptrans] .= 1
     Ptrans[Ptrans .< mean_Ptrans] .= 0
