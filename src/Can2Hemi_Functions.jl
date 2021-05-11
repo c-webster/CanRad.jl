@@ -439,7 +439,7 @@ function calcCHM_Ptrans(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::A
     # phi_bins = collect(-pi+((pi/360)*3):pi/360:pi-((pi/360)*3))
   
 #     phi_bins = collect(-pi:pi/360:pi)
-    phi_bins = [float.(pi);collect(-pi:pi/360:pi);float.(-pi)]
+    phi_bins = [float.(pi);collect(-pi:pi/180:pi);float.(-pi)] # the size of this vector will also have an effect on canopy density in the resulting image
 
     sum_lavd_thick, sum_thick, rdist = calcThickness(collect(4*cellsize:sqrt(2).*cellsize:peri),phi_bins,
                                             can_phi,can_tht,can_rad,lavd,bse_phi,bse_tht,bse_rad,
@@ -500,9 +500,9 @@ function calcThickness(rbins::Array{Float64,1},phi_bins::Array{Float64,1},
 
             for tx = 1:1:len
                 # smooth the horizon line
-                if tx !== 1; lo = chm_temptht[tx-1]; else; lo = chm_temptht[end]; end
-                if tx !== len; hi = chm_temptht[tx+1]; else; hi = chm_temptht[1]; end
-                chm_temptht[tx] = Int(round(mean([lo,chm_temptht[tx],hi])))
+#                 if tx !== 1; lo = chm_temptht[tx-1]; else; lo = chm_temptht[end]; end
+#                 if tx !== len; hi = chm_temptht[tx+1]; else; hi = chm_temptht[1]; end
+#                 chm_temptht[tx] = Int(round(mean([lo,chm_temptht[tx],hi])))
 
                 # fill the chm stuff
                 if 90 - chm_temptht[tx] == 0
@@ -566,14 +566,14 @@ function getPhiTht(phi_bins::Array{Float64,1},Ptrans::Array{Float64,2},rdist::Ar
     phi = repeat(phi_bins,90);
     tht = repeat(90.0:-1:1,inner=size(phi_bins,1))
 
-    for thtdx = 1:size(phi_bins,1):size(tht,1)-size(phi_bins,1)
-        tht[thtdx:thtdx+size(phi_bins,1)-1] = rand(Uniform(tht[thtdx]-1,tht[thtdx]),size(thtdx:thtdx+size(phi_bins,1)-1))
-    end
+#     for thtdx = 1:size(phi_bins,1):size(tht,1)-size(phi_bins,1)
+#         tht[thtdx:thtdx+size(phi_bins,1)-1] = rand(Uniform(tht[thtdx]-1,tht[thtdx]),size(thtdx:thtdx+size(phi_bins,1)-1))
+#     end
 
-    temp = sortperm(phi)
-    for phidx = 1:size(Ptrans,1):size(phi,1)-size(Ptrans,1)
-        phi[temp[phidx:phidx+89]] = rand(Uniform(phi[temp[phidx]]-0.01,phi[temp[phidx]+1]),size(phidx:phidx+89))
-    end
+#     temp = sortperm(phi)
+#     for phidx = 1:size(Ptrans,1):size(phi,1)-size(Ptrans,1)
+#         phi[temp[phidx:phidx+89]] = rand(Uniform(phi[temp[phidx]]-0.01,phi[temp[phidx]+1]),size(phidx:phidx+89))
+#     end
 
     # remove regions of sky where transmissivity = 0
     rows = findall(vec(Ptrans).==1)
