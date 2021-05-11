@@ -254,7 +254,7 @@ function pcd2pol(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Fl
     if dat=="terrain"
         pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri)
     elseif dat=="chm"
-        pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,2,peri)
+        pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,10,peri)
     elseif dat=="canopy"
         pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri)
     end
