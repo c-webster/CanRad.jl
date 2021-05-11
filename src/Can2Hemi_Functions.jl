@@ -566,14 +566,14 @@ function getPhiTht(phi_bins::Array{Float64,1},Ptrans::Array{Float64,2},rdist::Ar
     phi = repeat(phi_bins,90);
     tht = repeat(90.0:-1:1,inner=size(phi_bins,1))
 
-#     for thtdx = 1:size(phi_bins,1):size(tht,1)-size(phi_bins,1)
-#         tht[thtdx:thtdx+size(phi_bins,1)-1] = rand(Uniform(tht[thtdx]-1,tht[thtdx]),size(thtdx:thtdx+size(phi_bins,1)-1))
-#     end
+    for thtdx = 1:size(phi_bins,1):size(tht,1)-size(phi_bins,1)
+        tht[thtdx:thtdx+size(phi_bins,1)-1] = rand((tht[thtdx]-1:tht[thtdx]),size(thtdx:thtdx+size(phi_bins,1)-1))
+    end
 
-#     temp = sortperm(phi)
-#     for phidx = 1:size(Ptrans,1):size(phi,1)-size(Ptrans,1)
-#         phi[temp[phidx:phidx+89]] = rand(Uniform(phi[temp[phidx]]-0.01,phi[temp[phidx]+1]),size(phidx:phidx+89))
-#     end
+    temp = sortperm(phi)
+    for phidx = 1:size(Ptrans,1):size(phi,1)-size(Ptrans,1)
+        phi[temp[phidx:phidx+89]] = rand((phi[temp[phidx]]-0.01:phi[temp[phidx]+1]),size(phidx:phidx+89))
+    end
 
     # remove regions of sky where transmissivity = 0
     rows = findall(vec(Ptrans).==1)
