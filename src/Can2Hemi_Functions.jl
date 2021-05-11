@@ -536,12 +536,12 @@ function calcPtrans(sum_lavd_thick::Array{Float64,2},phi_bins::Array{Float64,1},
     # phi_bins = collect(-pi:pi/356:pi); #push!(phi_bins,pi) # tidy up phi_bins so it starts and ends at pi
 
     # solve pt based on average pt and random distribution
-    mean_Ptrans = median(Ptrans[(Ptrans .> 0) .& (Ptrans .< 1)])
-#     rand_Ptrans = rand(Uniform(0,1),size(Ptrans))
+#     mean_Ptrans = median(Ptrans[(Ptrans .> 0) .& (Ptrans .< 1)])
+    rand_Ptrans = rand(Uniform(0,1),size(Ptrans))
 
-    Ptrans[Ptrans .>= mean_Ptrans] .= 1
-    Ptrans[Ptrans .< mean_Ptrans] .= 0
-    Ptrans[sum_thick .<= (2 .* (sqrt(2)*cellsize))] .= 1
+    Ptrans[Ptrans .>= rand_Ptrans] .= 1
+    Ptrans[Ptrans .< rand_Ptrans] .= 0
+#     Ptrans[sum_thick .<= (2 .* (sqrt(2)*cellsize))] .= 1
 
     pt_chm_x, pt_chm_y, rdist = getPhiTht(phi_bins,Ptrans,rdist)
 
