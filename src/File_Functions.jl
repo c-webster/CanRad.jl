@@ -198,7 +198,7 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
                                             least_significant_digit=1)
 
         if size(pts,1) == 1
-            Coors = np.array(pts[1,1:2])
+            Coors[1] = np.array(pts[1,1:2])
         else
             for cx in eachindex(pts[:,1])
              Coors[cx] = np.array(pts[cx,:])
