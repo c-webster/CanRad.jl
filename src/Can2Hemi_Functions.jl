@@ -254,7 +254,7 @@ function pcd2pol(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Fl
     if dat=="terrain"
         pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri)
     elseif dat=="chm"
-        pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,2,peri)
+        pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,10,peri)
     elseif dat=="canopy"
         pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri)
     end
@@ -273,9 +273,9 @@ function pcd2pol2cart(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Arr
     # convert phi/tht to cartesian
     if dat=="terrain"
         pol_phi, pol_tht = calc_horizon_lines(cellsize,peri,pol_phi,pol_tht,pol_rad,slp)
-    # elseif dat=="chm"
-    #     rows = findall(vec(pol_rad).<(2 .* (sqrt(2)*cellsize))) # deletes the points right above the camera
-    #     deleteat!(pol_phi,rows); deleteat!(pol_tht,rows); deleteat!(pol_rad,rows)
+    elseif dat=="chm"
+        rows = findall(vec(pol_rad).<(10 .* (sqrt(2)*cellsize))) # deletes the points right above the camera
+        deleteat!(pol_phi,rows); deleteat!(pol_tht,rows); deleteat!(pol_rad,rows)
     end
 
     # convert to cartesian
@@ -437,7 +437,9 @@ function calcCHM_Ptrans(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::A
 
     # allocate variables for the radial loops in calcThickness
     # phi_bins = collect(-pi+((pi/360)*3):pi/360:pi-((pi/360)*3))
-    phi_bins = collect(-pi:pi/360:pi)
+  
+#     phi_bins = collect(-pi:pi/360:pi)
+    phi_bins = [float.(pi);collect(-pi:pi/360:pi);float.(-pi)] # the size of this vector will also have an effect on canopy density in the resulting image
 
     sum_lavd_thick, sum_thick, rdist = calcThickness(collect(4*cellsize:sqrt(2).*cellsize:peri),phi_bins,
                                             can_phi,can_tht,can_rad,lavd,bse_phi,bse_tht,bse_rad,
@@ -498,9 +500,9 @@ function calcThickness(rbins::Array{Float64,1},phi_bins::Array{Float64,1},
 
             for tx = 1:1:len
                 # smooth the horizon line
-                if tx !== 1; lo = chm_temptht[tx-1]; else; lo = chm_temptht[end]; end
-                if tx !== len; hi = chm_temptht[tx+1]; else; hi = chm_temptht[1]; end
-                chm_temptht[tx] = Int(round(mean([lo,chm_temptht[tx],hi])))
+#                 if tx !== 1; lo = chm_temptht[tx-1]; else; lo = chm_temptht[end]; end
+#                 if tx !== len; hi = chm_temptht[tx+1]; else; hi = chm_temptht[1]; end
+#                 chm_temptht[tx] = Int(round(mean([lo,chm_temptht[tx],hi])))
 
                 # fill the chm stuff
                 if 90 - chm_temptht[tx] == 0
@@ -534,12 +536,12 @@ function calcPtrans(sum_lavd_thick::Array{Float64,2},phi_bins::Array{Float64,1},
     # phi_bins = collect(-pi:pi/356:pi); #push!(phi_bins,pi) # tidy up phi_bins so it starts and ends at pi
 
     # solve pt based on average pt and random distribution
-    mean_Ptrans = mean(Ptrans[(Ptrans .> 0) .& (Ptrans .< 1)])
+#     mean_Ptrans = median(Ptrans[(Ptrans .> 0) .& (Ptrans .< 1)])
     rand_Ptrans = rand(Uniform(0,1),size(Ptrans))
 
     Ptrans[Ptrans .>= rand_Ptrans] .= 1
     Ptrans[Ptrans .< rand_Ptrans] .= 0
-    Ptrans[sum_thick .<= (2 .* (sqrt(2)*cellsize))] .= 1
+#     Ptrans[sum_thick .<= (2 .* (sqrt(2)*cellsize))] .= 1
 
     pt_chm_x, pt_chm_y, rdist = getPhiTht(phi_bins,Ptrans,rdist)
 
@@ -565,12 +567,12 @@ function getPhiTht(phi_bins::Array{Float64,1},Ptrans::Array{Float64,2},rdist::Ar
     tht = repeat(90.0:-1:1,inner=size(phi_bins,1))
 
     for thtdx = 1:size(phi_bins,1):size(tht,1)-size(phi_bins,1)
-        tht[thtdx:thtdx+size(phi_bins,1)-1] = rand(Uniform(tht[thtdx]-1,tht[thtdx]),size(thtdx:thtdx+size(phi_bins,1)-1))
+        tht[thtdx:thtdx+size(phi_bins,1)-1] = rand((tht[thtdx]-1:tht[thtdx]),size(thtdx:thtdx+size(phi_bins,1)-1))
     end
 
     temp = sortperm(phi)
     for phidx = 1:size(Ptrans,1):size(phi,1)-size(Ptrans,1)
-        phi[temp[phidx:phidx+89]] = rand(Uniform(phi[temp[phidx]]-0.01,phi[temp[phidx]+1]),size(phidx:phidx+89))
+        phi[temp[phidx:phidx+89]] = rand((phi[temp[phidx]]-0.01:phi[temp[phidx]+1]),size(phidx:phidx+89))
     end
 
     # remove regions of sky where transmissivity = 0
