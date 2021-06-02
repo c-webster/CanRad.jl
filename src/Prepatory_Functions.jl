@@ -48,10 +48,12 @@ function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
 
     segs = readdir(basefolder*"/Segments")
 
-    if !ispath(basefolder*"/Tiles")
-        try
-            mkdir(basefolder*"/Tiles"); catch
-        end
+    if ispath(basefolder*"/Tiles")
+        rmdir(basefolder*"/Tiles")
+    end
+
+    try
+        mkdir(basefolder*"/Tiles"); catch
     end
 
     pts_full = (readdlm(ptsf))
