@@ -11,6 +11,10 @@ function compatability_check(dat_in,par_in)
         par_in["horizon_line"] = 0
     end
 
+    if !@isdefined(pt_corr)
+        par_in["pt_corr"] = true
+    end
+
     return dat_in, par_in
 
 end

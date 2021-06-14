@@ -33,13 +33,11 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     # Import terrain/surface data and clip
     chm_x, chm_y, chm_z, chm_cellsize = read_ascii(chmf,true)
 
-    _, _, chm_lavd, _ = read_ascii(lavdf,true)#(1^2 .* chm_cellsize^2) # converts lavd (m^2) relative to chm cellsize
+    _, _, chm_lavd, _ = read_ascii(lavdf,true)
 
     chm_lavd[chm_z .> 0] .= median(chm_lavd)
 
     _, _, chm_b, _ = read_ascii(cbhf,true)
-
-    # if size(chm_lavd) == size(chm_z) || size(chm_b) == size(chm_z)
 
     dtm_x, dtm_y, dtm_z, dtm_cellsize = importdtm(dtmf,tilt)
 
@@ -160,39 +158,42 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
             if progress; start = time(); end
 
-            pt_chm_x, pt_chm_y, pt_chm_r, pt_chm_x_thick, pt_chm_y_thick = calcCHM_Ptrans(copy(chm_x),copy(chm_y),copy(chm_z),
-                                copy(chm_b),copy(chm_lavd),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,ch,chm_cellsize) # calculated points
+            if pt_corr
+                pt_chm_x, pt_chm_y, pt_chm_r, pt_chm_x_thick, pt_chm_y_thick = calcCHM_Ptrans(copy(chm_x),copy(chm_y),copy(chm_z),
+                                    copy(chm_b),copy(chm_lavd),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,ch,chm_cellsize) # calculated points
 
-            pt_chm_x_pts, pt_chm_y_pts, pt_chm_r_pts = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],
-                                pts_e[crx],surf_peri,"chm",ch,pts_slp[crx],chm_cellsize) # pts from the CHM
+                pt_chm_x_pts, pt_chm_y_pts, pt_chm_r_pts = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],
+                                    pts_e[crx],surf_peri,"chm",ch,pts_slp[crx],chm_cellsize) # pts from the CHM
 
-            if trunks_2
-                pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(tsm_x,tsm_y,tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5))
-                tidx = findall(dist(dbh_x,dbh_y,pts[crx,1],pts[crx,2]) .< 4)
-                if size(tidx,1) > 0
-                    hdt  = dist(dbh_x[tidx],dbh_y[tidx],pts[crx,1],pts[crx,2])
-                    npt  = fill(NaN,(size(tidx)))
-                    hint = fill(NaN,(size(tidx)))
-                    for tixt = 1:1:size(tidx,1)
-                        if hdt[tixt] < 1
-                            npt[tixt] = Int.(150); hint[tixt] = 0.005
-                        else
-                            npt[tixt] = Int.(100); hint[tixt] = 0.01
+                if trunks_2
+                    pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(tsm_x,tsm_y,tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5))
+                    tidx = findall(dist(dbh_x,dbh_y,pts[crx,1],pts[crx,2]) .< 4)
+                    if size(tidx,1) > 0
+                        hdt  = dist(dbh_x[tidx],dbh_y[tidx],pts[crx,1],pts[crx,2])
+                        npt  = fill(NaN,(size(tidx)))
+                        hint = fill(NaN,(size(tidx)))
+                        for tixt = 1:1:size(tidx,1)
+                            if hdt[tixt] < 1
+                                npt[tixt] = Int.(150); hint[tixt] = 0.005
+                            else
+                                npt[tixt] = Int.(100); hint[tixt] = 0.01
+                            end
                         end
+                        tsm_tmp = calculate_trunks(dbh_x[tidx],dbh_y[tidx],dbh_z[tidx],dbh_r[tidx],npt,hint,dbh_e[tidx])
+                        pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(append!(pt_tsm_x,tsm_tmp[1]),append!(pt_tsm_y,tsm_tmp[2]),append!(pt_tsm_z,tsm_tmp[3]),
+                                                            pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",ch,pts_slp[crx],0);
+
+                    else
+                        pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(pt_tsm_x,pt_tsm_y,pt_tsm_z,
+                                                            pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",ch,pts_slp[crx],0);
                     end
-                    tsm_tmp = calculate_trunks(dbh_x[tidx],dbh_y[tidx],dbh_z[tidx],dbh_r[tidx],npt,hint,dbh_e[tidx])
-                    pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(append!(pt_tsm_x,tsm_tmp[1]),append!(pt_tsm_y,tsm_tmp[2]),append!(pt_tsm_z,tsm_tmp[3]),
-                                                        pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",ch,pts_slp[crx],0);
-
-                else
-                    pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(pt_tsm_x,pt_tsm_y,pt_tsm_z,
-                                                        pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",ch,pts_slp[crx],0);
                 end
-            end
 
-            #  100% opaque canopy:
-            # pt_chm_x, pt_chm_y = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"terrain",ch,pts_slp[crx],chm_cellsize)
-            # pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_chm_x,pt_dtm_x),append!(pt_chm_y,pt_dtm_y,));
+            else
+                #  100% opaque canopy:
+                pt_chm_x, pt_chm_y = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"terrain",ch,pts_slp[crx],chm_cellsize)
+                pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_chm_x,pt_dtm_x),append!(pt_chm_y,pt_dtm_y,));
+            end
 
             if tershad < 3
                 pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(300),"terrain",ch,pts_slp[crx],dtm_cellsize);
@@ -220,17 +221,19 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
             mat2ev  = copy(g_img);
 
-            #occupy matrix with dtm
-            for zdx = 1:1:size(rbins,1)-1
-                # global mat2ev
-                ridx   = findall(rbins[zdx] .<= pt_chm_r .< rbins[zdx+1])
-                # ridx2  = findall(rbins[zdx] .<= pt_chm_r_pts .< rbins[zdx+1]) # include canopy surface points
-                mat2ev = fillmat(kdtree,hcat(pt_chm_x[ridx],pt_chm_y[ridx]),tol[zdx],kdtreedims,30,radius,mat2ev);
-                # mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x[ridx],p.t_chm_x_pts[ridx2]),vcat(pt_chm_y[ridx],pt_chm_y_pts[ridx2])),tol[zdx],kdtreedims,50,radius,mat2ev);
+            # occupy matrix
+            if pt_corr
+                for zdx = 1:1:size(rbins,1)-1
+                    ridx   = findall(rbins[zdx] .<= pt_chm_r .< rbins[zdx+1])
+                    # ridx2  = findall(rbins[zdx] .<= pt_chm_r_pts .< rbins[zdx+1]) # include canopy surface points
+                    mat2ev = fillmat(kdtree,hcat(pt_chm_x[ridx],pt_chm_y[ridx]),tol[zdx],kdtreedims,30,radius,mat2ev);
+                    # mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x[ridx],p.t_chm_x_pts[ridx2]),vcat(pt_chm_y[ridx],pt_chm_y_pts[ridx2])),tol[zdx],kdtreedims,50,radius,mat2ev);
+                end
+                mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts[pt_chm_r_pts .> 10],pt_chm_y_pts[pt_chm_r_pts .> 10]),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
+                mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x_thick,pt_dtm_x),vcat(pt_chm_y_thick,pt_dtm_y)),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
+            else # treat all canopy as opaque
+                mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.0,kdtreedims,10,radius,mat2ev); # use this line if plotting opaque canpoy
             end
-            mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts[pt_chm_r_pts .> 10],pt_chm_y_pts[pt_chm_r_pts .> 10]),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
-            mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x_thick,pt_dtm_x),vcat(pt_chm_y_thick,pt_dtm_y)),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
-            # mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.0,kdtreedims,10,radius,mat2ev); # use this line if plotting opaque canpoy
 
             if trunks_2
                 mat2ev = fillmat(kdtree,hcat(pt_tsm_x,pt_tsm_y),2.0,kdtreedims,15,radius,mat2ev)
@@ -316,9 +319,4 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 #         println(taskID*" failed")
 
 #     end
-
-    # else
-    #     error("error with dimension of input data in "*chmf)
-    # end
-
 end
