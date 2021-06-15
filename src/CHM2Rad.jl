@@ -158,6 +158,18 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
             if progress; start = time(); end
 
+            if tershad < 3
+                pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(300),"terrain",ch,pts_slp[crx],dtm_cellsize);
+                if tershad < 2
+                    if terrain == 1 && horizon_line == 0
+                        pt_dem_x, pt_dem_y = pcd2pol2cart(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri,"terrain",ch,pts_slp[crx],dem_cellsize);
+                    end
+                    pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_dem_x),append!(pt_dtm_y,pt_dem_y));
+                else
+                    pt_dtm_x, pt_dtm_y = prepterdat(pt_dtm_x,pt_dtm_y)
+                end
+            end
+
             if pt_corr
                 pt_chm_x, pt_chm_y, pt_chm_r, pt_chm_x_thick, pt_chm_y_thick = calcCHM_Ptrans(copy(chm_x),copy(chm_y),copy(chm_z),
                                     copy(chm_b),copy(chm_lavd),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,ch,chm_cellsize) # calculated points
@@ -195,17 +207,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_chm_x,pt_dtm_x),append!(pt_chm_y,pt_dtm_y,));
             end
 
-            if tershad < 3
-                pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(300),"terrain",ch,pts_slp[crx],dtm_cellsize);
-                if tershad < 2
-                    if terrain == 1 && horizon_line == 0
-                        pt_dem_x, pt_dem_y = pcd2pol2cart(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri,"terrain",ch,pts_slp[crx],dem_cellsize);
-                    end
-                    pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_dem_x),append!(pt_dtm_y,pt_dem_y));
-                else
-                    pt_dtm_x, pt_dtm_y = prepterdat(pt_dtm_x,pt_dtm_y)
-                end
-            end
 
             if progress
                 elapsed = time() - start
