@@ -31,11 +31,11 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     ################################################################################
 
     # Import terrain/surface data and clip
-    chm_x, chm_y, chm_z, chm_cellsize = read_ascii(chmf,true)
+    chm_x, chm_y, chm_z, chm_cellsize = read_ascii(chmf,true,true)
 
-    _, _, chm_lavd, _ = read_ascii(lavdf,true)
+    _, _, chm_lavd, _ = read_ascii(lavdf,true,true)
 
-    chm_lavd[chm_z .> 0] .= median(chm_lavd)
+    # chm_lavd[chm_z .> 0] .= median(chm_lavd)
 
     if @isdefined(cbhf)
         _, _, chm_b, _ = read_ascii(cbhf,true)
