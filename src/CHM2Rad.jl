@@ -40,8 +40,8 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if @isdefined(cbhf)
         _, _, chm_b, _ = read_ascii(cbhf,true)
     else
-        chm_b = fill(0,size(chm_z))
-        chm_b[chm_z .>= 1] .= 2
+        chm_b = fill(0.0,size(chm_z))
+        chm_b[chm_z .>= 2] .= 2.0
     end
 
     dtm_x, dtm_y, dtm_z, dtm_cellsize = importdtm(dtmf,tilt)
