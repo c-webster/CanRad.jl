@@ -21,7 +21,7 @@ end
 
 
 include("File_Functions.jl")
-include("Prepatory_Functions.jl")
+include("Preparatory_Functions.jl")
 include("Can2Hemi_Functions.jl")
 include("Solar_Functions.jl")
 include("CHM2Rad.jl")

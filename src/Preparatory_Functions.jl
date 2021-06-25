@@ -102,10 +102,10 @@ function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
 
 end
 
-function check_output(exdir,pts,batch)
+function check_output(exdir,pts,batch,taskID)
 
     if batch
-        outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
+        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3][1:end-4]
         outdir = exdir*"/"*outstr
     else
         outstr = String(split(exdir,"/")[end])
