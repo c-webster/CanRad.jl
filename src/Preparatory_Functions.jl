@@ -15,6 +15,10 @@ function compatability_check(dat_in,par_in)
         par_in["pt_corr"] = true
     end
 
+    if !@isdefined(b_space)
+        par_in["b_space"] = 0.1
+    end
+
     return dat_in, par_in
 
 end
