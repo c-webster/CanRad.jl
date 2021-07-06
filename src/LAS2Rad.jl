@@ -111,7 +111,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
             ltc = ltc[setdiff(1:end, findall(ltc[:,3].<1)), :]
         end
 
-        bsm_x, bsm_y, bsm_z = make_branches(ltc)
+        bsm_x, bsm_y, bsm_z = make_branches(ltc,b_space)
         bsm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),bsm_x,bsm_y)
     end
 

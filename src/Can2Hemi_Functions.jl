@@ -86,8 +86,7 @@ function calculate_trunks(dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_z:
 end
 
 
-function make_branches(ltc::Array{Float64,2})
-    spacing = 0.1
+function make_branches(ltc::Array{Float64,2},spacing=0.1::Float64)
     ltc_ad = zeros(size(ltc[:,6],1)) .* NaN
 
     ltc_ad[ltc[:,8].>90]  = ltc[ltc[:,8].>90,6]./cosd.(90 .- ltc[ltc[:,8].>90,8])
@@ -437,7 +436,7 @@ function calcCHM_Ptrans(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::A
 
     # allocate variables for the radial loops in calcThickness
     # phi_bins = collect(-pi+((pi/360)*3):pi/360:pi-((pi/360)*3))
-  
+
 #     phi_bins = collect(-pi:pi/360:pi)
     phi_bins = [float.(pi);collect(-pi:pi/360:pi);float.(-pi)] # the size of this vector will also have an effect on canopy density in the resulting image
 
