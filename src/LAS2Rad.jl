@@ -205,7 +205,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
                 #### transfer point clouds to polar coordinates
                 if branches
-                    pt_dsm_x, pt_dsm_y, pt_dsm_z = getsurfdat(dsm_x,dsm_y,dsm_z,bsm_x,bsm_y,bsm_z,pts_x[crx],pts_y[crx],pts_e[crx],surf_peri)
+                    pt_dsm_x, pt_dsm_y, pt_dsm_z = getsurfdat(bsm_x,bsm_y,bsm_z,pts_x[crx],pts_y[crx],pts_e[crx],surf_peri)
                 else
                     pt_dsm_x, pt_dsm_y, pt_dsm_z = getsurfdat(dsm_x,dsm_y,dsm_z,pts_x[crx],pts_y[crx],pts_e[crx],surf_peri);
                 end
@@ -215,7 +215,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                     pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(tsm_x,tsm_y,tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5))
                     tidx = findall(dist(dbh_x,dbh_y,pts_x[crx],pts_y[crx]) .< 5)
                     if size(tidx,1) > 0
-                        hdt  = dist(dbh_x[tidx],dbh_y[tidx],pts_x[crx],pts_y[crx])
+                        hdt  = dist(dbh_x[tidx],dbh_y[tidx],pts[crx,1],pts[crx,2])
                         npt  = fill(NaN,(size(tidx)))
                         hint = fill(NaN,(size(tidx)))
                         for tixt = 1:1:size(tidx,1)
