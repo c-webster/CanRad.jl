@@ -359,6 +359,13 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                     writedlm(outdir*"/ProgressLastPoint/"*progtext4,NaN)
                 end
 
+                # delete any other processing text files in the output folder
+                for f in readdir(outdir)
+                        if startswith.(f,"Processing") && !startswith.(f,"Processing 100");
+                                print(outdir*"/"*f)
+                        end
+                end
+                # save the progress
                 percentdone = Int(floor((crx / size(pts,1)) * 100))
                 if crx != 1; rm(outdir*"/"*outtext); end
                 global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
