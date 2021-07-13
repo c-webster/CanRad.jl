@@ -310,7 +310,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             # delete any other processing text files in the output folder
             for f in readdir(outdir)
                     if startswith.(f,"Processing") && !startswith.(f,"Processing 100");
-                            print(outdir*"/"*f)
+                            rm(outdir*"/"*f)
                     end
             end
             # save the progress
