@@ -370,7 +370,6 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 else
                     rm(outdir*"/"*outtext)
                 end
-                if crx != 1; rm(outdir*"/"*outtext); end
                 global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
                 writedlm(outdir*"/"*outtext,NaN)
 

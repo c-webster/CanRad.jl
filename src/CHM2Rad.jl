@@ -319,7 +319,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 end
             else
                 rm(outdir*"/"*outtext)
-             end
+            end
             global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
             writedlm(outdir*"/"*outtext,NaN)
 
