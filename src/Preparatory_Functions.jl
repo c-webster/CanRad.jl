@@ -3,20 +3,46 @@ function compatability_check(dat_in,par_in)
     eval(extract(dat_in))
     eval(extract(par_in))
 
-    if !@isdefined(buildings)
+    if !@isdefined(buildings) # include buildings as solid objects (not floating carpets)
         par_in["buildings"] = false
     end
 
-    if !@isdefined(horizon_line)
+    if !@isdefined(horizon_line) # add in pre-calculated horizon line for OSHD compatability
         par_in["horizon_line"] = 0
     end
 
-    if !@isdefined(pt_corr)
+    if !@isdefined(pt_corr) # correct for probability of transmissivity
         par_in["pt_corr"] = true
     end
 
-    if !@isdefined(b_space)
+    if !@isdefined(b_space) # spacing between branch points in cm
         par_in["b_space"] = 0.1
+    end
+
+    # renamed terrain options
+    if @isdefined(terrain)
+        if terrain == 1
+            par_in["terrain_tile"] =  false
+        elseif terrain == 2
+            par_in["terrain_tile"] = true
+        end
+    end
+
+    if @isdefined(tershad)
+        if tershad == 1
+            par_in["terrain_highres"] = true
+            par_in["terrain_lowres"] = true
+        elseif tershad == 2
+            par_in["terrain_highres"] = true
+            par_in["terrain_lowres"] = false
+        elseif tershad == 3
+            par_in["terrain_highres"] = false
+            par_in["terrain_lowres"] = false
+        end
+    end
+
+    if !@isdefined(horizon_line)
+        par_in["horizon_line"] = false
     end
 
     return dat_in, par_in

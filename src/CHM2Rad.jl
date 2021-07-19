@@ -3,39 +3,35 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     ################################################################################
     # Initialise
 
+    # run compatability check then extract settings
     dat_in, par_in = compatability_check(dat_in,par_in)
 
     eval(extract(dat_in))
     eval(extract(par_in))
 
-    pts = float.(pts)
+    # separate the points to vectors
     pts_x = float(pts[:,1])
     pts_y = float(pts[:,2])
 
     if progress; start = time(); end
 
-    if batch
-        # outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
-        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3][1:end-4]
-        global outdir = exdir*"/"*outstr
-    else
-        outstr = String(split(exdir,"/")[end-1])
-        global outdir = exdir
-    end
-    if !ispath(outdir)
-        mkpath(outdir)
-    end
-
+    # set start point within tile
     crxstart = 1; append_file  = false
+    # currently hard coded to always start at 1
+    # this should be updated eventually to allow appending to a file and starting part way through a tile
+    # if size(readdir(outdir),1) == 5
+    #     crxstart = parse(Int,(split(reduce(1,readdir(outdir)[findall(occursin.("Processing",readdir(outdir)))])))[4])+1
+    #     global outtext  = reduce(1,readdir(outdir)[findall(occursin.("Processing",readdir(outdir)))])
+    #     append   = true
+    # else; crxstart = 1; append_file  = false
+    # end
 
     ################################################################################
+    # > Import surface data and clip
 
-    # Import terrain/surface data and clip
     chm_x, chm_y, chm_z, chm_cellsize = read_ascii(chmf,true,true)
 
     _, _, chm_lavd, _ = read_ascii(lavdf,true,true)
-
-    # chm_lavd[chm_z .> 0] .= median(chm_lavd)
 
     if @isdefined(cbhf)
         _, _, chm_b, _ = read_ascii(cbhf,true)
@@ -44,40 +40,15 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         chm_b[chm_z .>= 2] .= 2.0
     end
 
-    dtm_x, dtm_y, dtm_z, dtm_cellsize = importdtm(dtmf,tilt)
-
-    if tershad < 2 && horizon_line == 0
-        dem_x, dem_y, dem_z, dem_cellsize = read_ascii(demf,true)
-    end
-
+    # get analysis limits
     limits = Int.(floor.(hcat(vcat(minimum(pts_x),maximum(pts_x)),vcat(minimum(pts_y),maximum(pts_y)))))
+
+    # clip the CHM data to the analysis limits + surf_peri
     _, _, chm_lavd, _ = clipdat(copy(chm_x),copy(chm_y),chm_lavd,limits,surf_peri)
     _, _, chm_b, _ = clipdat(copy(chm_x),copy(chm_y),chm_b,limits,surf_peri)
     chm_x, chm_y, chm_z, _ = clipdat(chm_x,chm_y,chm_z,limits,surf_peri)
 
-    dtm_x, dtm_y, dtm_z, _ = clipdat(dtm_x,dtm_y,dtm_z,limits,surf_peri*4)
-
-    if tershad < 2 && horizon_line == 0
-        dem_x, dem_y, dem_z, _ = clipdat(dem_x,dem_y,dem_z,limits,terrain_peri)
-        pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100)
-    end
-
-    pts_e     = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x,pts_y)
-    chm_e     = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),chm_x,chm_y)
-    chm_b     = chm_b .+ chm_e
-    chm_z     = chm_z + chm_e
-
-    # Load SWR data
-    if calc_swr == 2
-        swrdat   = readdlm(swrf)
-        t_step    = Dates.value(Dates.Minute(Dates.DateTime(swrdat[3,1].*" ".*swrdat[3,2],"dd.mm.yyyy HH:MM:SS")-Dates.DateTime(swrdat[2,1].*" ".*swrdat[2,2],"dd.mm.yyyy HH:MM:SS")))
-        t_start       = swrdat[1,1].*" ".*swrdat[1,2]
-        t_end       = swrdat[end,1].*" ".*swrdat[end,2]
-        swr_open = float.(swrdat[:,3])
-    else
-        t_start = t1; t_end = t2; t_step = tstep;
-    end
-
+    # load the trunk data
     if trunks
         dbh_x, dbh_y, dbh_z, dbh_r = loaddbh(dbhf,limits,50)
         if !isempty(dbh_x)
@@ -91,13 +62,76 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         trunks_2 = false
     end
 
-    ###############################################################################
-    # > Calculate slope and aspect from dtm data
+    ################################################################################
+    # > Import, clip and prepare terrain daa
+
+    # set terrain = true if any terrain is to be plotted in the final image matrix
+    if terrain_highres || terrain_lowres || horizon_line
+        terrain = true
+    else
+        terrain = false
+    end
+
+    if terrain_highres
+        if tilt
+            dtm_x, dtm_y, dtm_z, dtm_s, dtm_a, dtm_cellsize = importdtm(dtmf,tilt)
+        else
+            dtm_x, dtm_y, dtm_z, dtm_cellsize = importdtm(dtmf,tilt)
+        end
+        dtm_x, dtm_y, dtm_z, _ = clipdat(dtm_x,dtm_y,dtm_z,limits,surf_peri*4)
+    end
+
+    if terrain_lowres
+        dem_x, dem_y, dem_z, dem_cellsize = read_ascii(demf,true)
+        dem_x, dem_y, dem_z, _ = clipdat(dem_x,dem_y,dem_z,limits,terrain_peri)
+        pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100)
+    end
+
+    # Get elevation of surface and evaluation points
+    if terrain_highres
+        pts_e     = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x,pts_y)
+        chm_e     = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),chm_x,chm_y)
+    elseif terrain_lowres
+        pts_e     = pts_e_dem
+        chm_e     = findelev(copy(dem_x),copy(dem_y),copy(dem_z),chm_x,chm_y)
+    else # if there's no terrain input, just assume the ground is flat
+        pts_e     = fill(0.0,size(pts_x))
+        chm_e     = fill(0.0,size(chm_x))
+    end
+
+    chm_b     = chm_b .+ chm_e
+    chm_z     = chm_z .+ chm_e
+
+    # Calculate slope and aspect from dtm data
     if tilt
         pts_slp = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_s),pts_x,pts_y)
         pts_asp = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_a),pts_x,pts_y)
     else
         pts_slp = fill(0.0,size(pts_x,1))
+        imcX = 0.0; imcY = 0.0
+    end
+
+    ###############################################################################
+    # Load meteorological data
+
+    if calc_swr == 2
+        swrdat   = readdlm(swrf)
+        t_step    = Dates.value(Dates.Minute(Dates.DateTime(swrdat[3,1].*" ".*swrdat[3,2],"dd.mm.yyyy HH:MM:SS")-Dates.DateTime(swrdat[2,1].*" ".*swrdat[2,2],"dd.mm.yyyy HH:MM:SS")))
+        t_start       = swrdat[1,1].*" ".*swrdat[1,2]
+        t_end       = swrdat[end,1].*" ".*swrdat[end,2]
+        swr_open = float.(swrdat[:,3])
+    else
+        t_start = t1; t_end = t2; t_step = tstep;
+    end
+
+    ###############################################################################
+    # > Tile preparation
+
+    if horizon_line
+        pt_dem_x = readdlm(hldir*"/HL_"*taskID)[:,1]
+        pt_dem_y = readdlm(hldir*"/HL_"*taskID)[:,2]
+    elseif terrain_tile && !horizon_line
+        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
     end
 
     # create an empty matrix for Vf calculation
@@ -106,10 +140,34 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     g_img[isnan.(g_rad)] .= 1
 
     # make g_coorcrt a KDtree for easy look up
-    kdtree = scipyspat.cKDTree(g_coorcrt)
-    kdtreedims = size(g_coorcrt,1)
+    if ~tilt
+        kdtree = scipyspat.cKDTree(g_coorcrt)
+        kdtreedims = size(g_coorcrt,1)
+    end
 
-    # create the output filesd
+    # get constants
+    rbins = collect(0:(surf_peri-0)/5:surf_peri)
+    tol   = tolerance.*collect(reverse(0.75:0.05:1))
+
+    if calc_trans
+        drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for = get_constants(g_img,loc_time)
+    end
+
+    ###############################################################################
+    # > create the output files
+
+    if batch
+        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3][1:end-4]
+        global outdir = exdir*"/"*outstr
+    else
+        outstr = String(split(exdir,"/")[end-1])
+        global outdir = exdir
+    end
+
+    if !ispath(outdir)
+        mkpath(outdir)
+    end
+
     if calc_trans
         loc_time = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
         loc_time_agg = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
@@ -124,13 +182,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     if save_images
         SHIs, images = create_exmat(outdir,outstr,pts,g_img,append_file)
-    end
-
-    if tershad < 2 && terrain == 2 && horizon_line == 1
-        pt_dem_x = readdlm(exdir[1:end-10]*"HorizonLines/HL_"*taskID)[:,1]
-        pt_dem_y = readdlm(exdir[1:end-10]*"HorizonLines/HL_"*taskID)[:,2]
-    elseif tershad < 2 && terrain == 2 && horizon_line == 0
-        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
     end
 
     if progress
@@ -148,14 +199,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     ###############################################################################
     # > Loop through the points
 
-    rbins = collect(0:(surf_peri-0)/5:surf_peri)
-    tol   = tolerance.*collect(reverse(0.75:0.05:1))
-
-    if calc_trans
-        drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for = get_constants(g_img,loc_time)
-    end
-
-#     try
         @simd for crx = crxstart:size(pts_x,1)
 
             ######################
@@ -163,15 +206,21 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
             if progress; start = time(); end
 
-            if tershad < 3
-                pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(300),"terrain",ch,pts_slp[crx],dtm_cellsize);
-                if tershad < 2
-                    if terrain == 1 && horizon_line == 0
-                        pt_dem_x, pt_dem_y = pcd2pol2cart(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri,"terrain",ch,pts_slp[crx],dem_cellsize);
-                    end
+            if terrain
+                if terrain_highres
+                    pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(300),"terrain",ch,pts_slp[crx],dtm_cellsize);
+                end
+
+                if terrain_lowres && !terrain_tile
+                    pt_dem_x, pt_dem_y = pcd2pol2cart(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri,"terrain",ch,pts_slp[crx],dem_cellsize);
+                end
+
+                if terrain_highres && (terrain_lowres || horizon_line)
                     pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_dem_x),append!(pt_dtm_y,pt_dem_y));
-                else
+                elseif terrain_highres
                     pt_dtm_x, pt_dtm_y = prepterdat(pt_dtm_x,pt_dtm_y)
+                elseif terrain_lowres && !terrain_highres
+                    pt_dtm_x, pt_dtm_y = prepterdat(pt_dem_x,pt_dem_y)
                 end
             end
 
@@ -209,9 +258,12 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             else
                 #  100% opaque canopy:
                 pt_chm_x, pt_chm_y = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"terrain",ch,pts_slp[crx],chm_cellsize)
-                pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_chm_x,pt_dtm_x),append!(pt_chm_y,pt_dtm_y));
+                if terrain # merge if using terrain
+                    pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_chm_x,pt_dtm_x),append!(pt_chm_y,pt_dtm_y));
+                else
+                    pt_dtm_x, pt_dtm_y = prepterdat(pt_chm_x,pt_chm_y);
+                end
             end
-
 
             if progress
                 elapsed = time() - start
@@ -219,7 +271,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 global progtext1 = "1. Transferring to polar took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
                 writedlm(outdir*"/ProgressLastPoint/"*progtext1,NaN)
             end
-
 
             ######################
             ### Classify image
@@ -231,16 +282,20 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             if pt_corr
                 for zdx = 1:1:size(rbins,1)-1
                     ridx   = findall(rbins[zdx] .<= pt_chm_r .< rbins[zdx+1])
-                    # ridx2  = findall(rbins[zdx] .<= pt_chm_r_pts .< rbins[zdx+1]) # include canopy surface points
                     mat2ev = fillmat(kdtree,hcat(pt_chm_x[ridx],pt_chm_y[ridx]),tol[zdx],kdtreedims,30,radius,mat2ev);
-                    # mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x[ridx],p.t_chm_x_pts[ridx2]),vcat(pt_chm_y[ridx],pt_chm_y_pts[ridx2])),tol[zdx],kdtreedims,50,radius,mat2ev);
                 end
+                # include canopy surface points
                 mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts[pt_chm_r_pts .> 10],pt_chm_y_pts[pt_chm_r_pts .> 10]),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
-                mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x_thick,pt_dtm_x),vcat(pt_chm_y_thick,pt_dtm_y)),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
-            else # treat all canopy as opaque
+                if terrain
+                    mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x_thick,pt_dtm_x),vcat(pt_chm_y_thick,pt_dtm_y)),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
+                else
+                    mat2ev = fillmat(kdtree,hcat(pt_chm_x_thick,pt_chm_y_thick),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
+                end
+            else # treat all canopy as opaque (like terrain) -> all points come in as terrain points from above section
                 mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.0,kdtreedims,10,radius,mat2ev); # use this line if plotting opaque canpoy
             end
 
+            # add trunks
             if trunks_2
                 mat2ev = fillmat(kdtree,hcat(pt_tsm_x,pt_tsm_y),2.0,kdtreedims,15,radius,mat2ev)
             end
@@ -323,17 +378,11 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
             writedlm(outdir*"/"*outtext,NaN)
 
-        end
+        end # end crx
 
         dataset.close()
         if save_images; images.close(); end
 
         println("done with "*taskID)
 
-#     catch
-#         dataset.close()
-#         if save_images; images.close(); end
-#         println(taskID*" failed")
-
-#     end
 end

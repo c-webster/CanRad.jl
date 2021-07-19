@@ -1,33 +1,24 @@
 function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
-
     ################################################################################
     # Initialise
 
+    # run compatability check then extract settings
     dat_in, par_in = compatability_check(dat_in,par_in)
 
     eval(extract(dat_in))
     eval(extract(par_in))
 
-    pts = float.(pts)
+    # separate the points to vectors
     pts_x = float(pts[:,1])
     pts_y = float(pts[:,2])
 
     if progress; start = time(); end
 
-    if batch
-        # outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
-        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3][1:end-4]
-        global outdir = exdir*"/"*outstr
-    else
-        outstr = String(split(exdir,"/")[end-1])
-        global outdir = exdir
-    end
-    if !ispath(outdir)
-        mkpath(outdir)
-    end
-
-    # writedlm(outdir*"/"*basename(taskID),taskID)
+    # set start point within tile
+    crxstart = 1; append_file  = false
+    # currently hard coded to always start at 1
+    # this should be updated eventually to allow appending to a file and starting part way through a tile
     # if size(readdir(outdir),1) == 5
     #     crxstart = parse(Int,(split(reduce(1,readdir(outdir)[findall(occursin.("Processing",readdir(outdir)))])))[4])+1
     #     global outtext  = reduce(1,readdir(outdir)[findall(occursin.("Processing",readdir(outdir)))])
@@ -35,22 +26,37 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     # else; crxstart = 1; append_file  = false
     # end
 
-    crxstart = 1; append_file  = false
-
     ################################################################################
+    # > Import surface/terrain data and clip
 
-    # load the las
     dsm_x, dsm_y, dsm_z = readlas(dsmf)
 
-    # load the dtm
-    if tershad < 3
-        if tilt; dtm_x, dtm_y, dtm_z, dtm_s, dtm_a, dtm_cellsize = importdtm(dtmf,tilt)
-        else; dtm_x, dtm_y, dtm_z, dtm_cellsize = importdtm(dtmf,tilt); end
+    # clip dsm within eval-peri of min/max pts
+    dsm_x, dsm_y, dsm_z, _ = clipdat(dsm_x,dsm_y,dsm_z,pts[:,1:2],surf_peri)
+    limits = Int.(floor.(hcat(vcat(minimum(dsm_x),maximum(dsm_x)),vcat(minimum(dsm_y),maximum(dsm_y)))))
+
+    # import, clip and prepare terrain daa
+    if terrain_highres || terrain_lowres || horizon_line
+        terrain = true
+    else
+        terrain = false
     end
 
-    # load the dem
-    if tershad < 2
+    # load and clip the dtm
+    if terrain_highres
+        if tilt
+            dtm_x, dtm_y, dtm_z, dtm_s, dtm_a, dtm_cellsize = importdtm(dtmf,tilt)
+        else
+            dtm_x, dtm_y, dtm_z, dtm_cellsize = importdtm(dtmf,tilt)
+        end
+        dtm_x, dtm_y, dtm_z, _ = clipdat(dtm_x,dtm_y,dtm_z,limits,surf_peri*4)
+    end
+
+    # load and clip the dem
+    if terrain_lowres
         dem_x, dem_y, dem_z, dem_cellsize = read_ascii(demf)
+        dem_x, dem_y, dem_z, _ = clipdat(dem_x,dem_y,dem_z,limits,terrain_peri)
+        pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100)
     end
 
     # load the buildings
@@ -58,31 +64,25 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         rsm_x, rsm_y, rsm_z, rsm_cellsize = read_ascii(rsmf)
     end
 
-    # Load SWR data
-    # if calc_trans && calc_swr == 2
-    #     swrdat   = readdlm(swrf)
-    #     tstep    = Dates.value(Dates.Minute(Dates.DateTime(swrdat[3,1].*" ".*swrdat[3,2],"dd.mm.yyyy HH:MM:SS")-Dates.DateTime(swrdat[2,1].*" ".*swrdat[2,2],"dd.mm.yyyy HH:MM:SS")))
-    #     t1       = swrdat[1,1].*" ".*swrdat[1,2]
-    #     t2       = swrdat[end,1].*" ".*swrdat[end,2]
-    #     swr_open = float.(swrdat[:,3])
-    # end
-
-    ###############################################################################
-    # > Preprocess DSM/DTM
-
-    # clip dsm within eval-peri of min/max pts
-    dsm_x, dsm_y, dsm_z, _ = clipdat(dsm_x,dsm_y,dsm_z,pts[:,1:2],surf_peri)
-    limits = Int.(floor.(hcat(vcat(minimum(dsm_x),maximum(dsm_x)),vcat(minimum(dsm_y),maximum(dsm_y)))))
-
-    if tershad < 3; dtm_x, dtm_y, dtm_z, _ = clipdat(dtm_x,dtm_y,dtm_z,limits,surf_peri*4); end
-    if tershad < 2; dem_x, dem_y, dem_z, _ = clipdat(dem_x,dem_y,dem_z,limits,terrain_peri); end
-
     # determine ground elevation of points
-    if tershad == 3;
-        if size(pts,2) > 2; pts_e = pts[:,3]; else;  pts_e = fill(0.0,size(pts_x)); end
-    else; pts_e = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x,pts_y); end
+    if size(pts,2) > 2
+         pts_e = pts[:,3]
+    elseif terrain_highres
+        pts_e     = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x,pts_y)
+    elseif terrain_lowres
+        pts_e     = pts_e_dem
+    else # if there's no terrain input, just assume the ground is flat
+        pts_e     = fill(0.0,size(pts_x))
+    end
 
-    if tershad < 2; pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100); end
+    # > Calculate slope and aspect from dtm data
+    if tilt
+        pts_slp = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_s),pts_x,pts_y)
+        pts_asp = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_a),pts_x,pts_y)
+    else
+        pts_slp = zeros(size(pts_x))
+        imcX = 0.0; imcY = 0.0
+    end
 
     ###############################################################################
     # > Generate extra canopy elements
@@ -115,7 +115,9 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         bsm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),bsm_x,bsm_y)
     end
 
-    # Load SWR data
+    ###############################################################################
+    # Load meteorological data
+
     if calc_swr == 2
         swrdat   = readdlm(swrf)
         t_step    = Dates.value(Dates.Minute(Dates.DateTime(swrdat[3,1].*" ".*swrdat[3,2],"dd.mm.yyyy HH:MM:SS")-Dates.DateTime(swrdat[2,1].*" ".*swrdat[2,2],"dd.mm.yyyy HH:MM:SS")))
@@ -127,17 +129,14 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     ###############################################################################
-    # > Calculate slope and aspect from dtm data
-    if tilt
-        pts_slp = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_s),pts_x,pts_y)
-        pts_asp = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_a),pts_x,pts_y)
-    else
-        pts_slp = zeros(size(pts_x))
-        imcX = 0.0; imcY = 0.0
-    end
+    # > Tile preparation
 
-    ###############################################################################
-    # > Start creating the 2D canopy/terrain map
+    if horizon_line
+        pt_dem_x = readdlm(hldir*"/HL_"*taskID)[:,1]
+        pt_dem_y = readdlm(hldir*"/HL_"*taskID)[:,2]
+    elseif terrain_tile && !horizon_line
+        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
+    end
 
     # create the empty matrix
     g_rad, g_coorpol, g_coorcrt, g_img = create_mat(radius)
@@ -150,7 +149,29 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         kdtreedims = size(g_coorcrt,1)
     end
 
-    # generate the output files
+    # get constants
+    rbins = collect(0:(surf_peri-0)/5:surf_peri)
+    tol   = tolerance.*collect(reverse(0.75:0.05:1))
+
+    if calc_trans
+        drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for = get_constants(g_img,loc_time)
+    end
+
+    ###############################################################################
+    # > create the output files
+
+    if batch
+        # outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
+        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3][1:end-4]
+        global outdir = exdir*"/"*outstr
+    else
+        outstr = String(split(exdir,"/")[end-1])
+        global outdir = exdir
+    end
+    if !ispath(outdir)
+        mkpath(outdir)
+    end
+
     if calc_trans
         loc_time = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
         loc_time_agg = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
@@ -167,12 +188,6 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         SHIs, images = create_exmat(outdir,outstr,pts,g_img,append_file)
     end
 
-    # calculate horizon matrix for grid-cell
-    if tershad < 2 && terrain == 2
-        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
-    end
-
-
     if progress
         elapsed = time() - start
         progtextinit = "0. Pre-calc took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
@@ -187,21 +202,12 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     ###############################################################################
     # > Loop through the points
-    # try
-
-        rbins = collect(0:(surf_peri-0)/5:surf_peri)
-        tol   = tolerance.*collect(reverse(0.75:0.05:1))
-
-        if calc_trans
-            drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for = get_constants(g_img,loc_time)
-        end
 
         @simd for crx = crxstart:size(pts_x,1)
 
             # try # catch statement to close dataset if error
 
                 if progress; start = time(); end
-
 
                 #### transfer point clouds to polar coordinates
                 if branches
@@ -235,15 +241,21 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                     end
                 end
 
-                if tershad < 3
-                    pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(300),"terrain",ch,pts_slp[crx],dtm_cellsize);
-                    if tershad < 2
-                        if terrain == 1
+                if terrain
+                    if terrain_highres
+                        pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(300),"terrain",ch,pts_slp[crx],dtm_cellsize);
+                    end
+
+                    if terrain_lowres && !terrain_tile
                         pt_dem_x, pt_dem_y = pcd2pol2cart(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri,"terrain",ch,pts_slp[crx],dem_cellsize);
-                        end
+                    end
+
+                    if terrain_highres && (terrain_lowres || horizon_line)
                         pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_dem_x),append!(pt_dtm_y,pt_dem_y));
-                    else
+                    elseif terrain_highres
                         pt_dtm_x, pt_dtm_y = prepterdat(pt_dtm_x,pt_dtm_y)
+                    elseif terrain_lowres && !terrain_highres
+                        pt_dtm_x, pt_dtm_y = prepterdat(pt_dem_x,pt_dem_y)
                     end
                 end
 
@@ -293,8 +305,8 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                     mat2ev = fillmat(kdtree,hcat(pt_tsm_x,pt_tsm_y),2.0,kdtreedims,15,radius,mat2ev)
                 end
 
-                #occupy matrix with dtm
-                if @isdefined(pt_dtm_x)
+                # add terrain
+                if terrain
                     mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.0,kdtreedims,10,radius,mat2ev);
                 end
 
@@ -363,7 +375,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 if crx == 1
                     # delete any other processing text files in the output folder
                     for f in readdir(outdir)
-                            if startswith.(f,"Processing") && !startswith.(f,"Processing 100");
+                            if startswith.(f,"Processing")
                                     rm(outdir*"/"*f)
                             end
                     end
@@ -373,19 +385,11 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
                 writedlm(outdir*"/"*outtext,NaN)
 
-            # catch
-            #     writedlm(outdir*"/Error_"*string(Int(pts[crx,1]))*"_"*string(Int(pts[crx,2]))*".txt",NaN)
-            # end
-
-        end #end crx
+        end # end crx
 
         dataset.close()
         if save_images; images.close(); end
 
         println("done with "*taskID)
 
-    # catch
-    #     dataset.close()
-    #     if save_images; images.close(); end
-    # end
 end
