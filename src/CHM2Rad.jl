@@ -29,12 +29,12 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     ################################################################################
     # > Import surface data and clip
 
-    chm_x, chm_y, chm_z, chm_cellsize = read_ascii(chmf,true,true)
+    chm_x, chm_y, chm_z, chm_cellsize = read_griddata(chmf,true,true)
 
-    _, _, chm_lavd, _ = read_ascii(lavdf,true,true)
+    _, _, chm_lavd, _ = read_griddata(lavdf,true,true)
 
     if @isdefined(cbhf)
-        _, _, chm_b, _ = read_ascii(cbhf,true)
+        _, _, chm_b, _ = read_griddata(cbhf,true)
     else
         chm_b = fill(0.0,size(chm_z))
         chm_b[chm_z .>= 2] .= 2.0
@@ -82,7 +82,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     if terrain_lowres
-        dem_x, dem_y, dem_z, dem_cellsize = read_ascii(demf,true)
+        dem_x, dem_y, dem_z, dem_cellsize = read_griddata(demf,true)
         dem_x, dem_y, dem_z, _ = clipdat(dem_x,dem_y,dem_z,limits,terrain_peri)
         pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100)
     end
