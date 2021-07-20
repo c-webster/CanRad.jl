@@ -54,14 +54,14 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     # load and clip the dem
     if terrain_lowres
-        dem_x, dem_y, dem_z, dem_cellsize = read_ascii(demf)
+        dem_x, dem_y, dem_z, dem_cellsize = read_griddata(demf,true,true)
         dem_x, dem_y, dem_z, _ = clipdat(dem_x,dem_y,dem_z,limits,terrain_peri)
         pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100)
     end
 
     # load the buildings
     if buildings
-        rsm_x, rsm_y, rsm_z, rsm_cellsize = read_ascii(rsmf)
+        rsm_x, rsm_y, rsm_z, rsm_cellsize = read_griddata(rsmf,true,true)
     end
 
     # determine ground elevation of points

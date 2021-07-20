@@ -26,10 +26,6 @@ include("Can2Hemi_Functions.jl")
 include("Solar_Functions.jl")
 include("CHM2Rad.jl")
 include("LAS2Rad.jl")
-# include("LAS2Rad_slopes.jl")
-# include("TLS2Rad.jl")
-# include("LAS2Rad_terrain.jl")
-# include("CanRad_Prep.jl")
 
 export
     # CanRad_Prep,
