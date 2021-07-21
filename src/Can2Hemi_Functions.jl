@@ -305,7 +305,7 @@ function prepcrtdat(mat_in_x::Array{Float64,1},mat_in_y::Array{Float64,1},mat_in
     mat_in_r = mat_in_r[sdx];
     idx2 = vec(idx[sdx,:]);
 
-    rmdx   = (nonunique(convert(DataFrames.DataFrame,hcat(mat_in_x,mat_in_y))));
+    rmdx = nonunique(DataFrame(hcat(mat_in_x,mat_in_y),:auto))
     deleteat!(mat_in_x,rmdx)
     deleteat!(mat_in_y,rmdx)
     deleteat!(mat_in_r,rmdx)
@@ -321,7 +321,7 @@ function prepterdat(matcrt_x::Array{Float64,1},matcrt_y::Array{Float64,1})
     matcrt_x = round.(matcrt_x,digits = 1)
     matcrt_y = round.(matcrt_y,digits = 1)
 
-    rmdx   = (nonunique(convert(DataFrames.DataFrame,hcat(matcrt_x,matcrt_y))));
+    rmdx = nonunique(DataFrame(hcat(matcrt_x,matcrt_y),:auto));
 
     return deleteat!(matcrt_x,rmdx), deleteat!(matcrt_y,rmdx)
 
