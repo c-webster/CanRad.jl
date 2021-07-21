@@ -145,14 +145,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         kdtreedims = size(g_coorcrt,1)
     end
 
-    # get constants
-    rbins = collect(0:(surf_peri-0)/5:surf_peri)
-    tol   = tolerance.*collect(reverse(0.75:0.05:1))
-
-    if calc_trans
-        drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for = get_constants(g_img,loc_time)
-    end
-
     ###############################################################################
     # > create the output files
 
@@ -194,6 +186,15 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             mkdir(outdir*"/"*"ProgressLastPoint/")
         end
         writedlm(outdir*"/"*"ProgressLastPoint/"*progtextinit,NaN)
+    end
+
+    ###############################################################################
+    # get constants
+    rbins = collect(0:(surf_peri-0)/5:surf_peri)
+    tol   = tolerance.*collect(reverse(0.75:0.05:1))
+
+    if calc_trans
+        drad, im_centre, lens_profile_tht, lens_profile_rpix, trans_for = get_constants(g_img,loc_time)
     end
 
     ###############################################################################
