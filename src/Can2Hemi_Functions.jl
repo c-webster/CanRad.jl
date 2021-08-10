@@ -1,6 +1,8 @@
 function findelev(tmpc_x::Array{Float64,1},tmpc_y::Array{Float64,1},tmpc_z::Array{Float64,1},x::Any,y::Any,
                         peri::Int64=10,method::String="linear")
-    pc_x, pc_y, pc_z, _ = clipdat(tmpc_x,tmpc_y,tmpc_z,Int.(floor.([x y])),peri)
+    limits = hcat((floor(minimum(x))-peri),(ceil(maximum(x))+peri),
+                    (floor(minimum(y))-peri),(ceil(maximum(y))+peri))
+    pc_x, pc_y, pc_z, _ = clipdat(tmpc_x,tmpc_y,tmpc_z,limits,peri)
     v = pyinterp.griddata(hcat(pc_x,pc_y), pc_z, (x, y), method="linear")
     return round.(v,digits=2)
 end

@@ -29,24 +29,22 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     ################################################################################
     # > Import surface data and clip
 
-    chm_x, chm_y, chm_z, chm_cellsize = read_griddata(chmf,true,true)
+    # get analysis limits
+    limits = hcat((floor(minimum(pts_x))-surf_peri),(ceil(maximum(pts_x))+surf_peri),
+                    (floor(minimum(pts_y))-surf_peri),(ceil(maximum(pts_y))+surf_peri))
 
-    _, _, chm_lavd, _ = read_griddata(lavdf,true,true)
+    chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits,true,true)
+
+    ch_x, ch_y, chm_lavd, _ = read_griddata(lavdf,true,true)
+    _, _, chm_lavd, _ = clipdat(copy(ch_x),copy(ch_y),chm_lavd,limits)
 
     if @isdefined(cbhf)
-        _, _, chm_b, _ = read_griddata(cbhf,true)
+        chb_x, chb_y, chm_b, _ = read_griddata(cbhf,true)
+        _, _, chm_b, _    = clipdat(copy(chb_x),copy(chb_y),chm_b,limits)
     else
         chm_b = fill(0.0,size(chm_z))
         chm_b[chm_z .>= 2] .= 2.0
     end
-
-    # get analysis limits
-    limits = Int.(floor.(hcat(vcat(minimum(pts_x),maximum(pts_x)),vcat(minimum(pts_y),maximum(pts_y)))))
-
-    # clip the CHM data to the analysis limits + surf_peri
-    _, _, chm_lavd, _ = clipdat(copy(chm_x),copy(chm_y),chm_lavd,limits,surf_peri)
-    _, _, chm_b, _ = clipdat(copy(chm_x),copy(chm_y),chm_b,limits,surf_peri)
-    chm_x, chm_y, chm_z, _ = clipdat(chm_x,chm_y,chm_z,limits,surf_peri)
 
     # load the trunk data
     if trunks
@@ -73,18 +71,22 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     if terrain_highres
-        if tilt
-            dtm_x, dtm_y, dtm_z, dtm_s, dtm_a, dtm_cellsize = importdtm(dtmf,tilt)
-        else
-            dtm_x, dtm_y, dtm_z, dtm_cellsize = importdtm(dtmf,tilt)
-        end
-        dtm_x, dtm_y, dtm_z, _ = clipdat(dtm_x,dtm_y,dtm_z,limits,surf_peri*4)
+
+        limits = hcat((floor(minimum(pts_x))-surf_peri*2),(ceil(maximum(pts_x))+surf_peri*2),
+                        (floor(minimum(pts_y))-surf_peri*2),(ceil(maximum(pts_y))+surf_peri*2))
+
+        dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata_window(dtmf,limits,true, true)
+
     end
 
     if terrain_lowres
-        dem_x, dem_y, dem_z, dem_cellsize = read_griddata(demf,true)
-        dem_x, dem_y, dem_z, _ = clipdat(dem_x,dem_y,dem_z,limits,terrain_peri)
+
+        limits = hcat((floor(minimum(pts_x))-terrain_peri),(ceil(maximum(pts_x))+terrain_peri),
+                        (floor(minimum(pts_y))-terrain_peri),(ceil(maximum(pts_y))+terrain_peri))
+
+        dem_x, dem_y, dem_z, dem_cellsize = read_griddata_window(demf,limits,true,true)
         pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100)
+
     end
 
     # Get elevation of surface and evaluation points

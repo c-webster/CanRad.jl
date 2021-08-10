@@ -32,8 +32,10 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     dsm_x, dsm_y, dsm_z = readlas(dsmf)
 
     # clip dsm within eval-peri of min/max pts
-    dsm_x, dsm_y, dsm_z, _ = clipdat(dsm_x,dsm_y,dsm_z,pts[:,1:2],surf_peri)
-    limits = Int.(floor.(hcat(vcat(minimum(dsm_x),maximum(dsm_x)),vcat(minimum(dsm_y),maximum(dsm_y)))))
+    limits = hcat((floor(minimum(pts_x))-surf_peri),(ceil(maximum(pts_x))+surf_peri),
+                    (floor(minimum(pts_y))-surf_peri),(ceil(maximum(pts_y))+surf_peri))
+
+    dsm_x, dsm_y, dsm_z, _ = clipdat(dsm_x,dsm_y,dsm_z,limits,surf_peri)
 
     # import, clip and prepare terrain daa
     if terrain_highres || terrain_lowres || horizon_line
@@ -44,19 +46,23 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     # load and clip the dtm
     if terrain_highres
-        if tilt
-            dtm_x, dtm_y, dtm_z, dtm_s, dtm_a, dtm_cellsize = importdtm(dtmf,tilt)
-        else
-            dtm_x, dtm_y, dtm_z, dtm_cellsize = importdtm(dtmf,tilt)
-        end
-        dtm_x, dtm_y, dtm_z, _ = clipdat(dtm_x,dtm_y,dtm_z,limits,surf_peri*4)
+
+        limits = hcat((floor(minimum(pts_x))-surf_peri*2),(ceil(maximum(pts_x))+surf_peri*2),
+                        (floor(minimum(pts_y))-surf_peri*2),(ceil(maximum(pts_y))+surf_peri*2))
+
+        dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata_window(dtmf,limits,true, true)
+
     end
 
     # load and clip the dem
     if terrain_lowres
-        dem_x, dem_y, dem_z, dem_cellsize = read_griddata(demf,true,true)
-        dem_x, dem_y, dem_z, _ = clipdat(dem_x,dem_y,dem_z,limits,terrain_peri)
+
+        limits = hcat((floor(minimum(pts_x))-terrain_peri),(ceil(maximum(pts_x))+terrain_peri),
+                        (floor(minimum(pts_y))-terrain_peri),(ceil(maximum(pts_y))+terrain_peri))
+
+        dem_x, dem_y, dem_z, dem_cellsize = read_griddata_window(demf,limits,true,true)
         pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100)
+
     end
 
     # load the buildings
@@ -76,7 +82,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     # > Calculate slope and aspect from dtm data
-    if tilt
+    if tilt # disabled in Preparatory_Functions.jl
         pts_slp = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_s),pts_x,pts_y)
         pts_asp = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_a),pts_x,pts_y)
     else
@@ -269,7 +275,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                     end
                 end
 
-                if tilt
+                if tilt # disabled in Preparatory_Functions.jl
                     # transform image matrix
                     imcX, imcY = getimagecentre(pts_slp[crx],pts_asp[crx])
                     gcrcrt = fill(NaN,size(g_coorcrt))
