@@ -1,4 +1,4 @@
-function loaddbh(fname::String,limits::Array{Int64,2},peri::Int64)
+function loaddbh(fname::String,limits::Array{Float64,2},peri::Int64)
     dat, _ = readdlm(fname,'\t',header=true)
 
     dat_x, dat_y, dat_z, rmdx = clipdat(dat[:,1],dat[:,2],dat[:,3],limits,peri)
@@ -18,7 +18,7 @@ function loaddbh(fname::String,limits::Array{Int64,2},peri::Int64)
     return dat_x, dat_y, dat_z, dat_r, dat_tc
 end
 
-function loadltc_txt(fname::String,limits::Array{Int64,2},peri::Int64)
+function loadltc_txt(fname::String,limits::Array{Float64,2},peri::Int64)
     ltc, _ = readdlm(fname,'\t',header=true)
     replace!(ltc, -9999=>NaN)
     _, _, _, rmdx = clipdat(ltc[:,1],ltc[:,2],ltc[:,3],limits,peri)
@@ -28,7 +28,7 @@ end
 
 
 
-function loadltc_laz(fname::String,limits::Array{Int64,2},peri::Int64,
+function loadltc_laz(fname::String,limits::Array{Float64,2},peri::Int64,
             dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_e::Array{Float64,1},
             lastc::Array{Float64,1})
 

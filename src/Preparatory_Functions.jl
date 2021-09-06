@@ -45,6 +45,11 @@ function compatability_check(dat_in,par_in)
         par_in["horizon_line"] = false
     end
 
+    # disable tilt option since it is not implemented properly
+    if tilt
+        par_in["tilt"] = false
+    end
+
     return dat_in, par_in
 
 end
@@ -58,18 +63,9 @@ function extract(d::Dict)
     return expr
 end
 
-function clipdat(pc_x::Array{Float64,1},pc_y::Array{Float64,1},pc_z::Array{Float64,1},pts::Array{Int64,2},peri::Int64)
-    rmidx = (pc_x.<(minimum(pts[:,1])-peri)) .| (pc_x.>(maximum(pts[:,1])+peri)) .|
-                (pc_y.<(minimum(pts[:,2])-peri)) .| (pc_y.>(maximum(pts[:,2])+peri))
-    deleteat!(pc_x,rmidx)
-    deleteat!(pc_y,rmidx)
-    deleteat!(pc_z,rmidx)
-    return pc_x, pc_y, pc_z, rmidx
-end
-
-function clipdat(pc_x::Array{Float64,1},pc_y::Array{Float64,1},pc_z::Array{Float64,1},pts,peri::Int64)
-    rmidx = (pc_x.<(minimum(pts[:,1])-peri)) .| (pc_x.>(maximum(pts[:,1])+peri)) .|
-                (pc_y.<(minimum(pts[:,2])-peri)) .| (pc_y.>(maximum(pts[:,2])+peri))
+function clipdat(pc_x::Array{Float64,1},pc_y::Array{Float64,1},pc_z::Array{Float64,1},limits,peri=0::Int64)
+    rmidx = (pc_x.<(limits[1]-peri)) .| (pc_x.>(limits[2]+peri)) .|
+                (pc_y.<(limits[3]-peri)) .| (pc_y.>(limits[4]+peri))
     deleteat!(pc_x,rmidx)
     deleteat!(pc_y,rmidx)
     deleteat!(pc_z,rmidx)
