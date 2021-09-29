@@ -139,7 +139,7 @@ end
 
 
 function create_mat(radius::Int64)
-    tgrid = Matlab.meshgrid(collect(1:radius*2),collect(1:radius*2))
+    tgrid = Int.((1:radius*2)' .* ones(radius*2)), Int.(ones(radius*2)' .* (1:radius*2))
 
     grad  = sqrt.((tgrid[1] .- radius .- 1).^2 .+ (tgrid[2] .- radius .- 1).^2)
     grad[grad .> radius] .= NaN
