@@ -1,6 +1,6 @@
 module CanRad
 
-using LasIO, LazIO, DelimitedFiles, DataStructures,
+using DelimitedFiles, DataStructures,
     Statistics, Dates, Interpolations,
     DataFrames, Formatting, Distributed, Distributions,
     SpatialFileIO
