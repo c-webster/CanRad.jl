@@ -54,7 +54,7 @@ function calc_transmissivity(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1
 
 
     keepix            = findall(sol_tht .<= 90)
-    prad              = fill(NaN,(size(sol_tht,1)))
+    prad              = fill(0.0,(size(sol_tht,1)))
     prad[keepix]      = LinearInterpolation(lens_profile_tht,lens_profile_rpix*radius)(sol_tht[keepix])
 
     x                 = (im_centre .+ sin.(deg2rad.(sol_phi[keepix])) .* prad[keepix]) .- (imcX / (90 / radius));
@@ -85,7 +85,13 @@ function calculateSWR(trans_for_wgt::Array{Float64,1},sol_sinelev::Array{Float64
 
     # swr_open =  max.(1367*sol_sinelev,0)
 
-    trans_atm      = swr_open./max.(1367*sol_sinelev,0)
+    # check if swr_open is maximum potential and set trans_atm to 1 for all time steps
+    if swr_open == max.(1367*sol_sinelev,0)
+        trans_atm      = ones(size(swr_open))
+    else
+        trans_atm      = swr_open./max.(1367*sol_sinelev,0)
+    end
+
     dif_frac       = ones(size(loc_time))
 
     fix            = findall(sol_sinelev .> 0)

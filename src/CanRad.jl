@@ -1,22 +1,17 @@
 module CanRad
 
-using LasIO, LazIO, DelimitedFiles, DataStructures,
-    Statistics, VectorizedRoutines, Dates, Interpolations,
-    Match, DataFrames, Formatting, Distributed, Distributions,
-    SpatialFileIO
-     # PolygonOps, StaticArrays
+using DelimitedFiles, DataStructures,
+    Statistics, Dates, Interpolations,
+    DataFrames, Formatting, Distributed, Distributions,
+    SpatialFileIO, NCDatasets
 
 using Conda, PyCall
 
 # Conda.add("scipy")
-# Conda.add("netCDF4")
-# Conda.add("numpy")
 
 function __init__()
     @eval global pyinterp  = pyimport("scipy.interpolate")
     @eval global scipyspat = pyimport("scipy.spatial")
-    @eval global netcdf    = pyimport("netCDF4")
-    @eval global np        = pyimport("numpy")
 end
 
 

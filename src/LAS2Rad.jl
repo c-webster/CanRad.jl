@@ -356,19 +356,23 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 #export the data [append to netcdf]
                 if progress; start = time(); end
 
-                Vf_weighted[crx] = np.array(Vf_w)
-                Vf_flat[crx]     = np.array(Vf_f)
+                Vf_weighted[crx] = Int(round(Vf_w*100))
+                Vf_flat[crx]     = Int(round(Vf_f*100))
 
                 if calc_trans
-                    for_tau[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,transfor,tstep)))
+                    for_tau[:,crx] = Int.(round.((vec(aggregate_data(loc_time,loc_time_agg,transfor,tstep))).*100))
                     if calc_swr > 0
-                        swr_tot[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,swrtot,tstep)))
-                        swr_dir[crx] = np.array(vec(aggregate_data(loc_time,loc_time_agg,swrdir,tstep)))
+                        if calc_swr == 2
+                            swr_tot[isnan.(swr_tot)] .= -9999
+                            swr_dir[isnan.(swr_dir)] .= -9999
+                        end
+                        swr_tot[:,crx] = Int.(round.(vec(aggregate_data(loc_time,loc_time_agg,swrtot,tstep))))
+                        swr_dir[:,crx] = Int.(round.(vec(aggregate_data(loc_time,loc_time_agg,swrdir,tstep))))
                     end
                 end
 
                 if save_images
-                    SHIs[crx] = np.array(transpose(mat2ev))
+                    SHIs[:,:,crx] = mat2ev
                 end
 
                 if progress
@@ -394,8 +398,8 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
         end # end crx
 
-        dataset.close()
-        if save_images; images.close(); end
+        close(dataset)
+        if save_images; close(images); end
 
         println("done with "*taskID)
 
