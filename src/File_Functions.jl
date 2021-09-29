@@ -68,71 +68,39 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
 
     outfile  = outdir*"/Output_"*outstr*".nc"
 
-    if append_file
-        dataset  = netcdf.Dataset(outfile,"r+")
+    # append_file option removed September 2021 (eventually should be included)
 
-        Vf_weighted  = dataset.variables["Vf_weighted"]
-        Vf_flat      = dataset.variables["Vf_flat"]
+    ds = NCDataset(outfile,"c",format=:netcdf4_classic)
 
-        if calc_trans
-            # swr_tot = dataset.variables["SWR_tot"]
-            # swr_dir = dataset.variables["SWR_dir"]
-            for_tau = dataset.variables["Forest_Transmissivity"]
-            return for_tau, Vf_weighted, Vf_flat, dataset
+    defDim(ds,"Coordinates",size(pts,1))
+    defVar(ds,"easting",pts[:,1],("Coordinates",))
+    defVar(ds,"northing",pts[:,2],("Coordinates",))
+
+    Vf_weighted = defVar(ds,"Vf_weighted",Int32,("Coordinates",),deflatelevel=5,
+                            attrib=["scale_factor"=>0.01,])
+    Vf_flat     = defVar(ds,"Vf_flat",Int32,("Coordinates",),deflatelevel=5,
+                            attrib=["scale_factor"=>0.01,])
+
+    if calc_trans
+        defDim(ds,"datetime",size(loc_time,1))
+        defVar(ds,"datetime",loc_time,("datetime",))
+
+        for_tau = defVar(ds,"Forest_Transmissivity",Int32,("datetime","Coordinates",),
+                            deflatelevel=5,attrib=["scale_factor"=>0.01,])
+
+        if calc_swr > 0
+            swr_tot = defVar(ds,"SWR_total",Int32,("datetime","Coordinates",),
+                                deflatelevel=5,fillvalue = Int32(-9999),
+                                attrib=["units"=>"Watts per metre squared",])
+            swr_dir = defVar(ds,"SWR_direct",Int32,("datetime","Coordinates",),
+                                deflatelevel=5,fillvalue = Int32(-9999),
+                                attrib=["units"=>"Watts per metre squared",])
+            return swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, ds
         else
-            return Vf_weighted, Vf_flat, dataset
+            return for_tau, Vf_weighted, Vf_flat, ds
         end
-
     else
-
-        if calc_trans
-            writedlm(outdir*"/Time_"*outstr*".txt",Dates.format.(loc_time, "yyyy.mm.dd HH:MM:SS"))
-        end
-
-        dataset = netcdf.Dataset(outfile,"w",format="NETCDF4_CLASSIC")
-
-        locxy = dataset.createDimension("loc_XY",size(pts,1))
-        ptsn  = dataset.createDimension("ptsn",2)
-
-        Vf_weighted  = dataset.createVariable("Vf_weighted",np.float32,("loc_XY"),zlib="True",
-                                            least_significant_digit=3)
-        Vf_flat      = dataset.createVariable("Vf_flat",np.float32,("loc_XY"),zlib="True",
-                                            least_significant_digit=3)
-        Coors        = dataset.createVariable("Coordinates",np.float32,("loc_XY","ptsn"),zlib="TRUE",
-                                            least_significant_digit=1)
-
-        if size(pts,1) == 1
-            Coors[1] = np.array(pts[1,1:2])
-        else
-            for cx in eachindex(pts[:,1])
-             Coors[cx] = np.array(pts[cx,:])
-            end
-        end
-
-        if calc_trans
-
-            locdt = dataset.createDimension("loc_DT",size(loc_time,1))
-
-            for_tau = dataset.createVariable("Forest_Transmissivity",np.float32,("loc_XY","loc_DT"),zlib="True",
-                                                least_significant_digit=3)
-
-            if calc_swr > 0
-
-                swr_tot = dataset.createVariable("SWR_tot",np.float32,("loc_XY","loc_DT"),zlib="True",
-                                                    least_significant_digit=3)
-
-                swr_dir = dataset.createVariable("SWR_dir",np.float32,("loc_XY","loc_DT"),zlib="True",
-                                                    least_significant_digit=3)
-
-                return swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset
-
-            else
-                return for_tau, Vf_weighted, Vf_flat, dataset
-            end
-        else
-            return Vf_weighted, Vf_flat, dataset
-        end
-
+        return Vf_weighted, Vf_flat, ds
     end
 
 end
@@ -142,35 +110,19 @@ function create_exmat(outdir::String,outstr::String,pts::Array{Float64,2},g_img:
 
     outfile  = outdir*"/SHIs_"*outstr*".nc"
 
-    if append_file
-        images = netcdf.Dataset(outfile,"r+")
-        SHIs   = images.variables["SHI"]
-    else
+    # append_file option removed September 2021 (eventually should be included)
 
-        images   = netcdf.Dataset(outfile,"w",format="NETCDF4_CLASSIC")
+        images   = NCDataset(outfile,"c",format=:netcdf4_classic)
 
         dims     = size(g_img)
 
-        loc1  = images.createDimension("loc1",size(g_img)[1])
-        loc2  = images.createDimension("loc2",size(g_img)[2])
-        locxy = images.createDimension("locxy",size(pts,1))
-        ptsn  = images.createDimension("ptsn",2)
+        defDim(images,"img_x",size(g_img,1))
+        defDim(images,"img_y",size(g_img,2))
+        defDim(images,"Coordinates",size(pts,1))
 
-        SHIs  = images.createVariable("SHI",np.int8,("locxy","loc1","loc2"),zlib="TRUE",
-                                        least_significant_digit=1)
-
-        Coors = images.createVariable("Coordinates",np.float32,("locxy","ptsn"),zlib="TRUE",
-                                        least_significant_digit=1)
-
-        if size(pts,1) == 1
-            Coors = np.array(pts[1,1:2])
-        else
-            for cx in eachindex(pts[:,1])
-             Coors[cx] = np.array(pts[cx,:])
-            end
-        end
-
-    end
+        SHIs = defVar(images,"SHI",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
+        defVar(images,"easting",pts[:,1],("Coordinates",),deflatelevel=1)
+        defVar(images,"northing",pts[:,2],("Coordinates",),deflatelevel=1)
 
     return SHIs, images
 
