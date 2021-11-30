@@ -35,8 +35,28 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits,true,true)
 
-    ch_x, ch_y, chm_lavd, _ = read_griddata(lavdf,true,true)
-    _, _, chm_lavd, _ = clipdat(copy(ch_x),copy(ch_y),chm_lavd,limits)
+    if OSHD
+
+        # load forest mix ratio and correct for lavd
+        mr_x, mr_y, mr_val, mr_cellsize = read_griddata_window(mrdf,limits,true,true)
+
+        mr_val[mr_val .== 0] .= 1.0
+
+        temp = reverse(collect(0.1:0.4/9999:0.67))
+        lavd_val = fill(0.0,size(mr_val))
+
+        for vx in eachindex(mr_val)
+        	lavd_val[vx] = temp[Int.(mr_val[vx])]
+        end
+
+        chm_lavd = findelev(copy(mr_x),copy(mr_y),copy(lavd_val),chm_x,chm_y)
+
+    else
+
+        ch_x, ch_y, chm_lavd, _ = read_griddata(lavdf,true,true)
+        _, _, chm_lavd, _ = clipdat(copy(ch_x),copy(ch_y),chm_lavd,limits)
+
+    end
 
     if @isdefined(cbhf)
         chb_x, chb_y, chm_b, _ = read_griddata(cbhf,true)
@@ -79,7 +99,8 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     end
 
-    if terrain_lowres
+    # Get the low-res terrain data
+    if terrain_lowres || !horizon_line
 
         limits = hcat((floor(minimum(pts_x))-terrain_peri),(ceil(maximum(pts_x))+terrain_peri),
                         (floor(minimum(pts_y))-terrain_peri),(ceil(maximum(pts_y))+terrain_peri))
@@ -113,6 +134,26 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         imcX = 0.0; imcY = 0.0
     end
 
+    if horizon_line
+
+        xllcorner = parse(Int,(split(taskID,"_")[2]))[1]
+        yllcorner = parse(Int,(split(taskID,"_")[3]))[1]
+
+        hlmds = NCDataset(hlmf,"r")
+        xdx = findall(hlmds["easting"][:,:] .== xllcorner)
+        ydx = findall(hlmds["northing"][:,:] .== yllcorner)
+
+        pt_dem_x = vec(hlmds["hl_x"][ydx,xdx,:])
+        pt_dem_y = vec(hlmds["hl_y"][ydx,xdx,:])
+        close(hlmds)
+
+
+    elseif terrain_tile && !horizon_line
+
+        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
+
+    end
+
     ###############################################################################
     # Load meteorological data
 
@@ -129,13 +170,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     ###############################################################################
     # > Tile preparation
 
-    if horizon_line
-        pt_dem_x = readdlm(hldir*"/HL_"*taskID)[:,1]
-        pt_dem_y = readdlm(hldir*"/HL_"*taskID)[:,2]
-    elseif terrain_tile && !horizon_line
-        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
-    end
-
     # create an empty matrix for Vf calculation
     g_rad, g_coorpol, g_coorcrt, g_img = create_mat(radius)
     g_coorcrt = ((g_coorcrt .- radius) ./ radius) .* 90
@@ -150,7 +184,10 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     ###############################################################################
     # > create the output files
 
-    if batch
+    if OSHD
+        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3]
+        global outdir = exdir*"/"*outstr
+    elseif batch
         outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3][1:end-4]
         global outdir = exdir*"/"*outstr
     else
@@ -222,7 +259,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                     pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_dem_x),append!(pt_dtm_y,pt_dem_y));
                 elseif terrain_highres
                     pt_dtm_x, pt_dtm_y = prepterdat(pt_dtm_x,pt_dtm_y)
-                elseif terrain_lowres && !terrain_highres
+                elseif (terrain_lowres && !terrain_highres)
                     pt_dtm_x, pt_dtm_y = prepterdat(pt_dem_x,pt_dem_y)
                 end
             end
