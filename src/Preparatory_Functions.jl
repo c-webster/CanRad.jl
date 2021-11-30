@@ -50,6 +50,10 @@ function compatability_check(dat_in,par_in)
         par_in["tilt"] = false
     end
 
+    if !@isdefined(OSHD)
+        par_in["OSHD"] = false
+    end
+
     return dat_in, par_in
 
 end
