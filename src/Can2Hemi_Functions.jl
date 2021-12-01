@@ -225,7 +225,7 @@ function cart2pol(in_x::Array{Float64,1},in_y::Array{Float64,1})
 end
 
 
-function fillterrain(rphi::Array{Float64,1},rtht::Array{Float64,1},slp::Float64)
+function fillterrain(rphi::Array{Float64,1},rtht::Array{Float64,1},slp=0.0::Float64)
 
     min_rphi = minimum(filter(!isnan,rtht))
     int = size(collect(min_rphi:0.5:(90+slp)),1)

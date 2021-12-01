@@ -139,13 +139,28 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         xllcorner = parse(Int,(split(taskID,"_")[2]))[1]
         yllcorner = parse(Int,(split(taskID,"_")[3]))[1]
 
+        if xllcorner % 250 .!== 0.0
+            xllcorner = 250 * round(xllcorner/250)
+        end
+        if yllcorner % 250 .!== 0.0
+            yllcorner = 250 * round(yllcorner/250)
+        end
+
         hlmds = NCDataset(hlmf,"r")
         xdx = findall(hlmds["easting"][:,:] .== xllcorner)
         ydx = findall(hlmds["northing"][:,:] .== yllcorner)
 
-        pt_dem_x = vec(hlmds["hl_x"][ydx,xdx,:])
-        pt_dem_y = vec(hlmds["hl_y"][ydx,xdx,:])
+        phi = vec(hlmds["phi"][:])
+        tht = vec(hlmds["tht"][ydx,xdx,:])
         close(hlmds)
+
+        rphi = collect(-pi:pi/1080:pi)
+        rtht = Array{Float64,1}(undef,size(rphi,1))
+
+        rtht = LinearInterpolation(phi,vec(tht))(rphi)
+
+        pol_phi, pol_tht = fillterrain(rphi,rtht,0.0)
+        pt_dem_x, pt_dem_y = pol2cart(pol_phi,pol_tht)
 
 
     elseif terrain_tile && !horizon_line
