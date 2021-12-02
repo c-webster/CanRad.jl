@@ -150,11 +150,12 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         xdx = findall(hlmds["easting"][:,:] .== xllcorner)
         ydx = findall(hlmds["northing"][:,:] .== yllcorner)
 
-        phi = vec(hlmds["phi"][:])
-        tht = vec(hlmds["tht"][ydx,xdx,:])
+        # phi = vec(hlmds["phi"][:])
+        phi = (-pi:(pi - -pi)/89:pi) .- pi/2
+        tht = (vec(hlmds["tht"][ydx,xdx,:]))
         close(hlmds)
 
-        rphi = collect(-pi:pi/1080:pi)
+        rphi = collect(-pi:pi/1080:pi)  .- pi/2
         rtht = Array{Float64,1}(undef,size(rphi,1))
 
         rtht = LinearInterpolation(phi,vec(tht))(rphi)
