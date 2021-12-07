@@ -35,35 +35,13 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits,true,true)
 
-    if OSHD
-
-        # load forest mix ratio and correct for lavd
-        mr_x, mr_y, mr_val, mr_cellsize = read_griddata_window(mrdf,limits,true,true)
-
-        mr_val[mr_val .== 0] .= 1.0
-
-        temp = reverse(collect(0.1:0.4/9999:0.67))
-        lavd_val = fill(0.0,size(mr_val))
-
-        for vx in eachindex(mr_val)
-        	lavd_val[vx] = temp[Int.(mr_val[vx])]
-        end
-
-        chm_lavd = findelev(copy(mr_x),copy(mr_y),copy(lavd_val),chm_x,chm_y)
-
-    else
-
-        ch_x, ch_y, chm_lavd, _ = read_griddata(lavdf,true,true)
-        _, _, chm_lavd, _ = clipdat(copy(ch_x),copy(ch_y),chm_lavd,limits)
-
-    end
-
     if @isdefined(cbhf)
         chb_x, chb_y, chm_b, _ = read_griddata(cbhf,true)
         _, _, chm_b, _    = clipdat(copy(chb_x),copy(chb_y),chm_b,limits)
     else
         chm_b = fill(0.0,size(chm_z))
-        chm_b[chm_z .>= 2] .= 2.0
+        # chm_b[chm_z .>= 2] .= 2.0
+
     end
 
     # load the trunk data
@@ -81,7 +59,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     ################################################################################
-    # > Import, clip and prepare terrain daa
+    # > Import, clip and prepare terrain data
 
     # set terrain = true if any terrain is to be plotted in the final image matrix
     if terrain_highres || terrain_lowres || horizon_line
@@ -167,6 +145,44 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     elseif terrain_tile && !horizon_line
 
         pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
+
+    end
+
+    ###############################################################################
+    # Get crown volume density information
+
+    if OSHD
+
+        # load forest mix ratio and correct for lavd
+        mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits,true,true)
+        mr_val[mr_val .== 0] .= 1.0
+
+        limits_tile = hcat((floor(minimum(pts_x))),(ceil(maximum(pts_x))),
+                        (floor(minimum(pts_y))),(ceil(maximum(pts_y))))
+        for_type = mode(read_griddata_window(fcdf,limits_tile,true,true)[3])
+
+        # make sure areas in Jura and central Switzerland become alpine forests
+        if median(pts_e) > 1000
+            for_type = 2
+        end
+
+        if for_type == 1
+            temp = reverse(collect(0.02:(0.2-0.02)/9999:0.2))
+        elseif for_type == 2
+            temp = reverse(collect(0.05:(0.67-0.05)/9999:0.67))
+        end
+        lavd_val = fill(0.0,size(mr_val))
+
+        for vx in eachindex(mr_val)
+            lavd_val[vx] = temp[Int.(mr_val[vx])]
+        end
+
+        chm_lavd = findelev(copy(mr_x),copy(mr_y),copy(lavd_val),chm_x,chm_y,10,"cubic")
+
+    else
+
+        ch_x, ch_y, chm_lavd, _ = read_griddata(lavdf,true,true)
+        chm_lavd = clipdat(copy(ch_x),copy(ch_y),chm_lavd,limits)[3]
 
     end
 
@@ -341,9 +357,10 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                     mat2ev = fillmat(kdtree,hcat(pt_chm_x[ridx],pt_chm_y[ridx]),tol[zdx],kdtreedims,30,radius,mat2ev);
                 end
                 # include canopy surface points
-                mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts[pt_chm_r_pts .> 10],pt_chm_y_pts[pt_chm_r_pts .> 10]),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
+                # mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts[pt_chm_r_pts .> 10],pt_chm_y_pts[pt_chm_r_pts .> 10]),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
                 if terrain
-                    mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x_thick,pt_dtm_x),vcat(pt_chm_y_thick,pt_dtm_y)),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
+                    # mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x_thick,pt_dtm_x),vcat(pt_chm_y_thick,pt_dtm_y)),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
+                    mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
                 else
                     mat2ev = fillmat(kdtree,hcat(pt_chm_x_thick,pt_chm_y_thick),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
                 end

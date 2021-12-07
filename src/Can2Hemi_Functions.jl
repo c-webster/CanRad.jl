@@ -1,9 +1,9 @@
 function findelev(tmpc_x::Array{Float64,1},tmpc_y::Array{Float64,1},tmpc_z::Array{Float64,1},x::Any,y::Any,
-                        peri::Int64=10,method::String="linear")
+                        peri::Int64=10,interp_method::String="linear")
     limits = hcat((floor(minimum(x))-peri),(ceil(maximum(x))+peri),
                     (floor(minimum(y))-peri),(ceil(maximum(y))+peri))
     pc_x, pc_y, pc_z, _ = clipdat(tmpc_x,tmpc_y,tmpc_z,limits,peri)
-    v = pyinterp.griddata(hcat(pc_x,pc_y), pc_z, (x, y), method="linear")
+    v = pyinterp.griddata(hcat(pc_x,pc_y), pc_z, (x, y), method=interp_method)
     return round.(v,digits=2)
 end
 
@@ -424,7 +424,9 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
     rphi = collect(-pi:pi/1080:pi)
     rtht = Array{Float64,1}(undef,size(rphi,1))
 
-    rtht = LinearInterpolation(phi_bins,vec(mintht))(rphi)
+    # increase sampling along horizonline to create opaque terrain
+    # only do across one full circle
+    rtht = LinearInterpolation(phi_bins[181:541],vec(mintht[181:541]))(rphi)
 
     pol_phi, pol_tht = fillterrain(rphi,rtht,slp)
 
