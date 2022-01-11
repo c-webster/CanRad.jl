@@ -30,14 +30,14 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     # > Import surface data and clip
 
     # get analysis limits
-    limits = hcat((floor(minimum(pts_x))-surf_peri),(ceil(maximum(pts_x))+surf_peri),
+    limits_canopy = hcat((floor(minimum(pts_x))-surf_peri),(ceil(maximum(pts_x))+surf_peri),
                     (floor(minimum(pts_y))-surf_peri),(ceil(maximum(pts_y))+surf_peri))
 
-    chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits,true,true)
+    chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits_canopy,true,true)
 
     if @isdefined(cbhf)
         chb_x, chb_y, chm_b, _ = read_griddata(cbhf,true)
-        _, _, chm_b, _    = clipdat(copy(chb_x),copy(chb_y),chm_b,limits)
+        _, _, chm_b, _    = clipdat(copy(chb_x),copy(chb_y),chm_b,limits_canopy)
     else
         chm_b = fill(0.0,size(chm_z))
         # chm_b[chm_z .>= 2] .= 2.0
@@ -46,7 +46,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     # load the trunk data
     if trunks
-        dbh_x, dbh_y, dbh_z, dbh_r = loaddbh(dbhf,limits,50)
+        dbh_x, dbh_y, dbh_z, dbh_r = loaddbh(dbhf,limits_canopy,50)
         if !isempty(dbh_x)
             dbh_e = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),dbh_x,dbh_y)
             tsm_x, tsm_y, tsm_z  = calculate_trunks(dbh_x,dbh_y,dbh_z,dbh_r,30,0.1,dbh_e)
@@ -70,20 +70,20 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     if terrain_highres
 
-        limits = hcat((floor(minimum(pts_x))-surf_peri*2),(ceil(maximum(pts_x))+surf_peri*2),
+        limits_highres = hcat((floor(minimum(pts_x))-surf_peri*2),(ceil(maximum(pts_x))+surf_peri*2),
                         (floor(minimum(pts_y))-surf_peri*2),(ceil(maximum(pts_y))+surf_peri*2))
 
-        dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata_window(dtmf,limits,true, true)
+        dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata_window(dtmf,limits_highres,true, true)
 
     end
 
     # Get the low-res terrain data
     if terrain_lowres || !horizon_line
 
-        limits = hcat((floor(minimum(pts_x))-terrain_peri),(ceil(maximum(pts_x))+terrain_peri),
+        limits_lowres = hcat((floor(minimum(pts_x))-terrain_peri),(ceil(maximum(pts_x))+terrain_peri),
                         (floor(minimum(pts_y))-terrain_peri),(ceil(maximum(pts_y))+terrain_peri))
 
-        dem_x, dem_y, dem_z, dem_cellsize = read_griddata_window(demf,limits,true,true)
+        dem_x, dem_y, dem_z, dem_cellsize = read_griddata_window(demf,limits_lowres,true,true)
         pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100)
 
     end
@@ -154,7 +154,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if OSHD
 
         # load forest mix ratio and correct for lavd
-        mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits,true,true)
+        mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,true)
         mr_val[mr_val .== 0] .= 1.0
 
         limits_tile = hcat((floor(minimum(pts_x))),(ceil(maximum(pts_x))),
@@ -182,7 +182,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     else
 
         ch_x, ch_y, chm_lavd, _ = read_griddata(lavdf,true,true)
-        chm_lavd = clipdat(copy(ch_x),copy(ch_y),chm_lavd,limits)[3]
+        chm_lavd = clipdat(copy(ch_x),copy(ch_y),chm_lavd,limits_canopy)[3]
 
     end
 
