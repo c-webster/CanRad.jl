@@ -32,10 +32,10 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     dsm_x, dsm_y, dsm_z = readlas(dsmf)
 
     # clip dsm within eval-peri of min/max pts
-    limits = hcat((floor(minimum(pts_x))-surf_peri),(ceil(maximum(pts_x))+surf_peri),
+    limits_canopy = hcat((floor(minimum(pts_x))-surf_peri),(ceil(maximum(pts_x))+surf_peri),
                     (floor(minimum(pts_y))-surf_peri),(ceil(maximum(pts_y))+surf_peri))
 
-    dsm_x, dsm_y, dsm_z, _ = clipdat(dsm_x,dsm_y,dsm_z,limits,surf_peri)
+    dsm_x, dsm_y, dsm_z, _ = clipdat(dsm_x,dsm_y,dsm_z,limits_canopy,surf_peri)
 
     # import, clip and prepare terrain daa
     if terrain_highres || terrain_lowres || horizon_line
@@ -47,20 +47,20 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     # load and clip the dtm
     if terrain_highres
 
-        limits = hcat((floor(minimum(pts_x))-surf_peri*2),(ceil(maximum(pts_x))+surf_peri*2),
+        limits_highres = hcat((floor(minimum(pts_x))-surf_peri*2),(ceil(maximum(pts_x))+surf_peri*2),
                         (floor(minimum(pts_y))-surf_peri*2),(ceil(maximum(pts_y))+surf_peri*2))
 
-        dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata_window(dtmf,limits,true, true)
+        dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata_window(dtmf,limits_highres,true, true)
 
     end
 
     # load and clip the dem
     if terrain_lowres
 
-        limits = hcat((floor(minimum(pts_x))-terrain_peri),(ceil(maximum(pts_x))+terrain_peri),
+        limits_lowres = hcat((floor(minimum(pts_x))-terrain_peri),(ceil(maximum(pts_x))+terrain_peri),
                         (floor(minimum(pts_y))-terrain_peri),(ceil(maximum(pts_y))+terrain_peri))
 
-        dem_x, dem_y, dem_z, dem_cellsize = read_griddata_window(demf,limits,true,true)
+        dem_x, dem_y, dem_z, dem_cellsize = read_griddata_window(demf,limits_lowres,true,true)
         pts_e_dem = findelev(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,100)
 
     end
@@ -81,6 +81,10 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         pts_e     = fill(0.0,size(pts_x))
     end
 
+    # determine ground elevatation of las points if normalised
+
+
+
     # > Calculate slope and aspect from dtm data
     if tilt # disabled in Preparatory_Functions.jl
         pts_slp = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_s),pts_x,pts_y)
@@ -95,7 +99,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     # load the dbh
     if trunks
-        dbh_x, dbh_y, dbh_z, dbh_r, lastc = loaddbh(dbhf,limits,-50)
+        dbh_x, dbh_y, dbh_z, dbh_r, lastc = loaddbh(dbhf,limits_canopy,-50)
         if !isempty(dbh_x)
             dbh_e = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),dbh_x,dbh_y)
             tsm_x, tsm_y, tsm_z  = calculate_trunks(dbh_x,dbh_y,dbh_z,dbh_r,30,0.1,dbh_e)
@@ -110,9 +114,9 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     # load the ltc
     if branches
         if extension(ltcf) == ".txt"
-            ltc = loadltc_txt(ltcf,limits,0)
+            ltc = loadltc_txt(ltcf,limits_canopy,0)
         elseif extension(ltcf) == ".laz"
-            ltc = loadltc_laz(ltcf,limits,-50,dbh_x,dbh_y,dbh_e,lastc)
+            ltc = loadltc_laz(ltcf,limits_canopy,-50,dbh_x,dbh_y,dbh_e,lastc)
             ltc[:,3] = ltc[:,3] .- findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),ltc[:,1],ltc[:,2])
             ltc = ltc[setdiff(1:end, findall(ltc[:,3].<1)), :]
         end

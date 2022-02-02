@@ -41,7 +41,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     else
         chm_b = fill(0.0,size(chm_z))
         # chm_b[chm_z .>= 2] .= 2.0
-
     end
 
     # load the trunk data

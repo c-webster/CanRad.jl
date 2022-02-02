@@ -77,9 +77,11 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
     defVar(ds,"northing",pts[:,2],("Coordinates",))
 
     Vf_weighted = defVar(ds,"Vf_weighted",Int32,("Coordinates",),deflatelevel=5,
-                            attrib=["scale_factor"=>0.01,])
+                            attrib=["scale_factor"=>0.01, "comments" =>
+                            "weighted by cosine of zenith angle",])
     Vf_flat     = defVar(ds,"Vf_flat",Int32,("Coordinates",),deflatelevel=5,
-                            attrib=["scale_factor"=>0.01,])
+                            attrib=["scale_factor"=>0.01, "comments" =>
+                            "ratio of black to white pixels in the image",])
 
     if calc_trans
         defDim(ds,"datetime",size(loc_time,1))
