@@ -5,9 +5,9 @@ model      = "LAS" #LAS or CHM
 
 setf       = basefolder*model*"2Rad_Settings_test.jl"
 
-ptsf       = basefolder*"/test_gridpts.txt"
+ptsf       = joinpath(basefolder,"test_gridpts.txt")
 
-exdir      = basefolder*"/Output_tests_nDSM"
+exdir      = joinpath(basefolder,"Output_tests_nDSM")
 
 benchmark  = false # checks Vf values are the same as benchmark values
 
