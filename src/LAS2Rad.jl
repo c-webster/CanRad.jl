@@ -81,9 +81,12 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         pts_e     = fill(0.0,size(pts_x))
     end
 
-    # determine ground elevatation of las points if normalised
-
-
+    # determine true elevatation of las points if normalised
+    # (if the absolute difference of mode(lidar) and mode(terrain) is greater
+    #   than a realistic canopy height (60 m)
+    if abs(mode(dsm_z) - mode(dtm_z)) > 60 && terrain_highres
+        dsm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),dsm_x,dsm_y)
+    end
 
     # > Calculate slope and aspect from dtm data
     if tilt # disabled in Preparatory_Functions.jl
@@ -117,10 +120,13 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
             ltc = loadltc_txt(ltcf,limits_canopy,0)
         elseif extension(ltcf) == ".laz"
             ltc = loadltc_laz(ltcf,limits_canopy,-50,dbh_x,dbh_y,dbh_e,lastc)
-            ltc[:,3] = ltc[:,3] .- findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),ltc[:,1],ltc[:,2])
+
+            if abs(mode(ltc[:,3]) - mode(dtm_z)) < 60 # if the data's not normalised, it needs to be normalised)
+                ltc[:,3] .-= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),ltc[:,1],ltc[:,2])
+            end
+
             ltc = ltc[setdiff(1:end, findall(ltc[:,3].<1)), :]
         end
-
         bsm_x, bsm_y, bsm_z = make_branches(ltc,b_space)
         bsm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),bsm_x,bsm_y)
     end
