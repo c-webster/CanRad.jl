@@ -1,11 +1,13 @@
 
-model      = "CHM" #LAS or CHM
+basefolder = "D:/CanRad/Domains/TEST/"
 
-setf       = "D:/LAS2Rad/Data_Areas/TEST/"*model*"2Rad_Settings_test.jl"
+model      = "LAS" #LAS or CHM
 
-ptsf       = "D:/LAS2Rad/Data_Areas/TEST/test_gridpts.txt"
+setf       = basefolder*model*"2Rad_Settings_test.jl"
 
-exdir      = "D:/LAS2Rad/Data_Areas/TEST/Output_tests"
+ptsf       = basefolder*"/test_gridpts.txt"
+
+exdir      = basefolder*"/Output_tests_nDSM"
 
 benchmark  = false # checks Vf values are the same as benchmark values
 
@@ -20,13 +22,13 @@ pts = readdlm(ptsf)
 
 if model == "LAS"
 
-    par_in, dat_in = LAS2Rad_Settings()
+    par_in, dat_in = LAS2Rad_Settings(basefolder)
     exdir = exdir*"_L2R"
     LAS2Rad(pts,dat_in,par_in,exdir)
 
 elseif model == "CHM"
 
-    par_in, dat_in = CHM2Rad_Settings()
+    par_in, dat_in = CHM2Rad_Settings(basefolder)
     exdir = exdir*"_C2R"
     CHM2Rad(pts,dat_in,par_in,exdir)
 
