@@ -67,7 +67,14 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     # load the buildings
     if buildings
-        rsm_x, rsm_y, rsm_z, rsm_cellsize = read_griddata(rsmf,true,true)
+    	bhm_x, bhm_y, bhm_z, bhm_cellsize = read_griddata_window(bhmf,limits_canopy,true,true,true)
+    	if !isempty(bhm_x)
+    		if abs(mode(bhm_z) - mode(dtm_z)) > 40 && terrain_highres # if normalsed
+    			bhm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),bhm_x,bhm_y)
+    		end
+            build = true
+    	else; build = false; end
+    else; build = false;
     end
 
     # determine ground elevation of points
@@ -81,9 +88,9 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         pts_e     = fill(0.0,size(pts_x))
     end
 
-    # determine true elevatation of las points if normalised
-    # (if the absolute difference of mode(lidar) and mode(terrain) is greater
-    #   than a realistic canopy height (60 m)
+    # determine true elevatation of las points if lidar is normalised
+        # (if the absolute difference of mode(lidar) and mode(terrain) is greater
+        #   than a realistic canopy height (60 m)
     if abs(mode(dsm_z) - mode(dtm_z)) > 60 && terrain_highres
         dsm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),dsm_x,dsm_y)
     end
@@ -106,12 +113,9 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         if !isempty(dbh_x)
             dbh_e = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),dbh_x,dbh_y)
             tsm_x, tsm_y, tsm_z  = calculate_trunks(dbh_x,dbh_y,dbh_z,dbh_r,30,0.1,dbh_e)
-            trunks_2 = true
-        else
-            trunks_2 = false
-        end
-    else
-        trunks_2 = false
+            trunk = true
+        else; trunk = false; end
+    else; trunk = false;
     end
 
     # load the ltc
@@ -233,7 +237,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 end
                 pt_dsm_x, pt_dsm_y, pt_dsm_z = pcd2pol2cart(pt_dsm_x,pt_dsm_y,pt_dsm_z,pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"surface",ch,pts_slp[crx],0);
 
-                if trunks_2
+                if trunk
                     pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(tsm_x,tsm_y,tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5))
                     tidx = findall(dist(dbh_x,dbh_y,pts_x[crx],pts_y[crx]) .< 5)
                     if size(tidx,1) > 0
@@ -275,12 +279,12 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                     end
                 end
 
-                if buildings
-                    pt_rsm_x, pt_rsm_y =  pcd2pol2cart(copy(rsm_x),copy(rsm_y),copy(rsm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(50),"terrain",ch,pts_slp[crx],rsm_cellsize);
-                    if tershad < 3
-                        pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_rsm_x),append!(pt_dtm_y,pt_rsm_y));
+                if build
+                    pt_bhm_x, pt_bhm_y =  pcd2pol2cart(copy(bhm_x),copy(bhm_y),copy(bhm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(50),"terrain",ch,pts_slp[crx],bhm_cellsize);
+                    if terrain
+                        pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_bhm_x),append!(pt_dtm_y,pt_bhm_y));
                     else
-                        pt_dtm_x, pt_dtm_y = prepterdat(pt_rsm_x,pt_rsm_y)
+                        pt_dtm_x, pt_dtm_y = prepterdat(pt_bhm_x,pt_bhm_y)
                     end
                 end
 
@@ -317,7 +321,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 end
 
                 # add trunks
-                if trunks_2
+                if trunk
                     mat2ev = fillmat(kdtree,hcat(pt_tsm_x,pt_tsm_y),2.0,kdtreedims,15,radius,mat2ev)
                 end
 

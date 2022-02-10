@@ -33,7 +33,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     limits_canopy = hcat((floor(minimum(pts_x))-surf_peri),(ceil(maximum(pts_x))+surf_peri),
                     (floor(minimum(pts_y))-surf_peri),(ceil(maximum(pts_y))+surf_peri))
 
-    chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits_canopy,true,true)
+    chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits_canopy,true,true,true)
 
     if @isdefined(cbhf)
         chb_x, chb_y, chm_b, _ = read_griddata(cbhf,true)
@@ -49,13 +49,9 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         if !isempty(dbh_x)
             dbh_e = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),dbh_x,dbh_y)
             tsm_x, tsm_y, tsm_z  = calculate_trunks(dbh_x,dbh_y,dbh_z,dbh_r,30,0.1,dbh_e)
-            trunks_2 = true
-        else
-            trunks_2 = false
-        end
-    else
-        trunks_2 = false
-    end
+            trunk = true
+        else; trunk = false; end
+    else; trunk = false; end
 
     ################################################################################
     # > Import, clip and prepare terrain data
@@ -99,8 +95,8 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         chm_e     = fill(0.0,size(chm_x))
     end
 
-    chm_b     = chm_b .+ chm_e
-    chm_z     = chm_z .+ chm_e
+    chm_b .+= chm_e
+    chm_z .+= chm_e
 
     # Calculate slope and aspect from dtm data
     if tilt
@@ -116,8 +112,18 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         pt_dem_x, pt_dem_y = load_hlm(hlmf,taskID)
     elseif terrain_tile && !horizon_line
         pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
+    end
 
+    # load the buildings
+    if buildings
+        bhm_x, bhm_y, bhm_z, bhm_cellsize = read_griddata_window(bhmf,limits_canopy,true,true,true)
+        if !isempty(bhm_x)
+            if abs(mode(bhm_z) - mode(dtm_z)) > 40 && terrain_highres # if normalsed
+                bhm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),bhm_x,bhm_y)
             end
+            build = true
+    	else; build = false; end
+    else; build = false; end
 
     ###############################################################################
     # Get crown volume density information
@@ -267,6 +273,15 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 end
             end
 
+            if build
+                pt_bhm_x, pt_bhm_y =  pcd2pol2cart(copy(bhm_x),copy(bhm_y),copy(bhm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(50),"terrain",ch,pts_slp[crx],bhm_cellsize);
+                if terrain
+                    pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_bhm_x),append!(pt_dtm_y,pt_bhm_y));
+                else
+                    pt_dtm_x, pt_dtm_y = prepterdat(pt_bhm_x,pt_bhm_y)
+                end
+            end
+
             if pt_corr
                 pt_chm_x, pt_chm_y, pt_chm_r, pt_chm_x_thick, pt_chm_y_thick = calcCHM_Ptrans(copy(chm_x),copy(chm_y),copy(chm_z),
                                     copy(chm_b),copy(chm_lavd),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,ch,chm_cellsize) # calculated points
@@ -274,7 +289,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 pt_chm_x_pts, pt_chm_y_pts, pt_chm_r_pts = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],
                                     pts_e[crx],surf_peri,"chm",ch,pts_slp[crx],chm_cellsize) # pts from the CHM
 
-                if trunks_2
+                if trunk
                     pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(tsm_x,tsm_y,tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5))
                     tidx = findall(dist(dbh_x,dbh_y,pts[crx,1],pts[crx,2]) .< 4)
                     if size(tidx,1) > 0
@@ -340,7 +355,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             end
 
             # add trunks
-            if trunks_2
+            if trunk
                 mat2ev = fillmat(kdtree,hcat(pt_tsm_x,pt_tsm_y),2.0,kdtreedims,15,radius,mat2ev)
             end
 
