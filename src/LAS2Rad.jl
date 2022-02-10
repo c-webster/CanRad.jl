@@ -148,8 +148,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     # > Tile preparation
 
     if horizon_line
-        pt_dem_x = readdlm(hldir*"/HL_"*taskID)[:,1]
-        pt_dem_y = readdlm(hldir*"/HL_"*taskID)[:,2]
+        pt_dem_x, pt_dem_y = load_hlm(hlmf,taskID)
     elseif terrain_tile && !horizon_line
         pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
     end

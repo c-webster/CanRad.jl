@@ -111,41 +111,13 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         imcX = 0.0; imcY = 0.0
     end
 
-    if horizon_line
-
-        xllcorner = parse(Int,(split(taskID,"_")[2]))[1]
-        yllcorner = parse(Int,(split(taskID,"_")[3]))[1]
-
-        if xllcorner % 250 .!== 0.0
-            xllcorner = 250 * round(xllcorner/250)
-        end
-        if yllcorner % 250 .!== 0.0
-            yllcorner = 250 * round(yllcorner/250)
-        end
-
-        hlmds = NCDataset(hlmf,"r")
-        xdx = findall(hlmds["easting"][:,:] .== xllcorner)
-        ydx = findall(hlmds["northing"][:,:] .== yllcorner)
-
-        # phi = vec(hlmds["phi"][:])
-        phi = (-pi:(pi - -pi)/89:pi) .- pi/2
-        tht = (vec(hlmds["tht"][ydx,xdx,:]))
-        close(hlmds)
-
-        rphi = collect(-pi:pi/1080:pi)  .- pi/2
-        rtht = Array{Float64,1}(undef,size(rphi,1))
-
-        rtht = LinearInterpolation(phi,vec(tht))(rphi)
-
-        pol_phi, pol_tht = fillterrain(rphi,rtht,0.0)
-        pt_dem_x, pt_dem_y = pol2cart(pol_phi,pol_tht)
-
-
+    # get the tile horizon line
+    if horizon_line # get pre-calculated horizon line
+        pt_dem_x, pt_dem_y = load_hlm(hlmf,taskID)
     elseif terrain_tile && !horizon_line
-
         pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
 
-    end
+            end
 
     ###############################################################################
     # Get crown volume density information

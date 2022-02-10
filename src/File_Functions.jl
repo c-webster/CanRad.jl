@@ -62,6 +62,38 @@ function loadltc_laz(fname::String,limits::Array{Float64,2},peri::Int64,
     return ltc
 end
 
+function load_hlm(hlmf::String,taskID::String)
+
+    xllcorner = parse(Int,(split(taskID,"_")[2]))[1]
+    yllcorner = parse(Int,(split(taskID,"_")[3]))[1]
+
+    if xllcorner % 250 .!== 0.0
+        xllcorner = 250 * round(xllcorner/250)
+    end
+    if yllcorner % 250 .!== 0.0
+        yllcorner = 250 * round(yllcorner/250)
+    end
+
+    hlmds = NCDataset(hlmf,"r")
+    xdx = findall(hlmds["easting"][:,:] .== xllcorner)
+    ydx = findall(hlmds["northing"][:,:] .== yllcorner)
+
+    # phi = vec(hlmds["phi"][:])
+    phi = (-pi:(pi - -pi)/89:pi) .- pi/2
+    tht = (vec(hlmds["tht"][ydx,xdx,:]))
+    close(hlmds)
+
+    rphi = collect(-pi:pi/1080:pi)  .- pi/2
+    rtht = Array{Float64,1}(undef,size(rphi,1))
+
+    rtht = LinearInterpolation(phi,vec(tht))(rphi)
+
+    pol_phi, pol_tht = fillterrain(rphi,rtht,0.0)
+
+    return pol2cart(pol_phi,pol_tht)
+
+end
+
 
 function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_trans::Bool,calc_swr::Int64,
             append_file::Bool,loc_time=nothing)
