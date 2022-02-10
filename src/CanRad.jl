@@ -69,6 +69,7 @@ export
     getsurfdat_lavd,
     LAS2Rad,
     loaddbh,
+    load_hlm,
     loadltc_laz,
     loadltc_txt,
     make_branches,
