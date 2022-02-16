@@ -164,3 +164,34 @@ function create_exmat(outdir::String,outstr::String,pts::Array{Float64,2},g_img:
     return SHIs, images
 
 end
+
+function write_metadata(exdir::String,dat_in::Dict,par_in::Dict)
+
+    open(exdir*"_metadata.txt";write=true) do f
+        write(f,"DateTime\n")
+        write(f,string(now())*"\n")
+        write(f,"\nInput Files\n")
+        for key in sort(collect(keys(dat_in)))
+            write(f,"$key => $(dat_in[key])"*"\n")
+        end
+        write(f,"\nInput Parameters\n")
+        for k in sort(collect(keys(par_in)))
+            write(f,"$k => $(par_in[k])"*"\n")
+        end
+        write(f,"\nModel Versions\n")
+        # writedlm(f,Pkg.installed())
+        write(f,string("CanRad"*" v"*string(get_pkg_version("CanRad"))*"\n"))
+        write(f,string("SpatialFileIO"*" v"*string(get_pkg_version("SpatialFileIO"))*"\n"))
+    end
+
+end
+
+get_pkg_version(name::AbstractString) =
+
+    @chain Pkg.dependencies() begin
+       values
+       [x for x in _ if x.name == name]
+       only
+       _.version
+
+end

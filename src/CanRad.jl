@@ -3,7 +3,7 @@ module CanRad
 using DelimitedFiles, DataStructures, LasIO, LazIO,
     Statistics, Dates, Interpolations,
     DataFrames, Formatting, Distributed, Distributions,
-    SpatialFileIO, NCDatasets
+    SpatialFileIO, NCDatasets, Chain, Pkg
 
 using Conda, PyCall
 
@@ -62,6 +62,7 @@ export
     findpairs,
     frbins,
     get_constants,
+    get_pkg_version,
     getimagecentre,
     getPhiTht,
     getsundxs,
@@ -86,6 +87,7 @@ export
     scipyspat,
     # trunk_locs,
     trunkpoints,
-    utm2deg
+    utm2deg,
+    write_metadata
 
 end # module
