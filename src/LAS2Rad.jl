@@ -187,12 +187,12 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         loc_time = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
         loc_time_agg = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
         if calc_swr > 0
-            swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg)
+            swr_tot, swr_dir, for_tau, Vf_planar, Vf_hemi, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg)
         else
-            for_tau, Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg)
+            for_tau, Vf_planar, Vf_hemi, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg)
         end
     else
-         Vf_weighted, Vf_flat, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
+         Vf_planar, Vf_hemi, dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
     end
 
     if save_images
@@ -344,7 +344,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 if progress; start = time(); end
 
                 ##### Calculate Vf
-                Vf_w, Vf_f = calculateVf(mat2ev,g_rad,radius)
+                Vf_p, Vf_h = calculateVf(mat2ev,g_rad,radius)
 
                 ##### Calculate SWR/forest transmissivity
                 if calc_trans
@@ -352,9 +352,9 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                     transfor = calc_transmissivity(float.(mat2ev),loc_time,tstep,radius,sol_phi,sol_tht,g_coorpol,0.0,0.0,
                                             im_centre,trans_for,lens_profile_tht,lens_profile_rpix)
                     if calc_swr == 1
-                        swrtot, swrdir, _ = calculateSWR(transfor,sol_sinelev,sol_tht,sol_phi,loc_time,max.(1367*sol_sinelev,0),Vf_w)
+                        swrtot, swrdir, _ = calculateSWR(transfor,sol_sinelev,sol_tht,sol_phi,loc_time,max.(1367*sol_sinelev,0),Vf_p)
                     elseif calc_swr == 2
-                        swrtot, swrdir, _ = calculateSWR(transfor,sol_sinelev,sol_tht,sol_phi,loc_time,swr_open,Vf_w)
+                        swrtot, swrdir, _ = calculateSWR(transfor,sol_sinelev,sol_tht,sol_phi,loc_time,swr_open,Vf_p)
                     end
                 end
 
@@ -369,8 +369,8 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 #export the data [append to netcdf]
                 if progress; start = time(); end
 
-                Vf_weighted[crx] = Int(round(Vf_w*100))
-                Vf_flat[crx]     = Int(round(Vf_f*100))
+                Vf_planar[crx] = Int(round(Vf_p*100))
+                Vf_hemi[crx]     = Int(round(Vf_h*100))
 
                 if calc_trans
                     for_tau[:,crx] = Int.(round.((vec(aggregate_data(loc_time,loc_time_agg,transfor,tstep))).*100))

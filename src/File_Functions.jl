@@ -108,12 +108,14 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
     defVar(ds,"easting",pts[:,1],("Coordinates",))
     defVar(ds,"northing",pts[:,2],("Coordinates",))
 
-    Vf_weighted = defVar(ds,"Vf_weighted",Int32,("Coordinates",),deflatelevel=5,
+    Vf_planar = defVar(ds,"Vf_planar",Int32,("Coordinates",),deflatelevel=5,
                             attrib=["scale_factor"=>0.01, "comments" =>
-                            "weighted by cosine of zenith angle",])
-    Vf_flat     = defVar(ds,"Vf_flat",Int32,("Coordinates",),deflatelevel=5,
+                            "perspective of a horizontal flat uplooking surface;
+                            zenith rings weighted by surface area projected onto a horizontal flat surface",])
+    Vf_hemi     = defVar(ds,"Vf_hemi",Int32,("Coordinates",),deflatelevel=5,
                             attrib=["scale_factor"=>0.01, "comments" =>
-                            "ratio of black to white pixels in the image",])
+                            "perspective of hemipherically shaped surface or plant;
+                            zenith rings weighted by surface area on the hemisphere",])
 
     if calc_trans
         defDim(ds,"datetime",size(loc_time,1))
@@ -125,16 +127,17 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
         if calc_swr > 0
             swr_tot = defVar(ds,"SWR_total",Int32,("datetime","Coordinates",),
                                 deflatelevel=5,fillvalue = Int32(-9999),
-                                attrib=["units"=>"Watts per metre squared",])
+                                attrib=["units"=>"Watts per metre squared", "comments" =>
+                                "total incoming shortwave radiation (diffuse + direct)"])
             swr_dir = defVar(ds,"SWR_direct",Int32,("datetime","Coordinates",),
                                 deflatelevel=5,fillvalue = Int32(-9999),
                                 attrib=["units"=>"Watts per metre squared",])
-            return swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, ds
+            return swr_tot, swr_dir, for_tau, Vf_planar, Vf_hemi, ds
         else
-            return for_tau, Vf_weighted, Vf_flat, ds
+            return for_tau, Vf_planar, Vf_hemi, ds
         end
     else
-        return Vf_weighted, Vf_flat, ds
+        return Vf_planar, Vf_hemi, ds
     end
 
 end

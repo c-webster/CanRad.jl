@@ -1,33 +1,30 @@
 function calc_ringratios(ring_tht::Array{Float64,1},ring_radius::Array{Float64,1},mat2ev::Array{Int64,2},g_rad::Array{Float64,2})
-    w2all     = fill(NaN,(size(ring_radius,1)-1))
-    surf_area = fill(NaN,(size(ring_radius,1)-1))
-    cos_corr  = fill(NaN,(size(ring_radius,1)-1))
+    w2all       = fill(NaN,(size(ring_radius,1)-1))
+    surf_area_p = fill(NaN,(size(ring_radius,1)-1))
+	surf_area_h = fill(NaN,(size(ring_radius,1)-1))
 
     for rix = 1:1:size(ring_radius,1)-1
-        inner_radius   = ring_radius[rix]
-        outer_radius   = ring_radius[rix+1]
-        relevant_pix   = findall(inner_radius .< vec(g_rad) .< outer_radius)
-        w2all[rix]     = sum(mat2ev[relevant_pix].==1) / size(relevant_pix,1)
-        surf_area[rix] = 2*pi*(cos(ring_tht[rix]/360*2*pi) - cos(ring_tht[rix+1]/360*2*pi))/2/pi
-        cos_corr[rix]  = (cos(ring_tht[rix]/360*2*pi) + cos(ring_tht[rix+1]/360*2*pi))/2
+        inner_radius     = ring_radius[rix]
+        outer_radius     = ring_radius[rix+1]
+        relevant_pix     = findall(inner_radius .< vec(g_rad) .< outer_radius)
+        w2all[rix]       = sum(mat2ev[relevant_pix].==1) / size(relevant_pix,1)
+		surf_area_p[rix] = sin(ring_tht[rix+1]/360*2*pi)^2 - sin(ring_tht[rix]/360*2*pi)^2
+        surf_area_h[rix] = 2*pi*(cos(ring_tht[rix]/360*2*pi) - cos(ring_tht[rix+1]/360*2*pi))/2/pi
     end
 
-    return w2all, surf_area, cos_corr
+    return w2all, surf_area_p, surf_area_h
+
 end
 
 function calculateVf(mat2ev::Array{Int64,2},g_rad::Array{Float64,2},radius::Int64)
 
-    lens_profile_tht  = collect(0:10:90)
-    lens_profile_rpix = collect(0:1/9:1)
     ring_tht          = collect(0:90/9:90)
-    ring_radius       = pyinterp.interp1d(lens_profile_tht,lens_profile_rpix*radius)(ring_tht)
+    # ring_radius       = pyinterp.interp1d(lens_profile_tht,lens_profile_rpix*radius)(ring_tht)
+ 	ring_radius       = pyinterp.interp1d(collect(0:10:90),collect(0:1/9:1)*radius)(ring_tht)
 
-    w2all, surf_area, cos_corr = calc_ringratios(ring_tht,ring_radius,mat2ev,g_rad)
+    w2all, surf_area_p, surf_area_h = calc_ringratios(ring_tht,ring_radius,mat2ev,g_rad)
 
-    Vfweighted = sum(w2all.*surf_area.*cos_corr) / sum(surf_area.*cos_corr)
-    Vfflat = sum(w2all.*surf_area)
-
-    return Vfweighted, Vfflat
+    return sum(w2all.*surf_area_p), sum(w2all.*surf_area_h)
 end
 
 function calcmm(mat2ev::Array{Float64,2},radius::Int64,drad::Float64,
