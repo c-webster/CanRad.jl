@@ -131,7 +131,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
             ltc = ltc[setdiff(1:end, findall(ltc[:,3].<1)), :]
         end
-        bsm_x, bsm_y, bsm_z = make_branches(ltc,b_space)
+        bsm_x, bsm_y, bsm_z = make_branches(ltc,branch_spacing)
         bsm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),bsm_x,bsm_y)
     end
 
@@ -154,10 +154,12 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if horizon_line
         pt_dem_x, pt_dem_y = load_hlm(hlmf,taskID)
     elseif terrain_tile && !horizon_line
-        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
+        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),
+                                            terrain_peri,"terrain",image_height,0.0,dem_cellsize);
     end
 
     # create the empty matrix
+    radius = 500
     g_rad, g_coorpol, g_coorcrt, g_img = create_mat(radius)
     g_coorcrt = ((g_coorcrt .- radius) ./ radius) .* 90
     g_img[isnan.(g_rad)] .= 1
@@ -235,7 +237,8 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 else
                     pt_dsm_x, pt_dsm_y, pt_dsm_z = getsurfdat(dsm_x,dsm_y,dsm_z,pts_x[crx],pts_y[crx],pts_e[crx],surf_peri);
                 end
-                pt_dsm_x, pt_dsm_y, pt_dsm_z = pcd2pol2cart(pt_dsm_x,pt_dsm_y,pt_dsm_z,pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"surface",ch,pts_slp[crx],0);
+                pt_dsm_x, pt_dsm_y, pt_dsm_z = pcd2pol2cart(pt_dsm_x,pt_dsm_y,pt_dsm_z,pts_x[crx],pts_y[crx],pts_e[crx],
+                                                                surf_peri,"surface",image_height,pts_slp[crx],0);
 
                 if trunk
                     pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(tsm_x,tsm_y,tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5))
@@ -253,21 +256,23 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                         end
                         tsm_tmp = calculate_trunks(dbh_x[tidx],dbh_y[tidx],dbh_z[tidx],dbh_r[tidx],npt,hint,dbh_e[tidx])
                         pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(append!(pt_tsm_x,tsm_tmp[1]),append!(pt_tsm_y,tsm_tmp[2]),append!(pt_tsm_z,tsm_tmp[3]),
-                                                            pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",ch,pts_slp[crx],0);
+                                                                pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",image_height,pts_slp[crx],0);
 
                     else
-                        pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(pt_tsm_x,pt_tsm_y,pt_tsm_z,
-                                                            pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",ch,pts_slp[crx],0);
+                        pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(pt_tsm_x,pt_tsm_y,pt_tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],
+                                                                Int.(surf_peri*0.5),"surface",image_height,pts_slp[crx],0);
                     end
                 end
 
                 if terrain
                     if terrain_highres
-                        pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(300),"terrain",ch,pts_slp[crx],dtm_cellsize);
+                        pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],
+                                                            Int.(300),"terrain",image_height,pts_slp[crx],dtm_cellsize);
                     end
 
                     if terrain_lowres && !terrain_tile
-                        pt_dem_x, pt_dem_y = pcd2pol2cart(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri,"terrain",ch,pts_slp[crx],dem_cellsize);
+                        pt_dem_x, pt_dem_y = pcd2pol2cart(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],
+                                                            terrain_peri,"terrain",image_height,pts_slp[crx],dem_cellsize);
                     end
 
                     if terrain_highres && (terrain_lowres || horizon_line)
@@ -280,7 +285,8 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 end
 
                 if build
-                    pt_bhm_x, pt_bhm_y =  pcd2pol2cart(copy(bhm_x),copy(bhm_y),copy(bhm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(50),"terrain",ch,pts_slp[crx],bhm_cellsize);
+                    pt_bhm_x, pt_bhm_y =  pcd2pol2cart(copy(bhm_x),copy(bhm_y),copy(bhm_z),pts_x[crx],pts_y[crx],pts_e[crx],
+                                                        Int.(50),"terrain",image_height,pts_slp[crx],bhm_cellsize);
                     if terrain
                         pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_bhm_x),append!(pt_dtm_y,pt_bhm_y));
                     else
@@ -348,7 +354,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
                 ##### Calculate SWR/forest transmissivity
                 if calc_trans
-                    sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts_x[crx],pts_y[crx],loc_time,time_zone,coor_system,utm_zone)
+                    sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts_x[crx],pts_y[crx],loc_time,time_zone,coor_system)
                     transfor = calc_transmissivity(float.(mat2ev),loc_time,tstep,radius,sol_phi,sol_tht,g_coorpol,0.0,0.0,
                                             im_centre,trans_for,lens_profile_tht,lens_profile_rpix)
                     if calc_swr == 1

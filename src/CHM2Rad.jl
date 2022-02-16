@@ -111,7 +111,8 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if horizon_line # get pre-calculated horizon line
         pt_dem_x, pt_dem_y = load_hlm(hlmf,taskID)
     elseif terrain_tile && !horizon_line
-        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri,"terrain",ch,0.0,dem_cellsize);
+        pt_dem_x, pt_dem_y = pcd2pol2cart(dem_x,dem_y,dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),
+                                            terrain_peri,"terrain",image_height,0.0,dem_cellsize);
     end
 
     # load the buildings
@@ -180,6 +181,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     # > Tile preparation
 
     # create an empty matrix for Vf calculation
+    radius = 500
     g_rad, g_coorpol, g_coorcrt, g_img = create_mat(radius)
     g_coorcrt = ((g_coorcrt .- radius) ./ radius) .* 90
     g_img[isnan.(g_rad)] .= 1
@@ -257,11 +259,13 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
             if terrain
                 if terrain_highres
-                    pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(300),"terrain",ch,pts_slp[crx],dtm_cellsize);
+                    pt_dtm_x, pt_dtm_y =  pcd2pol2cart(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],
+                                                        Int.(300),"terrain",image_height,pts_slp[crx],dtm_cellsize);
                 end
 
                 if terrain_lowres && !terrain_tile
-                    pt_dem_x, pt_dem_y = pcd2pol2cart(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri,"terrain",ch,pts_slp[crx],dem_cellsize);
+                    pt_dem_x, pt_dem_y = pcd2pol2cart(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],
+                                                        terrain_peri,"terrain",image_height,pts_slp[crx],dem_cellsize);
                 end
 
                 if terrain_highres && (terrain_lowres || horizon_line)
@@ -274,7 +278,8 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             end
 
             if build
-                pt_bhm_x, pt_bhm_y =  pcd2pol2cart(copy(bhm_x),copy(bhm_y),copy(bhm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(50),"terrain",ch,pts_slp[crx],bhm_cellsize);
+                pt_bhm_x, pt_bhm_y =  pcd2pol2cart(copy(bhm_x),copy(bhm_y),copy(bhm_z),pts_x[crx],pts_y[crx],pts_e[crx],
+                                                    Int.(50),"terrain",image_height,pts_slp[crx],bhm_cellsize);
                 if terrain
                     pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_bhm_x),append!(pt_dtm_y,pt_bhm_y));
                 else
@@ -284,10 +289,10 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
             if pt_corr
                 pt_chm_x, pt_chm_y, pt_chm_r, pt_chm_x_thick, pt_chm_y_thick = calcCHM_Ptrans(copy(chm_x),copy(chm_y),copy(chm_z),
-                                    copy(chm_b),copy(chm_lavd),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,ch,chm_cellsize) # calculated points
+                                    copy(chm_b),copy(chm_lavd),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,image_height,chm_cellsize) # calculated points
 
                 pt_chm_x_pts, pt_chm_y_pts, pt_chm_r_pts = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],
-                                    pts_e[crx],surf_peri,"chm",ch,pts_slp[crx],chm_cellsize) # pts from the CHM
+                                    pts_e[crx],surf_peri,"chm",image_height,pts_slp[crx],chm_cellsize) # pts from the CHM
 
                 if trunk
                     pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(tsm_x,tsm_y,tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5))
@@ -305,17 +310,17 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                         end
                         tsm_tmp = calculate_trunks(dbh_x[tidx],dbh_y[tidx],dbh_z[tidx],dbh_r[tidx],npt,hint,dbh_e[tidx])
                         pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(append!(pt_tsm_x,tsm_tmp[1]),append!(pt_tsm_y,tsm_tmp[2]),append!(pt_tsm_z,tsm_tmp[3]),
-                                                            pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",ch,pts_slp[crx],0);
+                                                            pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",image_height,pts_slp[crx],0);
 
                     else
                         pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(pt_tsm_x,pt_tsm_y,pt_tsm_z,
-                                                            pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",ch,pts_slp[crx],0);
+                                                            pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",image_height,pts_slp[crx],0);
                     end
                 end
 
             else
                 #  100% opaque canopy:
-                pt_chm_x, pt_chm_y = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"terrain",ch,pts_slp[crx],chm_cellsize)
+                pt_chm_x, pt_chm_y = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"terrain",image_height,pts_slp[crx],chm_cellsize)
                 if terrain # merge if using terrain
                     pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_chm_x,pt_dtm_x),append!(pt_chm_y,pt_dtm_y));
                 else
@@ -378,7 +383,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
             ##### CalcSWR
             if calc_trans
-                sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts_x[crx],pts_y[crx],loc_time,time_zone,coor_system,utm_zone)
+                sol_tht, sol_phi, sol_sinelev  = calc_solar_track(pts_x[crx],pts_y[crx],loc_time,time_zone,coor_system)
                 transfor = calc_transmissivity(float.(mat2ev),loc_time,tstep,radius,sol_phi,sol_tht,g_coorpol,0.0,0.0,
                                         im_centre,trans_for,lens_profile_tht,lens_profile_rpix)
                 if calc_swr == 1

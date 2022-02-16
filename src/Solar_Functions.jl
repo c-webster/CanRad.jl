@@ -186,20 +186,21 @@ function utm2deg(loc_x::Float64,loc_y::Float64,zone::Float64,hemi::SubString{Str
     return latitude, longitude
 end
 
-function calc_solar_track(loc_x::Float64,loc_y::Float64,loc_time::Array{DateTime,1},time_zone::Int64,coor_system,utm_zone="empty")
+function calc_solar_track(loc_x::Float64,loc_y::Float64,loc_time::Array{DateTime,1},time_zone::Int64,
+							coor_system)
 
-    if coor_system == "CH1903"
+    if split(coor_system)[1] == "CH1903"
         xd  = (loc_x - 600000)/1000000
         yd  = (loc_y - 200000)/1000000
         lon = (2.6779094 + 4.728982 .* xd + 0.791484 .* xd .* yd + 0.1306 .* xd .* yd.^2 - 0.0436 .* xd.^3) .* 100 ./ 36
         lat = (16.9023892 + 3.238272 .* yd - 0.270978 .* xd.^2 - 0.002528 .* yd.^2 - 0.0447 .* xd.^2 .* yd - 0.0140 .* yd.^3) .* 100 ./ 36
-    elseif coor_system == "CH1903+"
+    elseif split(coor_system)[1] == "CH1903+"
         xd  = (loc_x - 2600000)/1000000
         yd  = (loc_y - 1200000)/1000000
         lon = (2.6779094 + 4.728982 .* xd + 0.791484 .* xd .* yd + 0.1306 .* xd .* yd.^2 - 0.0436 .* xd.^3) .* 100 ./ 36
         lat = (16.9023892 + 3.238272 .* yd - 0.270978 .* xd.^2 - 0.002528 .* yd.^2 - 0.0447 .* xd.^2 .* yd - 0.0140 .* yd.^3) .* 100 ./ 36
-    elseif coor_system == "UTM"
-        lat,lon  = utm2deg(loc_x,loc_y,parse(Float64,split(utm_zone,' ')[1]),split(utm_zone,' ')[2])
+    elseif split(coor_system)[1] == "UTM"
+        lat,lon  = utm2deg(loc_x,loc_y,parse(Float64,split(coor_system)[2]),split(coor_system)[3])
     end
 
     # time conversion
