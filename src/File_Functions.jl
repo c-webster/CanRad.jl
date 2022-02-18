@@ -62,7 +62,7 @@ function loadltc_laz(fname::String,limits::Array{Float64,2},peri::Int64,
     return ltc
 end
 
-function load_hlm(hlmf::String,taskID::String)
+function load_hlm(hlmf::String,taskID)
 
     xllcorner = parse(Int,(split(taskID,"_")[2]))[1]
     yllcorner = parse(Int,(split(taskID,"_")[3]))[1]

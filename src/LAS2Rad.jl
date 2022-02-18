@@ -422,4 +422,6 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
         println("done with "*taskID)
 
+		return dat_in, par_in
+
 end
