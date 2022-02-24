@@ -28,14 +28,10 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     ################################################################################
     # > Import surface/terrain data and clip
-
-    dsm_x, dsm_y, dsm_z = readlas(dsmf)
-
-    # clip dsm within eval-peri of min/max pts
     limits_canopy = hcat((floor(minimum(pts_x))-surf_peri),(ceil(maximum(pts_x))+surf_peri),
                     (floor(minimum(pts_y))-surf_peri),(ceil(maximum(pts_y))+surf_peri))
 
-    dsm_x, dsm_y, dsm_z, _ = clipdat(dsm_x,dsm_y,dsm_z,limits_canopy,surf_peri)
+    dsm_x, dsm_y, dsm_z = readlas(dsmf,limits_canopy)
 
     # import, clip and prepare terrain daa
     if terrain_highres || terrain_lowres || horizon_line

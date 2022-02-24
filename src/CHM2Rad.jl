@@ -33,15 +33,15 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     limits_canopy = hcat((floor(minimum(pts_x))-surf_peri),(ceil(maximum(pts_x))+surf_peri),
                     (floor(minimum(pts_y))-surf_peri),(ceil(maximum(pts_y))+surf_peri))
 
-    chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits_canopy,true,true,true)
+    chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits_canopy,true,true)
 
-    if @isdefined(cbhf)
-        chb_x, chb_y, chm_b, _ = read_griddata(cbhf,true)
-        _, _, chm_b, _    = clipdat(copy(chb_x),copy(chb_y),chm_b,limits_canopy)
-    else
-        chm_b = fill(0.0,size(chm_z))
+    # if @isdefined(cbhf)
+        # chb_x, chb_y, chm_b, _ = read_griddata(cbhf,true)
+        # _, _, chm_b, _    = clipdat(copy(chb_x),copy(chb_y),chm_b,limits_canopy)
+    # else
+        chm_b = fill(2.0,size(chm_z))
         # chm_b[chm_z .>= 2] .= 2.0
-    end
+    # end
 
     # load the trunk data
     if trunks
@@ -117,7 +117,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     # load the buildings
     if buildings
-        bhm_x, bhm_y, bhm_z, bhm_cellsize = read_griddata_window(bhmf,limits_canopy,true,true,true)
+        bhm_x, bhm_y, bhm_z, bhm_cellsize = read_griddata_window(bhmf,limits_canopy,true,true)
         if !isempty(bhm_x)
             if abs(mode(bhm_z) - mode(dtm_z)) > 40 && terrain_highres # if normalsed
                 bhm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),bhm_x,bhm_y)

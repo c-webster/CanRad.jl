@@ -411,7 +411,9 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
     pcdpol_rad = repeat(pcdpol_rad,outer=2)
 
     rbins = collect(2*cellsize:sqrt(2).*cellsize:peri)
+
     phi_bins = collect(-2*pi:pi/180:2*pi)
+    # phi_bins = collect(-2*pi:pi/90:2*pi)
 
     idx = collect(1:1:size(pcdpol_phi,1))
     fix1 = Array{Int64,1}(undef,10000)
@@ -426,6 +428,7 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
     # increase sampling along horizonline to create opaque terrain
     # only do across one full circle
     rtht = LinearInterpolation(phi_bins[181:541],vec(mintht[181:541]))(rphi)
+    # rtht = LinearInterpolation(phi_bins[91:271],vec(mintht[91:271]))(rphi)
 
     pol_phi, pol_tht = fillterrain(rphi,rtht,slp)
 
