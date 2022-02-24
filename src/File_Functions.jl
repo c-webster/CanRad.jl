@@ -1,4 +1,4 @@
-function loaddbh(fname::String,limits::Array{Float64,2},peri::Int64)
+function loaddbh(fname::String,limits::Array{Float64,2},peri=0::Int64)
     dat, _ = readdlm(fname,'\t',header=true)
 
     dat_x, dat_y, dat_z, rmdx = clipdat(dat[:,1],dat[:,2],dat[:,3],limits,peri)
@@ -27,39 +27,40 @@ function loadltc_txt(fname::String,limits::Array{Float64,2},peri::Int64)
 end
 
 
+function loadltc_laz(fname::String,limits::Array{Float64,2},
+            dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},
+            lastc::Vector{Float64})
+	# calculate random branch angle for each tree
+	ang = rand(Uniform(60,100),size(lastc,1)) # Norway Spruce
 
-function loadltc_laz(fname::String,limits::Array{Float64,2},peri::Int64,
-            dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_e::Array{Float64,1},
-            lastc::Array{Float64,1})
+	header, ltcdat = LazIO.load(fname)
 
-        # calculate random branch angle for each tree
-        ang = rand(Uniform(60,100),size(lastc,1)) # Norway Spruce
+	dat = DataFrame(ltcdat)
 
-        header, ltcdat = LazIO.load(fname)
-        ltc = fill(NaN,size(ltcdat,1),8)
-        ltc_c = fill(NaN,size(ltcdat,1),1)
-        for dx in eachindex(ltcdat)
-            ltc_c[dx] = trunc(Int,float(classification(ltcdat[dx])))
-            if ltc_c[dx] == 2
-                continue
-            else
-                ltc[dx,1] = xcoord(ltcdat[dx],header) #lasx
-                ltc[dx,2] = ycoord(ltcdat[dx],header) #lasy
-                ltc[dx,3] = zcoord(ltcdat[dx],header) #lasx
-                ltc[dx,7] = Int64.(LasIO.intensity(ltcdat[dx])) # treeclass
-                tree_dx = (lastc .== ltc[dx,7])
-                if sum(tree_dx) > 0
-                    ltc[dx,4] = dbh_x[tree_dx][1] #treex
-                    ltc[dx,5] = dbh_y[tree_dx][1] #treey
-                    ltc[dx,6] = dist(ltc[dx,1],ltc[dx,2],ltc[dx,4],ltc[dx,5])
-                    ltc[dx,8] = ang[tree_dx][1]
-                end
-            end
-        end
-        ltc = ltc[setdiff(1:end, findall(isnan.(ltc[:,4]).==1)), :]
-        _, _, _, rmdx = clipdat(ltc[:,1],ltc[:,2],ltc[:,3],limits,peri)
-        ltc = ltc[setdiff(1:end, findall(rmdx.==1)), :]
-    return ltc
+	ltc_c = Int.(dat.raw_classification)
+
+	dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
+			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
+			(ltc_c .!= 2)
+
+	ltc = fill(NaN,sum(dx),8)
+
+	ltc[:,1] = dat.x[dx] .* header.x_scale .+ header.x_offset
+	ltc[:,2] = dat.y[dx] .* header.y_scale .+ header.y_offset
+	ltc[:,3] = dat.z[dx] .* header.z_scale .+ header.z_offset
+	ltc[:,7] = Int.(dat.intensity[dx]) # tree number
+
+	for tx in eachindex(lastc)
+		t_dx = (lastc[tx] .== ltc[:,7])
+		ltc[t_dx,4] .= dbh_x[tx]
+		ltc[t_dx,5] .= dbh_y[tx]
+		ltc[t_dx,6] .= dist(ltc[t_dx,1],ltc[t_dx,2],dbh_x[tx],dbh_y[tx])
+		ltc[t_dx,8] .= ang[tx]
+	end
+
+	ltc = ltc[setdiff(1:end, findall(isnan.(ltc[:,4]).==1)), :]
+	return ltc
+
 end
 
 function load_hlm(hlmf::String,taskID)

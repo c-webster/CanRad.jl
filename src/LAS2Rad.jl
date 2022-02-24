@@ -103,9 +103,12 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     ###############################################################################
     # > Generate extra canopy elements
 
+    limits_trees =  hcat((floor(minimum(pts_x))-surf_peri/2),(ceil(maximum(pts_x))+surf_peri/2),
+    				(floor(minimum(pts_y))-surf_peri/2),(ceil(maximum(pts_y))+surf_peri/2))
+
     # load the dbh
     if trunks
-        dbh_x, dbh_y, dbh_z, dbh_r, lastc = loaddbh(dbhf,limits_canopy,-50)
+        dbh_x, dbh_y, dbh_z, dbh_r, lastc = loaddbh(dbhf,limits_trees)
         if !isempty(dbh_x)
             dbh_e = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),dbh_x,dbh_y)
             tsm_x, tsm_y, tsm_z  = calculate_trunks(dbh_x,dbh_y,dbh_z,dbh_r,30,0.1,dbh_e)
@@ -117,9 +120,9 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     # load the ltc
     if branches
         if extension(ltcf) == ".txt"
-            ltc = loadltc_txt(ltcf,limits_canopy,0)
+            ltc = loadltc_txt(ltcf,limits_trees,0)
         elseif extension(ltcf) == ".laz"
-            ltc = loadltc_laz(ltcf,limits_canopy,-50,dbh_x,dbh_y,dbh_e,lastc)
+            ltc = loadltc_laz(ltcf,limits_trees,dbh_x,dbh_y,lastc)
 
             if abs(mode(ltc[:,3]) - mode(dtm_z)) < 60 # if the data's not normalised, it needs to be normalised)
                 ltc[:,3] .-= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),ltc[:,1],ltc[:,2])

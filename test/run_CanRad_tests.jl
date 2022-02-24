@@ -7,7 +7,7 @@ setf       = basefolder*model*"2Rad_Settings_test.jl"
 
 ptsf       = joinpath(basefolder,"test_gridpts.txt")
 
-exdir      = joinpath(basefolder,"Output_tests_readlas")
+exdir      = joinpath(basefolder,"Output_tests_readltclas")
 
 benchmark  = false # checks Vf values are the same as benchmark values
 
@@ -24,7 +24,7 @@ if model == "LAS"
 
     dat_in, par_in = LAS2Rad_Settings(basefolder)
     exdir = exdir*"_L2R"
-    LAS2Rad(pts,dat_in,par_in,exdir)
+    LAS2Rad(pts[1:8,:],dat_in,par_in,exdir)
 
 elseif model == "CHM"
 
