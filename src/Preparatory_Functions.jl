@@ -15,10 +15,6 @@ function compatability_check(dat_in,par_in)
         par_in["pt_corr"] = true
     end
 
-    if !@isdefined(b_space) # spacing between branch points in cm
-        par_in["b_space"] = 0.1
-    end
-
     # renamed terrain options
     if @isdefined(terrain)
         if terrain == 1
@@ -52,6 +48,21 @@ function compatability_check(dat_in,par_in)
 
     if !@isdefined(OSHD)
         par_in["OSHD"] = false
+    end
+
+	# renamed variables with version 0.7.0
+	if !@isdefined(image_height)
+		par_in["image_height"] = ch
+	end
+
+	if @isdefined(utm_zone) && coor_system == "UTM"
+		par_in["coor_system"] = "UTM"*" "*utm_zone
+	end
+
+	if !@isdefined(b_space) && !@isdefined(branch_spacing) # spacing between branch points in cm
+        par_in["branch_spacing"] = 0.1
+	elseif @isdefined(b_space)
+		par_in["branch_spacing"] = b_space
     end
 
     return dat_in, par_in

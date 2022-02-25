@@ -239,17 +239,17 @@ function fillterrain(rphi::Array{Float64,1},rtht::Array{Float64,1},slp=0.0::Floa
 end
 
 function normalise(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},
-                    xcoor::Float64,ycoor::Float64,ecoor::Float64,ch=0.0::Float64)
+                    xcoor::Float64,ycoor::Float64,ecoor::Float64,image_height=0.0::Float64)
     pcd_x .-= xcoor
     pcd_y .-= ycoor
     pcd_z .-= ecoor
-    pcd_z .-= ch
+    pcd_z .-= image_height
     return pcd_x, pcd_y, pcd_z
 end
 
 function pcd2pol(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},
                         xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,dat::String,
-                        ch=0.0::Float64,slp=0.0::Float64,cellsize=0.0::Float64)
+                        image_height=0.0::Float64,slp=0.0::Float64,cellsize=0.0::Float64)
 
     if dat=="terrain"
         pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri)
@@ -258,7 +258,7 @@ function pcd2pol(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Fl
     elseif dat=="canopy"
         pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri)
     end
-    pcd_x, pcd_y, pcd_z = normalise(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,ch)
+    pcd_x, pcd_y, pcd_z = normalise(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,image_height)
 
     return cart2sph(pcd_x,pcd_y,pcd_z,peri)
 
@@ -266,9 +266,9 @@ end
 
 function pcd2pol2cart(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},
                         xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,dat::String,
-                        ch=0.0::Float64,slp=0.0::Float64,cellsize=0.0::Float64)
+                        image_height=0.0::Float64,slp=0.0::Float64,cellsize=0.0::Float64)
 
-    pol_phi, pol_tht, pol_rad = pcd2pol(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri,dat,ch,slp,cellsize)
+    pol_phi, pol_tht, pol_rad = pcd2pol(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri,dat,image_height,slp,cellsize)
 
     # convert phi/tht to cartesian
     if dat=="terrain"
@@ -411,7 +411,9 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
     pcdpol_rad = repeat(pcdpol_rad,outer=2)
 
     rbins = collect(2*cellsize:sqrt(2).*cellsize:peri)
+
     phi_bins = collect(-2*pi:pi/180:2*pi)
+    # phi_bins = collect(-2*pi:pi/90:2*pi)
 
     idx = collect(1:1:size(pcdpol_phi,1))
     fix1 = Array{Int64,1}(undef,10000)
@@ -426,6 +428,7 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
     # increase sampling along horizonline to create opaque terrain
     # only do across one full circle
     rtht = LinearInterpolation(phi_bins[181:541],vec(mintht[181:541]))(rphi)
+    # rtht = LinearInterpolation(phi_bins[91:271],vec(mintht[91:271]))(rphi)
 
     pol_phi, pol_tht = fillterrain(rphi,rtht,slp)
 
@@ -434,13 +437,13 @@ end
 
 function calcCHM_Ptrans(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},pcd_b::Array{Float64,1},lavd::Array{Float64,1},
                         # stm_x::Array{Float64,1},stm_y::Array{Float64,1},stm_z::Array{Float64,1},
-                        xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,ch::Float64,cellsize::Float64,dat::String="canopy")
+                        xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,image_height::Float64,cellsize::Float64,dat::String="canopy")
 
     lavd = getsurfdat_lavd(copy(pcd_x),copy(pcd_y),copy(pcd_z),lavd,xcoor,ycoor,ecoor,peri)
 
-    can_phi, can_tht, can_rad = pcd2pol(copy(pcd_x),copy(pcd_y),copy(pcd_z),xcoor,ycoor,ecoor,peri,dat,ch,0.0,cellsize)
+    can_phi, can_tht, can_rad = pcd2pol(copy(pcd_x),copy(pcd_y),copy(pcd_z),xcoor,ycoor,ecoor,peri,dat,image_height,0.0,cellsize)
 
-    bse_phi, bse_tht, bse_rad = pcd2pol(copy(pcd_x),copy(pcd_y),copy(pcd_b),xcoor,ycoor,ecoor,peri,dat,ch,0.0,cellsize)
+    bse_phi, bse_tht, bse_rad = pcd2pol(copy(pcd_x),copy(pcd_y),copy(pcd_b),xcoor,ycoor,ecoor,peri,dat,image_height,0.0,cellsize)
 
     pol_phitemp = copy(can_phi)
     pol_phitemp[can_phi .<= 0]  .+= 2*pi

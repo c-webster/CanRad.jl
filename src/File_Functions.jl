@@ -1,4 +1,4 @@
-function loaddbh(fname::String,limits::Array{Float64,2},peri::Int64)
+function loaddbh(fname::String,limits::Array{Float64,2},peri=0::Int64)
     dat, _ = readdlm(fname,'\t',header=true)
 
     dat_x, dat_y, dat_z, rmdx = clipdat(dat[:,1],dat[:,2],dat[:,3],limits,peri)
@@ -27,42 +27,43 @@ function loadltc_txt(fname::String,limits::Array{Float64,2},peri::Int64)
 end
 
 
+function loadltc_laz(fname::String,limits::Array{Float64,2},
+            dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},
+            lastc::Vector{Float64})
+	# calculate random branch angle for each tree
+	ang = rand(Uniform(60,100),size(lastc,1)) # Norway Spruce
 
-function loadltc_laz(fname::String,limits::Array{Float64,2},peri::Int64,
-            dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_e::Array{Float64,1},
-            lastc::Array{Float64,1})
+	header, ltcdat = LazIO.load(fname)
 
-        # calculate random branch angle for each tree
-        ang = rand(Uniform(60,100),size(lastc,1)) # Norway Spruce
+	dat = DataFrame(ltcdat)
 
-        header, ltcdat = LazIO.load(fname)
-        ltc = fill(NaN,size(ltcdat,1),8)
-        ltc_c = fill(NaN,size(ltcdat,1),1)
-        for dx in eachindex(ltcdat)
-            ltc_c[dx] = trunc(Int,float(classification(ltcdat[dx])))
-            if ltc_c[dx] == 2
-                continue
-            else
-                ltc[dx,1] = xcoord(ltcdat[dx],header) #lasx
-                ltc[dx,2] = ycoord(ltcdat[dx],header) #lasy
-                ltc[dx,3] = zcoord(ltcdat[dx],header) #lasx
-                ltc[dx,7] = Int64.(LasIO.intensity(ltcdat[dx])) # treeclass
-                tree_dx = (lastc .== ltc[dx,7])
-                if sum(tree_dx) > 0
-                    ltc[dx,4] = dbh_x[tree_dx][1] #treex
-                    ltc[dx,5] = dbh_y[tree_dx][1] #treey
-                    ltc[dx,6] = dist(ltc[dx,1],ltc[dx,2],ltc[dx,4],ltc[dx,5])
-                    ltc[dx,8] = ang[tree_dx][1]
-                end
-            end
-        end
-        ltc = ltc[setdiff(1:end, findall(isnan.(ltc[:,4]).==1)), :]
-        _, _, _, rmdx = clipdat(ltc[:,1],ltc[:,2],ltc[:,3],limits,peri)
-        ltc = ltc[setdiff(1:end, findall(rmdx.==1)), :]
-    return ltc
+	ltc_c = Int.(dat.raw_classification)
+
+	dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
+			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
+			(ltc_c .!= 2)
+
+	ltc = fill(NaN,sum(dx),8)
+
+	ltc[:,1] = dat.x[dx] .* header.x_scale .+ header.x_offset
+	ltc[:,2] = dat.y[dx] .* header.y_scale .+ header.y_offset
+	ltc[:,3] = dat.z[dx] .* header.z_scale .+ header.z_offset
+	ltc[:,7] = Int.(dat.intensity[dx]) # tree number
+
+	for tx in eachindex(lastc)
+		t_dx = (lastc[tx] .== ltc[:,7])
+		ltc[t_dx,4] .= dbh_x[tx]
+		ltc[t_dx,5] .= dbh_y[tx]
+		ltc[t_dx,6] .= dist(ltc[t_dx,1],ltc[t_dx,2],dbh_x[tx],dbh_y[tx])
+		ltc[t_dx,8] .= ang[tx]
+	end
+
+	ltc = ltc[setdiff(1:end, findall(isnan.(ltc[:,4]).==1)), :]
+	return ltc
+
 end
 
-function load_hlm(hlmf::String,taskID::String)
+function load_hlm(hlmf::String,taskID)
 
     xllcorner = parse(Int,(split(taskID,"_")[2]))[1]
     yllcorner = parse(Int,(split(taskID,"_")[3]))[1]
@@ -108,12 +109,14 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
     defVar(ds,"easting",pts[:,1],("Coordinates",))
     defVar(ds,"northing",pts[:,2],("Coordinates",))
 
-    Vf_weighted = defVar(ds,"Vf_weighted",Int32,("Coordinates",),deflatelevel=5,
+    Vf_planar = defVar(ds,"Vf_planar",Int32,("Coordinates",),deflatelevel=5,
                             attrib=["scale_factor"=>0.01, "comments" =>
-                            "weighted by cosine of zenith angle",])
-    Vf_flat     = defVar(ds,"Vf_flat",Int32,("Coordinates",),deflatelevel=5,
+                            "perspective of a horizontal flat uplooking surface;
+                            zenith rings weighted by surface area projected onto a horizontal flat surface",])
+    Vf_hemi     = defVar(ds,"Vf_hemi",Int32,("Coordinates",),deflatelevel=5,
                             attrib=["scale_factor"=>0.01, "comments" =>
-                            "ratio of black to white pixels in the image",])
+                            "perspective of hemipherically shaped surface or plant;
+                            zenith rings weighted by surface area on the hemisphere",])
 
     if calc_trans
         defDim(ds,"datetime",size(loc_time,1))
@@ -125,16 +128,17 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
         if calc_swr > 0
             swr_tot = defVar(ds,"SWR_total",Int32,("datetime","Coordinates",),
                                 deflatelevel=5,fillvalue = Int32(-9999),
-                                attrib=["units"=>"Watts per metre squared",])
+                                attrib=["units"=>"Watts per metre squared", "comments" =>
+                                "total incoming shortwave radiation (diffuse + direct)"])
             swr_dir = defVar(ds,"SWR_direct",Int32,("datetime","Coordinates",),
                                 deflatelevel=5,fillvalue = Int32(-9999),
                                 attrib=["units"=>"Watts per metre squared",])
-            return swr_tot, swr_dir, for_tau, Vf_weighted, Vf_flat, ds
+            return swr_tot, swr_dir, for_tau, Vf_planar, Vf_hemi, ds
         else
-            return for_tau, Vf_weighted, Vf_flat, ds
+            return for_tau, Vf_planar, Vf_hemi, ds
         end
     else
-        return Vf_weighted, Vf_flat, ds
+        return Vf_planar, Vf_hemi, ds
     end
 
 end
@@ -159,5 +163,36 @@ function create_exmat(outdir::String,outstr::String,pts::Array{Float64,2},g_img:
         defVar(images,"northing",pts[:,2],("Coordinates",),deflatelevel=1)
 
     return SHIs, images
+
+end
+
+function write_metadata(exdir::String,dat_in::Dict,par_in::Dict)
+
+    open(exdir*"_metadata.txt";write=true) do f
+        write(f,"DateTime\n")
+        write(f,string(now())*"\n")
+        write(f,"\nInput Files\n")
+        for key in sort(collect(keys(dat_in)))
+            write(f,"$key => $(dat_in[key])"*"\n")
+        end
+        write(f,"\nInput Parameters\n")
+        for k in sort(collect(keys(par_in)))
+            write(f,"$k => $(par_in[k])"*"\n")
+        end
+        write(f,"\nModel Versions\n")
+        # writedlm(f,Pkg.installed())
+        write(f,string("CanRad"*" v"*string(get_pkg_version("CanRad"))*"\n"))
+        write(f,string("SpatialFileIO"*" v"*string(get_pkg_version("SpatialFileIO"))*"\n"))
+    end
+
+end
+
+get_pkg_version(name::AbstractString) =
+
+    @chain Pkg.dependencies() begin
+       values
+       [x for x in _ if x.name == name]
+       only
+       _.version
 
 end
