@@ -103,43 +103,48 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
 
     # append_file option removed September 2021 (eventually should be included)
 
-    ds = NCDataset(outfile,"c",format=:netcdf4_classic)
+	if append_file
 
-    defDim(ds,"Coordinates",size(pts,1))
-    defVar(ds,"easting",pts[:,1],("Coordinates",))
-    defVar(ds,"northing",pts[:,2],("Coordinates",))
+		ds = NCDataset(outfile,"a")
 
-    Vf_planar = defVar(ds,"Vf_planar",Int32,("Coordinates",),deflatelevel=5,
-                            attrib=["scale_factor"=>0.01, "comments" =>
-                            "perspective of a horizontal flat uplooking surface;
-                            zenith rings weighted by surface area projected onto a horizontal flat surface",])
-    Vf_hemi     = defVar(ds,"Vf_hemi",Int32,("Coordinates",),deflatelevel=5,
-                            attrib=["scale_factor"=>0.01, "comments" =>
-                            "perspective of hemipherically shaped surface or plant;
-                            zenith rings weighted by surface area on the hemisphere",])
+	else
 
-    if calc_trans
-        defDim(ds,"datetime",size(loc_time,1))
-        defVar(ds,"datetime",loc_time,("datetime",))
+	    ds = NCDataset(outfile,"c",format=:netcdf4_classic)
 
-        for_tau = defVar(ds,"Forest_Transmissivity",Int32,("datetime","Coordinates",),
-                            deflatelevel=5,attrib=["scale_factor"=>0.01,])
+	    defDim(ds,"Coordinates",size(pts,1))
+	    defVar(ds,"easting",pts[:,1],("Coordinates",))
+	    defVar(ds,"northing",pts[:,2],("Coordinates",))
 
-        if calc_swr > 0
-            swr_tot = defVar(ds,"SWR_total",Int32,("datetime","Coordinates",),
-                                deflatelevel=5,fillvalue = Int32(-9999),
-                                attrib=["units"=>"Watts per metre squared", "comments" =>
-                                "total incoming shortwave radiation (diffuse + direct)"])
-            swr_dir = defVar(ds,"SWR_direct",Int32,("datetime","Coordinates",),
-                                deflatelevel=5,fillvalue = Int32(-9999),
-                                attrib=["units"=>"Watts per metre squared",])
-            return swr_tot, swr_dir, for_tau, Vf_planar, Vf_hemi, ds
-        else
-            return for_tau, Vf_planar, Vf_hemi, ds
-        end
-    else
-        return Vf_planar, Vf_hemi, ds
-    end
+	    defVar(ds,"Vf_planar",Int32,("Coordinates",),deflatelevel=5,
+                    attrib=["scale_factor"=>0.01, "comments" =>
+                    "perspective of a horizontal flat uplooking surface;
+                    zenith rings weighted by surface area projected onto a horizontal flat surface",])
+	    defVar(ds,"Vf_hemi",Int32,("Coordinates",),deflatelevel=5,
+                    attrib=["scale_factor"=>0.01, "comments" =>
+                    "perspective of hemipherically shaped surface or plant;
+                    zenith rings weighted by surface area on the hemisphere",])
+
+	    if calc_trans
+	        defDim(ds,"datetime",length(loc_time))
+	        defVar(ds,"datetime",loc_time,("datetime",))
+
+	        defVar(ds,"Forest_Transmissivity",Int32,("datetime","Coordinates",),
+                        deflatelevel=5,attrib=["scale_factor"=>0.01,])
+
+	        if calc_swr > 0
+	            defVar(ds,"SWR_total",Int32,("datetime","Coordinates",),
+                            deflatelevel=5,fillvalue = Int32(-9999),
+                            attrib=["units"=>"Watts per metre squared", "comments" =>
+                            "total incoming shortwave radiation (diffuse + direct)"])
+	            defVar(ds,"SWR_direct",Int32,("datetime","Coordinates",),
+	                        deflatelevel=5,fillvalue = Int32(-9999),
+	                        attrib=["units"=>"Watts per metre squared",])
+			end
+	    end
+
+	end
+
+	return ds
 
 end
 
@@ -148,21 +153,25 @@ function create_exmat(outdir::String,outstr::String,pts::Array{Float64,2},g_img:
 
     outfile  = outdir*"/SHIs_"*outstr*".nc"
 
-    # append_file option removed September 2021 (eventually should be included)
+    if append_file
 
-        images   = NCDataset(outfile,"c",format=:netcdf4_classic)
+		images = NCDataset(outfile,"a")
 
-        dims     = size(g_img)
+	else
+
+        images = NCDataset(outfile,"c",format=:netcdf4_classic)
 
         defDim(images,"img_x",size(g_img,1))
         defDim(images,"img_y",size(g_img,2))
         defDim(images,"Coordinates",size(pts,1))
 
-        SHIs = defVar(images,"SHI",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
+        defVar(images,"SHI",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
         defVar(images,"easting",pts[:,1],("Coordinates",),deflatelevel=1)
         defVar(images,"northing",pts[:,2],("Coordinates",),deflatelevel=1)
 
-    return SHIs, images
+	end
+
+    return images
 
 end
 
