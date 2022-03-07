@@ -466,7 +466,6 @@ function calcCHM_Ptrans(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::A
                                             fill(90.0,size(phi_bins_long,1),1),fill(0.0,size(phi_bins_long,1),1),fill(0.0,(size(phi_bins_short,1),90)),
                                             fill(0.0,size(phi_bins_short,1),90),cellsize,fill(float(peri),(size(phi_bins_short,1),90)))
 
-    # remove all points where canopy thickness is only one Rbin
     pt_chm_x, pt_chm_y, rdist = calcPtrans(sum_lavd_thick, phi_bins_short, sum_thick, cellsize, vec(rdist))
 
     pt_chm_x_thick, pt_chm_y_thick = calcPtrans_dist(fill(0.0,size(phi_bins_short,1),90), phi_bins_short, sum_thick)
@@ -482,6 +481,9 @@ function calcThickness(rbins::Array{Float64,1},phi_bins_long::Array{Float64,1},p
                         tdx_can,tdx_bse,
                         temp_mintht::Array{Float64,2},thick::Array{Float64,2},sum_thick::Array{Float64,2},
                         sum_lavd_thick::Array{Float64,2},cellsize::Float64,rdist::Array{Float64,2})
+
+    dx1 = findall(abs.(phi_bins_long .+ pi) .== 0)[1]
+    dx2 = findall(abs.(phi_bins_long .- pi) .== 0)[1]
 
     for rbix = length(rbins)-1:-1:1
 
@@ -499,12 +501,12 @@ function calcThickness(rbins::Array{Float64,1},phi_bins_long::Array{Float64,1},p
             temp_lavd[tdx_can] = LinearInterpolation(can_phi[fix_can[sortperm(can_phi[fix_can])]],
                         lavd[fix_can[sortperm(can_phi[fix_can])]])(phi_bins_long[tdx_can])
 
-            chm_temptht = Int.(round.(chm_temptht[361:1081]));
+            chm_temptht = Int.(round.(chm_temptht[dx1:dx2]));
             tempthick = fill(0.0,(size(chm_temptht,1),90));
 
             # get the canopy base line
             fix_bse = idx_bse[frbins(bse_rad,rbins[rbix],rbins[rbix+1])]
-            bse_temptht = copy(temp_mintht[361:1081]) # copy(mintht)
+            bse_temptht = copy(temp_mintht[dx1:dx2]) # copy(mintht)
             if size(fix_bse) > (1,)
                 tdx_bse = (minimum(bse_phi[fix_bse[sortperm(bse_phi[fix_bse])]]) .<= phi_bins_short
                                     .<= maximum(bse_phi[fix_bse[sortperm(bse_phi[fix_bse])]]))
@@ -532,8 +534,7 @@ function calcThickness(rbins::Array{Float64,1},phi_bins_long::Array{Float64,1},p
 
             end
 
-            sum_lavd_thick = sum_lavd_thick .+ (tempthick .* temp_lavd[361:1081])
-
+            sum_lavd_thick = sum_lavd_thick .+ (tempthick .* temp_lavd[dx1:dx2])
             sum_thick = sum_thick .+ tempthick
 
         end
@@ -548,12 +549,13 @@ function calcPtrans(sum_lavd_thick::Array{Float64,2},phi_bins::Array{Float64,1},
     # phi_bins = collect(-pi:pi/356:pi); #push!(phi_bins,pi) # tidy up phi_bins so it starts and ends at pi
 
     # solve pt based on average pt and random distribution
-#     mean_Ptrans = median(Ptrans[(Ptrans .> 0) .& (Ptrans .< 1)])
     rand_Ptrans = rand(Uniform(0,1),size(Ptrans))
 
     Ptrans[Ptrans .>= rand_Ptrans] .= 1
     Ptrans[Ptrans .< rand_Ptrans] .= 0
-#     Ptrans[sum_thick .<= (2 .* (sqrt(2)*cellsize))] .= 1
+
+    # smooths horizon line in dense forests by removing all points where canopy thickness is only one Rbin
+    # Ptrans[sum_thick .<= ((sqrt(2)*cellsize))] .= 1
 
     pt_chm_x, pt_chm_y, rdist = getPhiTht(phi_bins,Ptrans,rdist)
 
@@ -562,9 +564,9 @@ end
 
 function calcPtrans_dist(canopy_thick::Array{Float64,2},phi_bins::Array{Float64,1},sum_thick::Array{Float64,2})
 
-    # zero transmissivity where the canopy is > 15m thick.
-    canopy_thick[sum_thick .> 20] .= 0
-    canopy_thick[sum_thick .<= 20] .= 1
+    # zero transmissivity where the canopy is > 10m thick.
+    canopy_thick[sum_thick .> 35] .= 0
+    canopy_thick[sum_thick .<= 35] .= 1
     phi = repeat(phi_bins,90);
     tht = repeat(90.0:-1:1,inner=size(phi_bins,1))
     rows = findall(vec(canopy_thick).==1)
