@@ -99,9 +99,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if buildings
         bhm_x, bhm_y, bhm_z, bhm_cellsize = read_griddata_window(bhmf,limits_canopy,true,true)
         if !isempty(bhm_x)
-            if abs(mode(bhm_z) - mode(dtm_z)) > 40 && terrain_highres # if normalsed
-                bhm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),bhm_x,bhm_y)
-            end
             build = true
     	else; build = false; end
     else; build = false; end
@@ -202,11 +199,8 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     ###############################################################################
     # > organise the output folder
 
-    if OSHD
+    if batch
         outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3]
-        global outdir = exdir*"/"*outstr
-    elseif batch
-        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3][1:end-4]
         global outdir = exdir*"/"*outstr
     else
         outstr = String(split(exdir,"/")[end-1])
@@ -298,8 +292,8 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         end
 
         if build
-            pt_bhm_x, pt_bhm_y =  pcd2pol2cart(copy(bhm_x),copy(bhm_y),copy(bhm_z),pts_x[crx],pts_y[crx],pts_e[crx],
-                                                Int.(50),"terrain",image_height,pts_slp[crx],bhm_cellsize);
+            pt_bhm_x, pt_bhm_y =  pcd2pol2cart(copy(bhm_x),copy(bhm_y),copy(bhm_z),pts_x[crx],pts_y[crx],0.0,
+                                                Int.(50),"buildings",image_height,pts_slp[crx],bhm_cellsize);
             if terrain
                 pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_dtm_x,pt_bhm_x),append!(pt_dtm_y,pt_bhm_y));
             else

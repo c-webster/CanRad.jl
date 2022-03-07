@@ -3,7 +3,7 @@ module CanRad
 using DelimitedFiles, DataStructures, LasIO, LazIO,
     Statistics, Dates, Interpolations,
     DataFrames, Formatting, Distributed, Distributions,
-    SpatialFileIO, NCDatasets, Chain, Pkg
+    SpatialFileIO, NCDatasets, Chain, Pkg, MarketTechnicals
 
 using Conda, PyCall
 

@@ -253,7 +253,7 @@ function pcd2pol(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Fl
 
     if dat=="terrain"
         pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri)
-    elseif dat=="chm"
+    elseif dat=="chm" # gets data in a ring, not a circle around xcoor/ycoor using peri1 and peri2
         pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,10,peri)
     elseif dat=="canopy"
         pcd_x, pcd_y, pcd_z = getsurfdat(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri)
@@ -270,18 +270,17 @@ function pcd2pol2cart(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Arr
 
     pol_phi, pol_tht, pol_rad = pcd2pol(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,peri,dat,image_height,slp,cellsize)
 
-    # convert phi/tht to cartesian
-    if dat=="terrain"
-        pol_phi, pol_tht = calc_horizon_lines(cellsize,peri,pol_phi,pol_tht,pol_rad,slp)
-    elseif dat=="chm"
-        rows = findall(vec(pol_rad).<(10 .* (sqrt(2)*cellsize))) # deletes the points right above the camera
+    if dat=="terrain" || dat=="buildings" # calculate horizon line of raster data
+        pol_phi, pol_tht = calc_horizon_lines(cellsize,peri,pol_phi,pol_tht,pol_rad,slp,dat)
+    elseif dat=="chm"  # delete the points right above the camera
+        rows = findall(vec(pol_rad).<(10 .* (sqrt(2)*cellsize)))
         deleteat!(pol_phi,rows); deleteat!(pol_tht,rows); deleteat!(pol_rad,rows)
     end
 
-    # convert to cartesian
+    # convert phi/tht to cartesian
     pol_phi, pol_tht = pol2cart(pol_phi,pol_tht)
 
-    if dat=="terrain"
+    if dat=="terrain" || dat=="buildings"
         return pol_phi, pol_tht # returns cartesian coordinates
     else
         return prepcrtdat(round.(pol_phi,digits=3),round.(pol_tht,digits=3),round.(pol_rad,digits=3))
@@ -400,9 +399,13 @@ function calcmintht(mintht::Array{Float64,2},rbins::Array{Float64,1},phi_bins::A
 end
 
 function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Float64,1},
-                            pcdpol_tht::Array{Float64,1},pcdpol_rad::Array{Float64,1},slp::Float64)
+                            pcdpol_tht::Array{Float64,1},pcdpol_rad::Array{Float64,1},
+                            slp::Float64,dat=nothing::String,)
+
 
     pol_phitemp = copy(pcdpol_phi)
+
+    # create two circles around horizon line to avoid artefacts at -pi/pi
     pol_phitemp[pcdpol_phi .<= 0]  .+= 2*pi
     pol_phitemp[pcdpol_phi .> 0] .-= 2*pi
 
@@ -412,8 +415,11 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
 
     rbins = collect(2*cellsize:sqrt(2).*cellsize:peri)
 
-    phi_bins = collect(-2*pi:pi/180:2*pi)
-    # phi_bins = collect(-2*pi:pi/90:2*pi)
+    if dat=="buildings"
+        phi_bins = collect(-2*pi:pi/45:2*pi)
+    else
+        phi_bins = collect(-2*pi:pi/180:2*pi)
+    end
 
     idx = collect(1:1:size(pcdpol_phi,1))
     fix1 = Array{Int64,1}(undef,10000)
@@ -422,13 +428,27 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
 
     mintht = calcmintht(mintht,rbins,phi_bins,idx,pcdpol_phi,pcdpol_tht,pcdpol_rad,fix1,copy(mintht),tdx);
 
+    if dat=="buildings"
+
+        # calculate moving average across building tops to smooth surface
+        temp = vcat(fill(90.0,4),mintht,fill(90.0,4))
+        dx = mintht .> 75
+        temp[temp .> 75] .= NaN
+        temp = sma(temp,9)
+        temp[dx] .= mintht[dx]
+        mintht = temp
+        # rphi = collect(-pi:pi/720:pi)
+    # else
+    end
+
     rphi = collect(-pi:pi/1080:pi)
     rtht = Array{Float64,1}(undef,size(rphi,1))
 
     # increase sampling along horizonline to create opaque terrain
     # only do across one full circle
-    rtht = LinearInterpolation(phi_bins[181:541],vec(mintht[181:541]))(rphi)
-    # rtht = LinearInterpolation(phi_bins[91:271],vec(mintht[91:271]))(rphi)
+    dx1  = findall(abs.(phi_bins .+ pi) .== 0)[1]
+    dx2  = findall(abs.(phi_bins .- pi) .== 0)[1]
+    rtht = LinearInterpolation(phi_bins[dx1:dx2],vec(mintht[dx1:dx2]))(rphi)
 
     pol_phi, pol_tht = fillterrain(rphi,rtht,slp)
 
@@ -437,13 +457,13 @@ end
 
 function calcCHM_Ptrans(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},pcd_b::Array{Float64,1},lavd::Array{Float64,1},
                         # stm_x::Array{Float64,1},stm_y::Array{Float64,1},stm_z::Array{Float64,1},
-                        xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,image_height::Float64,cellsize::Float64,dat::String="canopy")
+                        xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,image_height::Float64,cellsize::Float64)
 
     lavd = getsurfdat_lavd(copy(pcd_x),copy(pcd_y),copy(pcd_z),lavd,xcoor,ycoor,ecoor,peri)
 
-    can_phi, can_tht, can_rad = pcd2pol(copy(pcd_x),copy(pcd_y),copy(pcd_z),xcoor,ycoor,ecoor,peri,dat,image_height,0.0,cellsize)
+    can_phi, can_tht, can_rad = pcd2pol(copy(pcd_x),copy(pcd_y),copy(pcd_z),xcoor,ycoor,ecoor,peri,"canopy",image_height,0.0,cellsize)
 
-    bse_phi, bse_tht, bse_rad = pcd2pol(copy(pcd_x),copy(pcd_y),copy(pcd_b),xcoor,ycoor,ecoor,peri,dat,image_height,0.0,cellsize)
+    bse_phi, bse_tht, bse_rad = pcd2pol(copy(pcd_x),copy(pcd_y),copy(pcd_b),xcoor,ycoor,ecoor,peri,"canopy",image_height,0.0,cellsize)
 
     pol_phitemp = copy(can_phi)
     pol_phitemp[can_phi .<= 0]  .+= 2*pi
