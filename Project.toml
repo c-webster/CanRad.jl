@@ -1,7 +1,7 @@
 name = "CanRad"
 uuid = "aeb86711-de0f-4108-877d-aa9de166218e"
 authors = ["Clare Webster"]
-version = "0.7.0"
+version = "0.8.0"
 
 [deps]
 Chain = "8be319e6-bccf-4806-a6f7-6fae938471bc"

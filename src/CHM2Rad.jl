@@ -16,21 +16,13 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if progress; start = time(); end
 
     ################################################################################
-    # > Import surface data and clip
+    # > Import surface data
 
     # get analysis limits
     limits_canopy = hcat((floor(minimum(pts_x))-surf_peri),(ceil(maximum(pts_x))+surf_peri),
                     (floor(minimum(pts_y))-surf_peri),(ceil(maximum(pts_y))+surf_peri))
 
     chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits_canopy,true,true)
-
-    # if @isdefined(cbhf)
-        # chb_x, chb_y, chm_b, _ = read_griddata(cbhf,true)
-        # _, _, chm_b, _    = clipdat(copy(chb_x),copy(chb_y),chm_b,limits_canopy)
-    # else
-        chm_b = fill(2.0,size(chm_z))
-        # chm_b[chm_z .>= 2] .= 2.0
-    # end
 
     # load the trunk data
     if trunks
@@ -43,7 +35,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     else; trunk = false; end
 
     ################################################################################
-    # > Import, clip and prepare terrain data
+    # > Import prepare terrain data
 
     # set terrain = true if any terrain is to be plotted in the final image matrix
     if terrain_highres || terrain_lowres || horizon_line
@@ -84,7 +76,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
         chm_e     = fill(0.0,size(chm_x))
     end
 
-    chm_b .+= chm_e
     chm_z .+= chm_e
 
     # Calculate slope and aspect from dtm data
@@ -116,45 +107,72 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     else; build = false; end
 
     ###############################################################################
-    # Get crown volume density information
+    # > Set up the canopy structure information
 
-    if OSHD
-
-        # load forest mix ratio and correct for lavd
-        mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,true)
-        mr_val[mr_val .== 0] .= 1.0
+    if @isdefined(mrdf)
 
         limits_tile = hcat((floor(minimum(pts_x))),(ceil(maximum(pts_x))),
                         (floor(minimum(pts_y))),(ceil(maximum(pts_y))))
-        for_type = mode(read_griddata_window(fcdf,limits_tile,true,true)[3])
 
-        # make sure areas in Jura and central Switzerland become alpine forests
+        # define forest type for the tile (broadleaf or needleleaf)
+        # make sure higher elevation areas in Jura and central Switzerland
+        #    become needleleaf forests
         if median(pts_e) > 1000
             for_type = 2
+        else # load the forest type data for Switzerland
+            # get the dominant forest type for the tile
+            for_type = mode(read_griddata_window(fcdf,limits_tile,true,true)[3])
         end
 
-        if for_type == 1
-            temp = reverse(collect(0.02:(0.2-0.02)/9999:0.2))
-        elseif for_type == 2
-            temp = reverse(collect(0.05:(0.67-0.05)/9999:0.67))
+        if season == "winter" # LA value varies with mix ratio of deciduous/evergreen
+
+            # load forest mix ratio and correct for lavd
+            mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,true)
+            mr_val[mr_val .== 0] .= 1.0
+
+            # get the range of LA values for the tile
+            if for_type == 1 # broadleaf
+                temp_LA = reverse(collect(0.02:(0.2-0.02)/9999:0.2))
+            elseif for_type == 2 # needleleaf
+                temp_LA = reverse(collect(0.05:(0.67-0.05)/9999:0.67))
+            end
+
+            lavd_val = fill(0.0,size(mr_val))
+
+            for vx in eachindex(mr_val)
+                lavd_val[vx] = temp_LA[Int.(mr_val[vx])]
+            end
+
+            chm_lavd = findelev(copy(mr_x),copy(mr_y),copy(lavd_val),chm_x,chm_y,10,"cubic")
+
+            cbh = 2.0
+
+        elseif season == "summer" # constant LA value across all canopy pixels
+
+            if for_type == 1 # broadleaf
+                chm_lavd = fill(1.2,size(chm_x))
+                cbh = 0.0
+            elseif for_type == 2 # needleleaf
+                lavd_val = fill(0.67,size(chm_x))
+                cbh = 2.0
+            end
+
         end
-        lavd_val = fill(0.0,size(mr_val))
 
-        for vx in eachindex(mr_val)
-            lavd_val[vx] = temp[Int.(mr_val[vx])]
-        end
-
-        chm_lavd = findelev(copy(mr_x),copy(mr_y),copy(lavd_val),chm_x,chm_y,10,"cubic")
-
-    else
+    elseif @isdefined(lavdf)
 
         ch_x, ch_y, chm_lavd, _ = read_griddata(lavdf,true,true)
         chm_lavd = clipdat(copy(ch_x),copy(ch_y),chm_lavd,limits_canopy)[3]
+        cbh = 2.0
 
     end
 
+    # create the canopy base height vector based on above settings
+    chm_b   = fill(cbh,size(chm_z))
+    chm_b   .+= chm_e
+
     ###############################################################################
-    # Load meteorological data
+    # > Load meteorological data
 
     if calc_swr == 2
         swrdat   = readdlm(swrf)
@@ -167,7 +185,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     ###############################################################################
-    # > Tile preparation
+    # > Image matrix  preparation
 
     # create an empty image matrix
     radius = 500
@@ -182,7 +200,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     ###############################################################################
-    # > create the output files
+    # > organise the output folder
 
     if OSHD
         outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3]
@@ -240,7 +258,8 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     ###############################################################################
-    # get constants
+    # > get constants
+
     rbins = collect(0:(surf_peri-0)/5:surf_peri)
     tol   = tolerance.*collect(reverse(0.75:0.05:1))
 
@@ -351,10 +370,10 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             # include canopy surface points
             # mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts[pt_chm_r_pts .> 10],pt_chm_y_pts[pt_chm_r_pts .> 10]),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
             if terrain
-                # mat2ev = fillmat(kdtree,hcat(vcat(pt_chm_x_thick,pt_dtm_x),vcat(pt_chm_y_thick,pt_dtm_y)),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
                 mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
-            else
-                mat2ev = fillmat(kdtree,hcat(pt_chm_x_thick,pt_chm_y_thick),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
+            end
+            if season == "summer" # thick canopy treated as opaque
+                mat2ev = fillmat(kdtree,hcat(pt_chm_x_thick,pt_chm_y_thick),2.0,kdtreedims,30,radius,mat2ev); # distance canopy is opaque and treated with terrain
             end
         else # treat all canopy as opaque (like terrain) -> all points come in as terrain points from above section
             mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.0,kdtreedims,10,radius,mat2ev); # use this line if plotting opaque canpoy

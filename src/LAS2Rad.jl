@@ -16,13 +16,16 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if progress; start = time(); end
 
     ################################################################################
-    # > Import surface/terrain data and clip
+    # > Import surface data
+
     limits_canopy = hcat((floor(minimum(pts_x))-surf_peri),(ceil(maximum(pts_x))+surf_peri),
                     (floor(minimum(pts_y))-surf_peri),(ceil(maximum(pts_y))+surf_peri))
 
     dsm_x, dsm_y, dsm_z = readlas(dsmf,limits_canopy)
 
-    # import, clip and prepare terrain daa
+    ################################################################################
+    # > Import and prepare terrain data
+
     if terrain_highres || terrain_lowres || horizon_line
         terrain = true
     else
@@ -132,7 +135,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     ###############################################################################
-    # Load meteorological data
+    # > Load meteorological data
 
     if calc_swr == 2
         swrdat   = readdlm(swrf)
@@ -145,7 +148,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     ###############################################################################
-    # > Tile preparation
+    # > Image matrix preparation
 
     # create the empty matrix
     radius = 500
@@ -160,7 +163,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     ###############################################################################
-    # > create the output files
+    # > organise the output folder
 
     if batch
         # outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
@@ -216,7 +219,8 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     ###############################################################################
-    # get constants
+    # > get constants
+
     rbins = collect(0:(surf_peri-0)/5:surf_peri)
     tol   = tolerance.*collect(reverse(0.75:0.05:1))
 
