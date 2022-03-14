@@ -150,7 +150,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 chm_lavd = fill(1.2,size(chm_x))
                 cbh = 0.0
             elseif for_type == 2 # needleleaf
-                lavd_val = fill(0.67,size(chm_x))
+                chm_lavd = fill(0.67,size(chm_x))
                 cbh = 2.0
             end
 
