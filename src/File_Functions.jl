@@ -97,7 +97,7 @@ end
 
 
 function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_trans::Bool,calc_swr::Int64,
-            append_file::Bool,loc_time=nothing)
+            append_file::Bool,loc_time=nothing,time_zone=nothing)
 
     outfile  = outdir*"/Output_"*outstr*".nc"
 
@@ -126,7 +126,13 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
 
 	    if calc_trans
 	        defDim(ds,"datetime",length(loc_time))
-	        defVar(ds,"datetime",loc_time,("datetime",))
+
+			if time_zone >= 0
+				dt_comment = "time zone UTC+"*string(time_zone)
+			elseif time_zone < 0
+				dt_comment = "time zone UTC-"*string(time_zone)
+			end
+			defVar(ds,"datetime",loc_time,("datetime",),attrib=["comments" => dt_comment])
 
 	        defVar(ds,"Forest_Transmissivity",Int32,("datetime","Coordinates",),
                         deflatelevel=5,attrib=["scale_factor"=>0.01,])

@@ -1,13 +1,13 @@
 
 basefolder = "D:/CanRad/Domains/TEST/"
 
-model      = "LAS" #LAS or CHM
+model      = "CHM" #LAS or CHM
 
 setf       = basefolder*model*"2Rad_Settings_test.jl"
 
 ptsf       = joinpath(basefolder,"test_gridpts.txt")
 
-exdir      = joinpath(basefolder,"Output_tests_readltclas")
+exdir      = joinpath(basefolder,"Output_tests_timezone")
 
 benchmark  = false # checks Vf values are the same as benchmark values
 

@@ -167,7 +167,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     if batch
         # outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
-        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3][1:end-4]
+        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3]
         global outdir = exdir*"/"*outstr
     else
         outstr = String(split(exdir,"/")[end-1])
@@ -196,7 +196,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if calc_trans
         loc_time     = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
         loc_time_agg = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
-        dataset      = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg)
+        dataset      = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg,time_zone)
     else
         dataset      = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
     end

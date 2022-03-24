@@ -229,9 +229,9 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if calc_trans
         loc_time     = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
         loc_time_agg = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
-        dataset      = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg)
+        dataset      = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg,time_zone)
     else
-         dataset     = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
+        dataset     = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
     end
 
     if save_images
