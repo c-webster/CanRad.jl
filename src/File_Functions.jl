@@ -211,3 +211,38 @@ get_pkg_version(name::AbstractString) =
        _.version
 
 end
+
+function organise_outf(taskID,exdir,batch,numpts)
+
+	if batch
+        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3]
+        global outdir = exdir*"/"*outstr
+    else
+        outstr = String(split(exdir,"/")[end-1])
+        global outdir = exdir
+    end
+
+    if !ispath(outdir)
+        mkpath(outdir)
+    end
+
+	# set start point within tile
+	fx = readdir(outdir)[findall(startswith.(readdir(outdir),"Processing"))]
+	# if tile never started, tile failed on intialisation last time, or tile completed but is being re-run
+	if isempty(fx) || parse(Int,split(fx[1])[4]) == 0 || parse(Int,split(fx[1])[4]) == numpts
+		crxstart = 1
+		append_file = false
+		percentdone = 0
+	else # restart tile at next point
+		crxstart = parse(Int,split(fx[1])[4])+1
+		append_file = true
+		percentdone = percentdone = Int(floor((crxstart / numpts) * 100))
+	end
+
+	if !isempty(fx)
+		rm(joinpath(outdir,fx[1]))
+	end
+
+	return outdir, outstr, crxstart, append_file, percentdone
+
+end

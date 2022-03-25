@@ -16,6 +16,13 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     if progress; start = time(); end
 
     ################################################################################
+    # > Organise the progress reporting
+
+    outdir, outstr, crxstart, append_file, percentdone = organise_outf(taskID,exdir,batch,size(pts_x,1))
+    global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crxstart-1)*" of "*string(size(pts,1))*".txt"
+    writedlm(joinpath(outdir,outtext),NaN)
+
+    ################################################################################
     # > Import surface data
 
     # get analysis limits
@@ -198,32 +205,6 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     ###############################################################################
     # > organise the output folder
-
-    if batch
-        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3]
-        global outdir = exdir*"/"*outstr
-    else
-        outstr = String(split(exdir,"/")[end-1])
-        global outdir = exdir
-    end
-
-    if !ispath(outdir)
-        mkpath(outdir)
-    end
-
-    # set start point within tile
-    fx = readdir(outdir)[findall(startswith.(readdir(outdir),"Processing"))]
-    if isempty(fx)
-        crxstart = 1; append_file = false
-    else
-        crxstart = parse(Int,split(fx[1])[4])
-        if crxstart == size(pts_x,1) # if tile is complete, restart tile
-            crxstart = 1
-            append_file = false
-        else
-            append_file = true
-        end
-    end
 
     # create the output files
     if calc_trans
@@ -449,15 +430,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
         # save the progress
         percentdone = Int(floor((crx / size(pts,1)) * 100))
-        try
-            rm(outdir*"/"*outtext)
-        catch
-            for f in readdir(outdir)
-                    if startswith.(f,"Processing")
-                            rm(outdir*"/"*f)
-                    end
-            end
-        end
+        rm(joinpath(outdir,outtext))
         global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
         writedlm(joinpath(outdir,outtext),NaN)
 
