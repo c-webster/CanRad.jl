@@ -1,4 +1,5 @@
-function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
+function LAS2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{String, Any},
+    exdir::String,taskID="task")
 
     ################################################################################
     # > Initialise
@@ -62,7 +63,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     # determine ground elevation of points
     if size(pts,2) > 2
-         pts_e = pts[:,3]
+        pts_e = pts[:,3]
     elseif terrain_highres
         pts_e     = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x,pts_y)
     elseif terrain_lowres
