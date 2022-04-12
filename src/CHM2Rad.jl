@@ -128,8 +128,15 @@ function CHM2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{
         if median(pts_e) > 1000
             for_type = 2
         else # load the forest type data for Switzerland
-            # get the dominant forest type for the tile
-            for_type = mode(read_griddata_window(fcdf,limits_tile,true,true)[3])
+            # get the dominant forest type for the tile (with check for incomplete
+            #   tiles along the border)
+            types_tile = read_griddata_window(fcdf,limits_tile,true,true)[3]
+            if !isempty(types_tile)
+                for_type = mode(types_tile[types_tile .> 0])
+            else # empty data tiles on the border get to be broadleaf
+                 #  if they're below 1000m
+                for_type = 1
+            end
         end
 
         if season == "winter" # LA value varies with mix ratio of deciduous/evergreen
