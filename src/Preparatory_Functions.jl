@@ -146,7 +146,7 @@ end
 function check_output(exdir,pts,batch,taskID)
 
     if batch
-        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3][1:end-4]
+        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3]
         outdir = exdir*"/"*outstr
     else
         outstr = String(split(exdir,"/")[end])
