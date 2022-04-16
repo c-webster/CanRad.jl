@@ -39,10 +39,15 @@ function CHM2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{
 
     chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits_canopy,true,true)
 
-    if isempty(chm_x) # create a dataset of zeros if chm is nan/empty
-        chm_x = (minimum(pts_x):1:maximum(pts_x)-1)  .* ones(Int(maximum(pts_x)-minimum(pts_x)))
-        chm_y = ones(Int(maximum(pts_y)-minimum(pts_y))) .* (minimum(pts_y):1:maximum(pts_y)-1)
+    if isempty(chm_x) # create a dataset of zeros if chm data is unavailable for tile
+
+        limits_chmfill = hcat((floor(minimum(pts_x))-5),(ceil(maximum(pts_x))+5),
+                        (floor(minimum(pts_y))-5),(ceil(maximum(pts_y))+5))
+
+        chm_x = vec((limits_chmfill[1]:2:limits_chmfill[2]-1)'  .* ones(Int(limits_chmfill[4]-limits_chmfill[3])))
+        chm_y = vec(ones(Int(limits_chmfill[2]-limits_chmfill[1]))' .* (limits_chmfill[3]:2:limits_chmfill[4]-1))
         chm_z = zeros(size(chm_x))
+
     end
 
     ################################################################################
@@ -131,10 +136,9 @@ function CHM2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{
             # get the dominant forest type for the tile (with check for incomplete
             #   tiles along the border)
             types_tile = read_griddata_window(fcdf,limits_tile,true,true)[3]
-            if !isempty(types_tile)
+            if !isempty(types_tile[types_tile .> 0])
                 for_type = mode(types_tile[types_tile .> 0])
             else # empty data tiles on the border get to be broadleaf
-                 #  if they're below 1000m
                 for_type = 1
             end
         end
