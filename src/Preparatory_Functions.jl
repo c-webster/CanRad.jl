@@ -65,6 +65,10 @@ function compatability_check(dat_in,par_in)
 		par_in["branch_spacing"] = b_space
     end
 
+    if !@isdefined(buildings)
+        par_in["buildings"] = false
+    end
+
     return dat_in, par_in
 
 end

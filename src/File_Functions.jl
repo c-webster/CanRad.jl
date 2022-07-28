@@ -18,6 +18,7 @@ function loaddbh(fname::String,limits::Array{Float64,2},peri=0::Int64)
     return dat_x, dat_y, dat_z, dat_r, dat_tc
 end
 
+
 function loadltc_txt(fname::String,limits::Array{Float64,2},peri::Int64)
     ltc, _ = readdlm(fname,'\t',header=true)
     replace!(ltc, -9999=>NaN)
@@ -28,40 +29,46 @@ end
 
 
 function loadltc_laz(fname::String,limits::Array{Float64,2},
-            dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},
-            lastc::Vector{Float64})
-	# calculate random branch angle for each tree
-	ang = rand(Uniform(60,100),size(lastc,1)) # Norway Spruce
+    dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},
+    lastc::Vector{Float64})
 
-	header, ltcdat = LazIO.load(fname)
+    # calculate random branch angle for each tree
+    ang = rand(Uniform(60,100),size(lastc,1)) # Norway Spruce
 
-	dat = DataFrame(ltcdat)
+    header, ltcdat = LazIO.load(fname)
 
-	ltc_c = Int.(dat.raw_classification)
+    dat = DataFrame(ltcdat)
 
-	dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
-			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
-			(ltc_c .!= 2)
+    ignore = indexin(dat.intensity, lastc)
 
-	ltc = fill(NaN,sum(dx),8)
+    dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
+        (limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
+        (dat.raw_classification .!= 2) .& (ignore .!= nothing)
 
-	ltc[:,1] = dat.x[dx] .* header.x_scale .+ header.x_offset
-	ltc[:,2] = dat.y[dx] .* header.y_scale .+ header.y_offset
-	ltc[:,3] = dat.z[dx] .* header.z_scale .+ header.z_offset
-	ltc[:,7] = Int.(dat.intensity[dx]) # tree number
+    ltc = DataFrame()
+    
+    ltc.x = dat.x[dx] .* header.x_scale .+ header.x_offset
+    ltc.y = dat.y[dx] .* header.y_scale .+ header.y_offset
+    ltc.z = dat.z[dx] .* header.z_scale .+ header.z_offset
+    ltc.num = Int32.(dat.intensity[dx]) # tree number
 
-	for tx in eachindex(lastc)
-		t_dx = (lastc[tx] .== ltc[:,7])
-		ltc[t_dx,4] .= dbh_x[tx]
-		ltc[t_dx,5] .= dbh_y[tx]
-		ltc[t_dx,6] .= dist(ltc[t_dx,1],ltc[t_dx,2],dbh_x[tx],dbh_y[tx])
-		ltc[t_dx,8] .= ang[tx]
-	end
+    ltc.tx = fill(NaN,size(ltc.x,1))
+    ltc.ty = fill(NaN,size(ltc.x,1))
+    ltc.hd = fill(NaN,size(ltc.x,1))
+    ltc.ang = fill(NaN,size(ltc.x,1))
+    for tx in eachindex(lastc)
+        t_dx = (lastc[tx] .== ltc.num)
+        ltc.tx[t_dx] .= dbh_x[tx] # tree x
+        ltc.ty[t_dx] .= dbh_y[tx] # tree y
+        ltc.hd[t_dx] .= dist(ltc.x[t_dx],ltc.y[t_dx],dbh_x[tx],dbh_y[tx]) # horizontal distance between point and trunk
+        ltc.ang[t_dx] .= ang[tx] # branch angle
+    end
 
-	ltc = ltc[setdiff(1:end, findall(isnan.(ltc[:,4]).==1)), :]
-	return ltc
+    # return ltc_x, ltc_y, ltc_z, tree_num, ltc_tx, ltc_ty, ltc_hd, ltc_ang
+    return ltc
 
 end
+
 
 function load_hlm(hlmf::String,taskID)
 

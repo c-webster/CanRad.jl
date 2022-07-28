@@ -88,52 +88,39 @@ function calculate_trunks(dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_z:
 end
 
 
-function make_branches(ltc::Array{Float64,2},spacing=0.1::Float64)
-    ltc_ad = zeros(size(ltc[:,6],1)) .* NaN
+function make_branches(ltc_x::Vector{Float64},ltc_y::Vector{Float64},ltc_z::Vector{Float64},
+    ltc_tx::Vector{Float64},ltc_ty::Vector{Float64},ltc_hd::Vector{Float64},ltc_ang::Vector{Float64},
+    spacing=0.1::Float64)
 
-    ltc_ad[ltc[:,8].>90]  = ltc[ltc[:,8].>90,6]./cosd.(90 .- ltc[ltc[:,8].>90,8])
-    ltc_ad[ltc[:,8].<90]  = ltc[ltc[:,8].<90,6]./cosd.(ltc[ltc[:,8].<90,8].-90)
-    ltc_ad[ltc[:,8].==90] = ltc[ltc[:,8].==90,6]
+    # calculate angular (eucledian) distane of trunk from trunk to tip
+    ltc_ad = zeros(size(ltc_hd,1)) .* NaN
 
-    ltc_zd = sqrt.(ltc_ad .^2 .- ltc[:,6] .^ 2)
+    ltc_ad[ltc_ang.>90] = ltc_hd[ltc_ang.>90]./cosd.(90 .- ltc_ang[ltc_ang.>90])
+    ltc_ad[ltc_ang.<90]  = ltc_hd[ltc_ang.<90]./cosd.(ltc_ang[ltc_ang.<90].-90)
+    ltc_ad[ltc_ang.==90] = ltc_hd[ltc_ang.==90]
+
+    # calculate vertical 2D distance between top and bottom of branch
+    ltc_zd = sqrt.(ltc_ad .^2 .- ltc_hd .^ 2)
 
     # calculate height at which branch intersects trunk
-    ltc_tz = ltc[:,3] + ltc_zd
+    ltc_tz = ltc_z + ltc_zd
 
-    nwmatx = fill!(zeros(Int.(ceil(maximum(ltc_ad./spacing))),size(ltc,1)),NaN)
-    nwmaty = fill!(zeros(Int.(ceil(maximum(ltc_ad./spacing))),size(ltc,1)),NaN)
-    nwmatz = fill!(zeros(Int.(ceil(maximum(ltc_ad./spacing))),size(ltc,1)),NaN)
+    bsm_x = Vector{Float64}(); bsm_y = Vector{Float64}(); bsm_z = Vector{Float64}();
 
-    npts = []
-    # for bidx = 1:1:size(ltc,1)
-    @inbounds for bidx in eachindex(ltc[:,1])
-        try
-            npts = Int(floor(ltc_ad[bidx,1] / spacing))
-            nwmatx[1:npts,bidx] = ltc[bidx,1] .+ collect(range(0,stop=1,length=npts)) .*
-                                        (ltc[bidx,4] - ltc[bidx,1])
-            nwmaty[1:npts,bidx] = ltc[bidx,2] .+ collect(range(0,stop=1,length=npts)) .*
-                                        (ltc[bidx,5] - ltc[bidx,2])
-            nwmatz[1:npts,bidx] = ltc[bidx,3] .+ collect(range(0,stop=1,length=npts)) .*
-                                        (ltc_tz[bidx,1] - ltc[bidx,3])
-        catch
-            npts = Int(ceil(ltc_ad[bidx,1] / spacing))
-            nwmatx[1:npts,bidx] = ltc[bidx,1] .+ collect(range(0,stop=1,length=npts)) .*
-                                        (ltc[bidx,4] - ltc[bidx,1])
-            nwmaty[1:npts,bidx] = ltc[bidx,2] .+ collect(range(0,stop=1,length=npts)) .*
-                                        (ltc[bidx,5] - ltc[bidx,2])
-            nwmatz[1:npts,bidx] = ltc[bidx,3] .+ collect(range(0,stop=1,length=npts)) .*
-                                        (ltc_tz[bidx,1] - ltc[bidx,3])
+    for bidx in eachindex(ltc_x)
+        npts = Int32(floor(ltc_ad[bidx,1] / spacing))-1
+        if npts > 2
+            append!(bsm_x,ltc_x[bidx]+spacing .+ collect(range(0,stop=1,length=npts)) .*
+                                        (ltc_tx[bidx] - ltc_x[bidx]))
+            append!(bsm_y,ltc_y[bidx]+spacing .+ collect(range(0,stop=1,length=npts)) .*
+                                        (ltc_ty[bidx] - ltc_y[bidx]))
+            append!(bsm_z,ltc_z[bidx]+spacing .+ collect(range(0,stop=1,length=npts)) .*
+                                        (ltc_tz[bidx] - ltc_z[bidx]))
         end
     end
 
-    # bsm = fill(NaN,(size(nwmatx,1)*size(nwmatx,2)),4)
-    bsm_x = vec(nwmatx)
-    bsm_y = vec(nwmaty)
-    bsm_z = vec(nwmatz)
-    rows = findall(isnan,bsm_z)
-    deleteat!(bsm_x,rows)
-    deleteat!(bsm_y,rows)
-    deleteat!(bsm_z,rows)
+    # the '+spacing' above is so the dsm points aren't included in the bsm dataset
+
     return bsm_x, bsm_y, bsm_z
 end
 
