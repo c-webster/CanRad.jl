@@ -1,14 +1,18 @@
-function findelev(tmpc_x::Array{Float64,1},tmpc_y::Array{Float64,1},tmpc_z::Array{Float64,1},x::Any,y::Any,
+function findelev(tmpc_x::Vector{Float64},tmpc_y::Vector{Float64},tmpc_z::Vector{Float64},x::Any,y::Any,
                         peri::Int64=10,interp_method::String="linear")
+ 
     limits = hcat((floor(minimum(x))-peri),(ceil(maximum(x))+peri),
                     (floor(minimum(y))-peri),(ceil(maximum(y))+peri))
     pc_x, pc_y, pc_z, _ = clipdat(tmpc_x,tmpc_y,tmpc_z,limits,peri)
     v = pyinterp.griddata(hcat(pc_x,pc_y), pc_z, (x, y), method=interp_method)
+
     return round.(v,digits=2)
+
 end
 
 
 function trunkpoints(x1::Float64,y1::Float64,h::Float64,r::Float64,bh::Float64,npt::Any,hint::Any,e::Float64)
+
     # lower trunk, below breast height, cylinder shape
     th = collect(0:(pi/npt[1]):(2*pi))
     xunit = (r * cos.(th) .+ x1)
@@ -34,10 +38,12 @@ function trunkpoints(x1::Float64,y1::Float64,h::Float64,r::Float64,bh::Float64,n
     znew = vcat(znew1,znew2)
 
     return xnew, ynew, znew, enew
+
 end
 
-function preallo_trunks(dat_x::Array{Float64,1},dat_y::Array{Float64,1},dat_z::Array{Float64,1},
-            dat_r::Array{Float64,1},npt::Any,hint::Any)
+function preallo_trunks(dat_x::Vector{Float64},dat_y::Vector{Float64},dat_z::Vector{Float64},
+            dat_r::Vector{Float64},npt::Any,hint::Any)
+    
     # if size(dat,2) == 1
         # dims = fill(NaN,size(dat,2))
         # dat = dat'
@@ -55,12 +61,15 @@ function preallo_trunks(dat_x::Array{Float64,1},dat_y::Array{Float64,1},dat_z::A
         znew2 = repeat(collect((1.5+hint[nix]):hint[nix]:floor(dat_z[tix])),inner=size(th,1))
         global dims[tix,1] = (size(znew1,1) + size(znew2,1))
     end
+
     return dims
+
 end
 
-function calculate_trunks(dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_z::Array{Float64,1},
-                dbh_r::Array{Float64,1},npt::Any,hint::Any,e::Any)
-    # bh  = 1.5 # breast height
+function calculate_trunks(dbh_x::Vector{Float64},dbh_y::Vector{Float64},dbh_z::Vector{Float64},
+                dbh_r::Vector{Float64},npt::Any,hint::Any,e::Any)
+    
+                # bh  = 1.5 # breast height
     dims =  preallo_trunks(dbh_x,dbh_y,dbh_z,dbh_r,npt,hint)
 
     global tsm_x = fill(NaN,Int(sum(dims))); global tsm_y = fill(NaN,Int(sum(dims)))
@@ -84,13 +93,15 @@ function calculate_trunks(dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_z:
             end
         end
     end
+
     return tsm_x, tsm_y, tsm_z.+tsm_e
+
 end
 
 
 function make_branches(ltc_x::Vector{Float64},ltc_y::Vector{Float64},ltc_z::Vector{Float64},
     ltc_tx::Vector{Float64},ltc_ty::Vector{Float64},ltc_hd::Vector{Float64},ltc_ang::Vector{Float64},
-    spacing=0.1::Float64)
+    ltc_cls::Vector{Int32},spacing=0.1::Float64,season=nothing::String)
 
     # calculate angular (eucledian) distane of trunk from trunk to tip
     ltc_ad = zeros(size(ltc_hd,1)) .* NaN
@@ -140,9 +151,10 @@ function create_mat(radius::Int64)
     gcoorcart = float([vec(tgrid[1]) vec(tgrid[2])])
 
     return grad, gcoors, gcoorcart, grid
+
 end
 
-function dist(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},xcoor::Float64,ycoor::Float64)
+function dist(pcd_x::Vector{Float64},pcd_y::Vector{Float64},xcoor::Float64,ycoor::Float64)
             return hypot.(pcd_x.-xcoor,pcd_y.-ycoor)
             # return @fastmath (sqrt.(((dat_x .- xcoor).^2) + ((dat_y .- ycoor).^2)))
 end
@@ -152,7 +164,7 @@ function dist(dat_x::Float64,dat_y::Float64,xcoor::Float64,ycoor::Float64)
             # return @fastmath (sqrt.(((dat_x .- xcoor).^2) + ((dat_y .- ycoor).^2)))
 end
 
-function dist3d(dat_x::Array{Float64,1},dat_y::Array{Float64,1},dat_z::Array{Float64,1},xcoor::Float64,ycoor::Float64,zcoor::Float64)
+function dist3d(dat_x::Vector{Float64},dat_y::Vector{Float64},dat_z::Vector{Float64},xcoor::Float64,ycoor::Float64,zcoor::Float64)
             return hypot.(hypot.(dat_x.-xcoor,dat_y.-ycoor),dat_z.-zcoor)
 end
 
@@ -161,8 +173,8 @@ function dist3d(dat_x::Float64,dat_y::Float64,dat_z::Float64,xcoor::Float64,ycoo
 end
 
 # for lidar points and branches:
-function getsurfdat(dsm_x::Array{Float64,1},dsm_y::Array{Float64,1},dsm_z::Array{Float64,1},
-                        bsm_x::Array{Float64,1},bsm_y::Array{Float64,1},bsm_z::Array{Float64,1},
+function getsurfdat(dsm_x::Vector{Float64},dsm_y::Vector{Float64},dsm_z::Vector{Float64},
+                        bsm_x::Vector{Float64},bsm_y::Vector{Float64},bsm_z::Vector{Float64},
                         xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64)
 
     dsm_d = dist3d(dsm_x,dsm_y,dsm_z,xcoor,ycoor,ecoor).<peri
@@ -170,30 +182,32 @@ function getsurfdat(dsm_x::Array{Float64,1},dsm_y::Array{Float64,1},dsm_z::Array
 
     return append!(dsm_x[dsm_d],bsm_x[bsm_d]), append!(dsm_y[dsm_d],bsm_y[bsm_d]),
                 append!(dsm_z[dsm_d],bsm_z[bsm_d])
+
 end
 
 # for lidar/terrain points
-function getsurfdat(dsm_x::Array{Float64,1},dsm_y::Array{Float64,1},dsm_z::Array{Float64,1},
+function getsurfdat(dsm_x::Vector{Float64},dsm_y::Vector{Float64},dsm_z::Vector{Float64},
                         xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64)
     dsm_d = dist3d(dsm_x,dsm_y,dsm_z,xcoor,ycoor,ecoor).<peri
     return dsm_x[dsm_d], dsm_y[dsm_d], dsm_z[dsm_d]
 end
 
 # for lidar/terrain points but with a minimum and maximum perimeter
-function getsurfdat(dsm_x::Array{Float64,1},dsm_y::Array{Float64,1},dsm_z::Array{Float64,1},
+function getsurfdat(dsm_x::Vector{Float64},dsm_y::Vector{Float64},dsm_z::Vector{Float64},
                         xcoor::Float64,ycoor::Float64,ecoor::Float64,peri1::Int64,peri2::Int64)
     dsm_d = peri1 .< dist3d(dsm_x,dsm_y,dsm_z,xcoor,ycoor,ecoor) .< peri2
     return dsm_x[dsm_d], dsm_y[dsm_d], dsm_z[dsm_d]
 end
 
 
-function getsurfdat_lavd(dsm_x::Array{Float64,1},dsm_y::Array{Float64,1},dsm_z::Array{Float64,1},lavd::Array{Float64,1},
+function getsurfdat_lavd(dsm_x::Vector{Float64},dsm_y::Vector{Float64},dsm_z::Vector{Float64},lavd::Vector{Float64},
                         xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64)
     dsm_d = dist3d(dsm_x,dsm_y,dsm_z,xcoor,ycoor,ecoor) .< peri
     return lavd[dsm_d]
 end
 
-function cart2sph(in_x::Array{Float64,1},in_y::Array{Float64,1},in_z::Array{Float64,1},peri::Int64)
+function cart2sph(in_x::Vector{Float64},in_y::Vector{Float64},in_z::Vector{Float64},peri::Int64)
+    
     out_phi    = atan.(in_y,in_x) # az
     out_tht    = ((pi/2) .- (atan.(in_z,hypot.(in_x,in_y)))) * (180/pi) # elev/zenith
     out_tht[out_tht.> 90] .= 90
@@ -201,17 +215,20 @@ function cart2sph(in_x::Array{Float64,1},in_y::Array{Float64,1},in_z::Array{Floa
 
     # return filterbyradius(out_phi,out_tht,out_rad,peri)
     return out_phi, out_tht, out_rad
+
 end
 
-function cart2pol(in_x::Array{Float64,1},in_y::Array{Float64,1})
+function cart2pol(in_x::Vector{Float64},in_y::Vector{Float64})
+
     out_phi    = atan.(in_y,in_x) # az
     out_tht    = ((pi/2) .- (atan.(in_z,hypot.(in_x,in_y)))) * (180/pi) # elev/zenith
     out_tht[out_tht.> 90] .= 90
 
     return out_phi, out_tht
+
 end
 
-function fillterrain(rphi::Array{Float64,1},rtht::Array{Float64,1},slp=0.0::Float64)
+function fillterrain(rphi::Vector{Float64},rtht::Vector{Float64},slp=0.0::Float64)
 
     min_rphi = minimum(filter(!isnan,rtht))
     int = size(collect(min_rphi:0.5:(90+slp)),1)
@@ -223,18 +240,20 @@ function fillterrain(rphi::Array{Float64,1},rtht::Array{Float64,1},slp=0.0::Floa
     phi = vec(repeat(rphi,outer=[1,int]))
 
     return phi, tht # azimuth, zenith
+
 end
 
-function normalise(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},
+function normalise(pcd_x::Vector{Float64},pcd_y::Vector{Float64},pcd_z::Vector{Float64},
                     xcoor::Float64,ycoor::Float64,ecoor::Float64,image_height=0.0::Float64)
     pcd_x .-= xcoor
     pcd_y .-= ycoor
     pcd_z .-= ecoor
     pcd_z .-= image_height
     return pcd_x, pcd_y, pcd_z
+
 end
 
-function pcd2pol(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},
+function pcd2pol(pcd_x::Vector{Float64},pcd_y::Vector{Float64},pcd_z::Vector{Float64},
                         xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,dat::String,
                         image_height=0.0::Float64,slp=0.0::Float64,cellsize=0.0::Float64)
 
@@ -251,7 +270,7 @@ function pcd2pol(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Fl
 
 end
 
-function pcd2pol2cart(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},
+function pcd2pol2cart(pcd_x::Vector{Float64},pcd_y::Vector{Float64},pcd_z::Vector{Float64},
                         xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,dat::String,
                         image_height=0.0::Float64,slp=0.0::Float64,cellsize=0.0::Float64)
 
@@ -272,18 +291,19 @@ function pcd2pol2cart(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Arr
     else
         return prepcrtdat(round.(pol_phi,digits=3),round.(pol_tht,digits=3),round.(pol_rad,digits=3))
     end
+
 end
 
-function pol2cart(pol_phi::Array{Float64,1},pol_tht::Array{Float64,1})
+function pol2cart(pol_phi::Vector{Float64},pol_tht::Vector{Float64})
     return pol_tht .* cos.(pol_phi), pol_tht .* sin.(pol_phi)
 end
 
-function filterbyradius(phi::Array{Float64,1},tht::Array{Float64,1},rad::Array{Float64,1},peri::Int64)
+function filterbyradius(phi::Vector{Float64},tht::Vector{Float64},rad::Vector{Float64},peri::Int64)
     rmdx = rad .> peri
     return deleteat!(phi,rmdx), deleteat!(tht,rmdx), deleteat!(rad,rmdx)
 end
 
-function prepcrtdat(mat_in_x::Array{Float64,1},mat_in_y::Array{Float64,1},mat_in_r::Array{Float64,1})
+function prepcrtdat(mat_in_x::Vector{Float64},mat_in_y::Vector{Float64},mat_in_r::Vector{Float64})
 
     idx    = (1:1:size(mat_in_x,1));
 
@@ -303,7 +323,7 @@ function prepcrtdat(mat_in_x::Array{Float64,1},mat_in_y::Array{Float64,1},mat_in
 
 end
 
-function prepterdat(matcrt_x::Array{Float64,1},matcrt_y::Array{Float64,1})
+function prepterdat(matcrt_x::Vector{Float64},matcrt_y::Vector{Float64})
 
     matcrt_x = round.(matcrt_x,digits = 1)
     matcrt_y = round.(matcrt_y,digits = 1)
@@ -315,6 +335,7 @@ function prepterdat(matcrt_x::Array{Float64,1},matcrt_y::Array{Float64,1})
 end
 
 function getimagecentre(slp::Float64,asp::Float64)
+
     if asp == 0 || asp == 360
         X = 0
         Y = slp
@@ -341,18 +362,20 @@ function getimagecentre(slp::Float64,asp::Float64)
         Y = cosd(360-asp) * slp
     end
     return X,Y
+
 end
 
-function findpairs(kdtree::Any,datcrt::Array{Float64,2},tol::Float64,kdtreedims::Int64,knum::Int64)
+function findpairs(kdtree::Any,datcrt::Matrix{Float64},tol::Float64,kdtreedims::Int64,knum::Int64)
 
     distances, indices = scipyspat.cKDTree.query(kdtree,datcrt, k=knum, n_jobs=-1)
     lia = fill(0,kdtreedims,1)
     lia[indices[distances .<= tol],:] .= 1
 
     return lia
+
 end
 
-function fillmat(kdtree::Any,datcrt::Array{Float64,2},tol::Float64,kdtreedims::Int64,knum::Int64,radius::Int64,mat2ev::Array{Int64,2})
+function fillmat(kdtree::Any,datcrt::Matrix{Float64},tol::Float64,kdtreedims::Int64,knum::Int64,radius::Int64,mat2ev::Matrix{Int64})
     imdx = reshape(findpairs(kdtree,datcrt,tol,kdtreedims,knum),(radius*2,radius*2))
     mat2ev[imdx.==1] .= 0
     return mat2ev
@@ -362,13 +385,13 @@ function findmincol(row)
     return findmin(row)[2]
 end
 
-function frbins(pcd::Array{Float64,1},rbin1::Float64,rbin2::Float64)
+function frbins(pcd::Vector{Float64},rbin1::Float64,rbin2::Float64)
     return ((pcd .>= rbin1) .& (pcd .< rbin2))
 end
 
-function calcmintht(mintht::Array{Float64,2},rbins::Array{Float64,1},phi_bins::Array{Float64,1},idx::Array{Int64,1},
-                        pcdpol_phi::Array{Float64,1},pcdpol_tht::Array{Float64,1},pcdpol_rad::Array{Float64,1},
-                        fix1::Array{Int64,1},temp::Array{Float64,2},tdx)
+function calcmintht(mintht::Matrix{Float64},rbins::Vector{Float64},phi_bins::Vector{Float64},idx::Vector{Int64},
+                        pcdpol_phi::Vector{Float64},pcdpol_tht::Vector{Float64},pcdpol_rad::Vector{Float64},
+                        fix1::Vector{Int64},temp::Matrix{Float64},tdx)
 
     @inbounds @simd for rbix = length(rbins)-1:-1:1
             fix1 = idx[frbins(pcdpol_rad,rbins[rbix],rbins[rbix+1])]
@@ -381,14 +404,14 @@ function calcmintht(mintht::Array{Float64,2},rbins::Array{Float64,1},phi_bins::A
                 mintht = minimum(hcat(mintht,temp2),dims=2)
             end
     end
+
     return mintht
 
 end
 
-function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Float64,1},
-                            pcdpol_tht::Array{Float64,1},pcdpol_rad::Array{Float64,1},
+function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Vector{Float64},
+                            pcdpol_tht::Vector{Float64},pcdpol_rad::Vector{Float64},
                             slp::Float64,dat=nothing::String,)
-
 
     pol_phitemp = copy(pcdpol_phi)
 
@@ -409,7 +432,7 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
     end
 
     idx = collect(1:1:size(pcdpol_phi,1))
-    fix1 = Array{Int64,1}(undef,10000)
+    fix1 = Vector{Int64}(undef,10000)
     tdx = Array{Bool,size(phi_bins,1)}
     mintht = (fill(90.0,size(phi_bins,1),1));
 
@@ -440,9 +463,10 @@ function calc_horizon_lines(cellsize::Float64,peri::Int64,pcdpol_phi::Array{Floa
     pol_phi, pol_tht = fillterrain(rphi,rtht,slp)
 
     return pol_phi, pol_tht
+
 end
 
-function calcCHM_Ptrans(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::Array{Float64,1},pcd_b::Array{Float64,1},lavd::Array{Float64,1},
+function calcCHM_Ptrans(pcd_x::Vector{Float64},pcd_y::Vector{Float64},pcd_z::Vector{Float64},pcd_b::Vector{Float64},lavd::Vector{Float64},
                         # stm_x::Array{Float64,1},stm_y::Array{Float64,1},stm_z::Array{Float64,1},
                         xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64,image_height::Float64,cellsize::Float64)
 
@@ -478,16 +502,17 @@ function calcCHM_Ptrans(pcd_x::Array{Float64,1},pcd_y::Array{Float64,1},pcd_z::A
     pt_chm_x_thick, pt_chm_y_thick = calcPtrans_dist(fill(0.0,size(phi_bins_short,1),90), phi_bins_short, sum_thick)
 
     return pt_chm_x, pt_chm_y, rdist, pt_chm_x_thick, pt_chm_y_thick
+
 end
 
-function calcThickness(rbins::Array{Float64,1},phi_bins_long::Array{Float64,1},phi_bins_short::Array{Float64,1},
-                        can_phi::Array{Float64,1},can_tht::Array{Float64,1},can_rad::Array{Float64,1},lavd::Array{Float64,1},
-                        bse_phi::Array{Float64,1},bse_tht::Array{Float64,1},bse_rad::Array{Float64,1},
-                        fix_can::Array{Int64,1},fix_bse::Array{Int64,1},
-                        idx_can::Array{Int64,1},idx_bse::Array{Int64,1},
+function calcThickness(rbins::Vector{Float64},phi_bins_long::Vector{Float64},phi_bins_short::Vector{Float64},
+                        can_phi::Vector{Float64},can_tht::Vector{Float64},can_rad::Vector{Float64},lavd::Vector{Float64},
+                        bse_phi::Vector{Float64},bse_tht::Vector{Float64},bse_rad::Vector{Float64},
+                        fix_can::Vector{Int64},fix_bse::Vector{Int64},
+                        idx_can::Vector{Int64},idx_bse::Vector{Int64},
                         tdx_can,tdx_bse,
-                        temp_mintht::Array{Float64,2},thick::Array{Float64,2},sum_thick::Array{Float64,2},
-                        sum_lavd_thick::Array{Float64,2},cellsize::Float64,rdist::Array{Float64,2})
+                        temp_mintht::Matrix{Float64},thick::Matrix{Float64},sum_thick::Matrix{Float64},
+                        sum_lavd_thick::Matrix{Float64},cellsize::Float64,rdist::Matrix{Float64})
 
     dx1 = findall(abs.(phi_bins_long .+ pi) .== 0)[1]
     dx2 = findall(abs.(phi_bins_long .- pi) .== 0)[1]
@@ -549,9 +574,12 @@ function calcThickness(rbins::Array{Float64,1},phi_bins_long::Array{Float64,1},p
     end
 
     return sum_lavd_thick, sum_thick, vec(rdist)
+
 end
 
-function calcPtrans(sum_lavd_thick::Array{Float64,2},phi_bins::Array{Float64,1},sum_thick::Array{Float64,2},cellsize::Float64,rdist::Array{Float64,1})
+function calcPtrans(sum_lavd_thick::Matrix{Float64},phi_bins::Vector{Float64},sum_thick::Matrix{Float64},
+                        cellsize::Float64,rdist::Vector{Float64})
+
     Ptrans = exp.(-0.5 * sum_lavd_thick)
     # phi_bins = collect(-pi:pi/356:pi); #push!(phi_bins,pi) # tidy up phi_bins so it starts and ends at pi
 
@@ -567,13 +595,14 @@ function calcPtrans(sum_lavd_thick::Array{Float64,2},phi_bins::Array{Float64,1},
     pt_chm_x, pt_chm_y, rdist = getPhiTht(phi_bins,Ptrans,rdist)
 
     return pt_chm_x, pt_chm_y, rdist
+
 end
 
-function calcPtrans_dist(canopy_thick::Array{Float64,2},phi_bins::Array{Float64,1},sum_thick::Array{Float64,2})
+function calcPtrans_dist(canopy_thick::Matrix{Float64},phi_bins::Vector{Float64},sum_thick::Matrix{Float64})
 
-    # zero transmissivity where the canopy is > 10m thick.
-    canopy_thick[sum_thick .> 35] .= 0
-    canopy_thick[sum_thick .<= 35] .= 1
+    # zero transmissivity where the canopy is > X m thick.
+    canopy_thick[sum_thick .> 30] .= 0
+    canopy_thick[sum_thick .<= 30] .= 1
     phi = repeat(phi_bins,90);
     tht = repeat(90.0:-1:1,inner=size(phi_bins,1))
     rows = findall(vec(canopy_thick).==1)
@@ -581,19 +610,23 @@ function calcPtrans_dist(canopy_thick::Array{Float64,2},phi_bins::Array{Float64,
     deleteat!(tht,rows)
 
     return pol2cart(phi,float.(tht))
+
 end
 
-function getPhiTht(phi_bins::Array{Float64,1},Ptrans::Array{Float64,2},rdist::Array{Float64,1})
+function getPhiTht(phi_bins::Vector{Float64},Ptrans::Matrix{Float64},rdist::Vector{Float64})
+
     phi = repeat(phi_bins,90);
     tht = repeat(90.0:-1:1,inner=size(phi_bins,1))
 
     for thtdx = 1:size(phi_bins,1):size(tht,1)-size(phi_bins,1)
-        tht[thtdx:thtdx+size(phi_bins,1)-1] = rand(Uniform(tht[thtdx]-1,tht[thtdx]),size(thtdx:thtdx+size(phi_bins,1)-1))
+        tht[thtdx:thtdx+size(phi_bins,1)-1] = rand((tht[thtdx]-1,tht[thtdx]),size(thtdx:thtdx+size(phi_bins,1)-1))
+        # tht[thtdx:thtdx+size(phi_bins,1)-1] = rand(Uniform(tht[thtdx]-1,tht[thtdx]),size(thtdx:thtdx+size(phi_bins,1)-1))
     end
 
     temp = sortperm(phi)
     for phidx = 1:size(Ptrans,1):size(phi,1)-size(Ptrans,1)
-        phi[temp[phidx:phidx+89]] = rand(Uniform(phi[temp[phidx]]-0.01,phi[temp[phidx]+1]),size(phidx:phidx+89))
+        phi[temp[phidx:phidx+89]] = rand((phi[temp[phidx]]-0.01,phi[temp[phidx]+1]),size(phidx:phidx+89))
+        # phi[temp[phidx:phidx+89]] = rand(Uniform(phi[temp[phidx]]-0.01,phi[temp[phidx]+1]),size(phidx:phidx+89))
     end
 
     # remove regions of sky where transmissivity = 0
@@ -605,6 +638,7 @@ function getPhiTht(phi_bins::Array{Float64,1},Ptrans::Array{Float64,2},rdist::Ar
     pt_chm_x, pt_chm_y = pol2cart(phi,float.(tht))
 
     return pt_chm_x, pt_chm_y, rdist
+
 end
 
 # function createVariables(pol_phi::Array{Float64,1},phi_bins::Array{Float64,1},peri::Int64)
