@@ -1,4 +1,4 @@
-function loaddbh(fname::String,limits::Array{Float64,2},peri=0::Int64)
+function loaddbh(fname::String,limits::Matrix{Float64},peri=0::Int64)
     dat, _ = readdlm(fname,'\t',header=true)
 
     dat_x, dat_y, dat_z, rmdx = clipdat(dat[:,1],dat[:,2],dat[:,3],limits,peri)
@@ -19,7 +19,7 @@ function loaddbh(fname::String,limits::Array{Float64,2},peri=0::Int64)
 end
 
 
-function loadltc_txt(fname::String,limits::Array{Float64,2},peri::Int64)
+function loadltc_txt(fname::String,limits::Matrix{Float64},peri::Int64)
     ltc, _ = readdlm(fname,'\t',header=true)
     replace!(ltc, -9999=>NaN)
     _, _, _, rmdx = clipdat(ltc[:,1],ltc[:,2],ltc[:,3],limits,peri)
@@ -28,9 +28,9 @@ function loadltc_txt(fname::String,limits::Array{Float64,2},peri::Int64)
 end
 
 
-function loadltc_laz(fname::String,limits::Array{Float64,2},
-    dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},
-    lastc::Vector{Float64})
+function loadltc_laz(fname::String,limits::Matrix{Float64},
+    dbh_x::Vector{Float64},dbh_y::Vector{Float64},
+    lastc::Vector{Float64},season::String)
 
     # calculate random branch angle for each tree
     ang = rand(Uniform(60,100),size(lastc,1)) # Norway Spruce
@@ -70,7 +70,7 @@ function loadltc_laz(fname::String,limits::Array{Float64,2},
 end
 
 
-function load_hlm(hlmf::String,taskID)
+function load_hlm(hlmf::String,taskID::String)
 
     xllcorner = parse(Int,(split(taskID,"_")[2]))[1]
     yllcorner = parse(Int,(split(taskID,"_")[3]))[1]
@@ -103,7 +103,7 @@ function load_hlm(hlmf::String,taskID)
 end
 
 
-function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_trans::Bool,calc_swr::Int64,
+function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_trans::Bool,calc_swr::Int64,
             append_file::Bool,loc_time=nothing,time_zone=nothing)
 
     outfile  = outdir*"/Output_"*outstr*".nc"
@@ -162,7 +162,7 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
 end
 
 
-function create_exmat(outdir::String,outstr::String,pts::Array{Float64,2},g_img::Array{Int64,2},append_file::Bool)
+function create_exmat(outdir::String,outstr::String,pts::Matrix{Float64},g_img::Matrix{Int64},append_file::Bool)
 
     outfile  = outdir*"/SHIs_"*outstr*".nc"
 
@@ -219,7 +219,7 @@ get_pkg_version(name::AbstractString) =
 
 end
 
-function organise_outf(taskID,exdir,batch,numpts)
+function organise_outf(taskID::String,exdir::String,batch::Bool,numpts::Int)
 
 	if batch
         outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3]
