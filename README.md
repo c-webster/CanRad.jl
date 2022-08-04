@@ -25,10 +25,6 @@ Both models can be run on an HPC to cover large domains. An example implementati
 
 ## Installation
 
-```
-]add https://github.com/c-webster/CanRad.jl
-```
-
 CanRad requires [SpatialFileIO.jl](https://github.com/c-webster/SpatialFileIO.jl) and the python package `scipy`. 
 
 `SpatialFileIO` can be added by
@@ -43,6 +39,11 @@ using Conda
 Conda.add("scipy")
 ```
 
+Then add CanRad
+```
+]add https://github.com/c-webster/CanRad.jl
+```
+
 To run the tests below, you also need DelimitedFiles
 ```
 ]add DelimitedFiles
@@ -50,8 +51,8 @@ To run the tests below, you also need DelimitedFiles
 
 ## Usage
 
-Edit ~/CanRad/test/LAS2Rad_Settings_test.jl or ~/CanRad/test/LAS2Rad_Settings_test.jl for descired input parameters and file paths. 
-Edit ~/CanRad/test/run_CanRad_tests.jl 
+Edit ~/test/L2R_Settings_test.jl or ~/test/C2R_Settings_test.jl for descired input parameters and file paths. 
+Edit ~/test/run_CanRad_tests.jl 
 
 ```
 include("~/run_CanRad_tests.jl")
