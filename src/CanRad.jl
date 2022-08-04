@@ -1,7 +1,7 @@
 module CanRad
 
 using DelimitedFiles, DataStructures, LasIO, LazIO,
-    Statistics, Dates, Interpolations,
+    Statistics, Dates, Interpolations, Images,
     DataFrames, Formatting, Distributed, Distributions,
     SpatialFileIO, NCDatasets, Chain, Pkg, MarketTechnicals
 
@@ -71,6 +71,7 @@ export
     loadltc_laz,
     loadltc_txt,
     make_branches,
+    make_SHIs,
     netcdf,
     normalise,
     np,

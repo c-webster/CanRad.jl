@@ -52,6 +52,13 @@ function loadltc_laz(fname::String,limits::Matrix{Float64},
     ltc.z = dat.z[dx] .* header.z_scale .+ header.z_offset
     ltc.num = Int32.(dat.intensity[dx]) # tree number
 
+    # get the tree class (0=evergreen, 1=deciduous)
+    if season == "complete"
+        ltc.cls = Int32.(dat.pt_src_id[dx]) # tree class
+    else
+        ltc.cls = Int32.(fill(0,(size(ltc.x)))) # leave empty
+    end
+
     ltc.tx = fill(NaN,size(ltc.x,1))
     ltc.ty = fill(NaN,size(ltc.x,1))
     ltc.hd = fill(NaN,size(ltc.x,1))
@@ -252,4 +259,32 @@ function organise_outf(taskID::String,exdir::String,batch::Bool,numpts::Int)
 
 	return outdir, outstr, crxstart, append_file, percentdone
 
+end
+
+function make_SHIs(datdir::String)
+
+    files = readdir(datdir)
+    fx = findall(startswith.(files,"SHIs") .& endswith.(files,".nc"))
+
+    images = NCDataset(joinpath(datdir,files[fx][1]),"r")
+
+    coords_x = images["easting"][:]
+    coords_y = images["northing"][:]
+
+    odir = joinpath(datdir,files[fx][1][1:end-3])
+
+    if !ispath(odir)
+        mkpath(odir)
+    end
+
+    fstr = "%07.$(2)f"
+
+    for ix in eachindex(coords_x)
+
+        outf = joinpath(odir,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*".png")
+        save(outf,colorview(Gray,float.(images["SHI"][:,:,ix])))
+
+    end
+
+    close(images)
 end
