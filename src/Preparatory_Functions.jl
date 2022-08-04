@@ -42,7 +42,7 @@ function compatability_check(dat_in,par_in)
     end
 
     # disable tilt option since it is not implemented properly
-    if tilt
+    if !@isdefined(tilt) || tilt 
         par_in["tilt"] = false
     end
 
@@ -65,8 +65,8 @@ function compatability_check(dat_in,par_in)
 		par_in["branch_spacing"] = b_space
     end
 
-    if !@isdefined(buildings)
-        par_in["buildings"] = false
+    if !@isdefined(season)
+        par_in["season"] = "none"
     end
 
     return dat_in, par_in
