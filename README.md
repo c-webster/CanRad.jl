@@ -44,16 +44,17 @@ Then add CanRad
 ]add https://github.com/c-webster/CanRad.jl
 ```
 
-To run the tests below, you also need DelimitedFiles
-```
-]add DelimitedFiles
-```
 
 ## Usage
 
-Edit ~/test/L2R_Settings_test.jl or ~/test/C2R_Settings_test.jl for descired input parameters and file paths. 
+Edit ~/test/L2R_Settings_test.jl or ~/test/C2R_Settings_test.jl for desired input parameters and file paths. 
 Edit ~/test/run_CanRad_tests.jl 
 
+To run the tests, you also need DelimitedFiles
+```
+]add DelimitedFiles
+```
+then
 ```
 include("~/run_CanRad_tests.jl")
 ```
