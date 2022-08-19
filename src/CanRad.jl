@@ -18,9 +18,9 @@ include("Can2Hemi_Functions.jl")
 include("Solar_Functions.jl")
 include("CHM2Rad.jl")
 include("LAS2Rad.jl")
+include("LAS2Rad_seasonal.jl")
 
 export
-    # CanRad_Prep,
     aggregate_data,
     calc_horizon_lines,
     calc_solar_track,
@@ -66,6 +66,7 @@ export
     getsurfdat,
     getsurfdat_lavd,
     LAS2Rad,
+    LAS2Rad_seasonal,
     loaddbh,
     load_hlm,
     loadltc_laz,
@@ -84,6 +85,7 @@ export
     prepterdat,
     pyinterp,
     scipyspat,
+    split_points,
     # trunk_locs,
     trunkpoints,
     utm2deg,

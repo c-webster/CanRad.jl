@@ -117,22 +117,39 @@ function make_branches(ltc_x::Vector{Float64},ltc_y::Vector{Float64},ltc_z::Vect
     ltc_tz = ltc_z + ltc_zd
 
     bsm_x = Vector{Float64}(); bsm_y = Vector{Float64}(); bsm_z = Vector{Float64}();
+    if season == "complete"; bsm_cls = Vector{Int32}(); else; bsm_cls = 0; end
+    # bsm_cls = 1 if deciduous, 0 if evergreen
 
     for bidx in eachindex(ltc_x)
         npts = Int32(floor(ltc_ad[bidx,1] / spacing))-1
-        if npts > 2
+        if npts > 2 && ltc_hd[bidx] .< 4 # limit branches to < 4m 
+            # the '+spacing' is so the dsm points aren't included in the bsm dataset
             append!(bsm_x,ltc_x[bidx]+spacing .+ collect(range(0,stop=1,length=npts)) .*
                                         (ltc_tx[bidx] - ltc_x[bidx]))
             append!(bsm_y,ltc_y[bidx]+spacing .+ collect(range(0,stop=1,length=npts)) .*
                                         (ltc_ty[bidx] - ltc_y[bidx]))
             append!(bsm_z,ltc_z[bidx]+spacing .+ collect(range(0,stop=1,length=npts)) .*
                                         (ltc_tz[bidx] - ltc_z[bidx]))
+            if season == "complete"
+                append!(bsm_cls,Int.(repeat([ltc_cls[bidx]],npts)))
+            end
         end
     end
 
-    # the '+spacing' above is so the dsm points aren't included in the bsm dataset
+    # make the points a bit more random
+    bsm_x .+= rand(Uniform(-branch_spacing,branch_spacing),size(bsm_x,1))
+    bsm_y .+= rand(Uniform(-branch_spacing,branch_spacing),size(bsm_x,1))
+    bsm_z .+= rand(Uniform(-branch_spacing,branch_spacing),size(bsm_x,1))
 
-    return bsm_x, bsm_y, bsm_z
+    return bsm_x, bsm_y, bsm_z, Bool.(bsm_cls)
+
+end
+
+function split_points(datx,daty,datz,cls)
+
+    return DataFrame(x=datx[.!cls],y=daty[.!cls],z=datz[.!cls]), 
+                DataFrame(x=datx[cls],y=daty[cls],z=datz[cls])
+
 end
 
 
@@ -486,8 +503,9 @@ function calcCHM_Ptrans(pcd_x::Vector{Float64},pcd_y::Vector{Float64},pcd_z::Vec
     lavd    = repeat(lavd,outer=2)
 
     # allocate variables for the radial loops in calcThickness
-    phi_bins_long = collect(-2*pi:pi/360:2*pi)
-    phi_bins_short = collect(-pi:pi/360:pi)
+    # this is the variable that changes the perceived canopy density in the image (FAR more powerful than tolerance)
+    phi_bins_long = collect(-2*pi:pi/450:2*pi)
+    phi_bins_short = collect(-pi:pi/450:pi)
 
     sum_lavd_thick, sum_thick, rdist = calcThickness(collect(4*cellsize:sqrt(2).*cellsize:peri),phi_bins_long,phi_bins_short,
                                             can_phi,can_tht,can_rad,lavd,bse_phi,bse_tht,bse_rad,

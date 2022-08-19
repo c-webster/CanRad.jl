@@ -83,13 +83,23 @@ function extract(d::Dict)
 end
 
 function clipdat(pc_x::Vector{Float64},pc_y::Vector{Float64},pc_z::Vector{Float64},limits,peri=0::Int64)
-    rmidx = (pc_x.<(limits[1]-peri)) .| (pc_x.>(limits[2]+peri)) .|
-                (pc_y.<(limits[3]-peri)) .| (pc_y.>(limits[4]+peri))
-    deleteat!(pc_x,rmidx)
-    deleteat!(pc_y,rmidx)
-    deleteat!(pc_z,rmidx)
-    return pc_x, pc_y, pc_z, rmidx
+    
+    kpdx = (limits[1]-peri .<= pc_x .<= limits[2]+peri) .&& 
+                (limits[3]-peri .<= pc_y .<= limits[4]+peri) 
+
+    return pc_x[kpdx], pc_y[kpdx], pc_z[kpdx], kpdx
+
 end
+
+function clipdat(dat::DataFrame,limits,peri=0::Int64)
+    
+    kpdx = (limits[1]-peri .<= dat.x .<= limits[2]+peri) .&& 
+                (limits[3]-peri .<= dat.y .<= limits[4]+peri) 
+
+    return dat[kpdx,:] 
+
+end
+
 
 function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
 

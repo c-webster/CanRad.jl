@@ -126,19 +126,22 @@ function LAS2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{
     end
 
     # load the ltc
-    if branches
+    if branches || season == "complete"
         if extension(ltcf) == ".txt"
-            ltc = loadltc_txt(ltcf,limits_trees,0)
+            # ltc = loadltc_txt(ltcf,limits_trees,0)
+            error("ltcf extension .txt no longer compatible. Use version < 0.8.2")
         elseif extension(ltcf) == ".laz"
-             ltc = loadltc_laz(ltcf,limits_trees,dbh_x,dbh_y,lastc)  
+            ltc = loadltc_laz(ltcf,limits_trees,dbh_x,dbh_y,lastc,season)  
             if abs(mode(ltc.z) - mode(dtm_z)) < 60 # if the data's not normalised, it needs to be normalised)
                 ltc.z .-= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),ltc.x,ltc.y)
             end
             # remove the points < 1m from the ground
             ltc = ltc[setdiff(1:end, findall(ltc.z.<1)), :]
         end
-        bsm_x, bsm_y, bsm_z = make_branches(ltc.x,ltc.y,ltc.z,
-                                        ltc.tx,ltc.ty,ltc.hd,ltc.ang,branch_spacing)
+
+        # make the branch/canopy points and classify as deciduous or evergreen
+        bsm_x, bsm_y, bsm_z, bsm_d  = make_branches(ltc.x,ltc.y,ltc.z,
+                                        ltc.tx,ltc.ty,ltc.hd,ltc.ang,ltc.cls,branch_spacing,season)
 
         bsm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),bsm_x,bsm_y)
     end

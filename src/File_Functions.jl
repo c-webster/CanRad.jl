@@ -1,32 +1,18 @@
 function loaddbh(fname::String,limits::Matrix{Float64},peri=0::Int64)
     dat, _ = readdlm(fname,'\t',header=true)
 
-    dat_x, dat_y, dat_z, rmdx = clipdat(dat[:,1],dat[:,2],dat[:,3],limits,peri)
+    dat_x, dat_y, dat_z, kpdx = clipdat(dat[:,1],dat[:,2],dat[:,3],limits,peri)
 
-    dat_r = deleteat!(dat[:,4],rmdx) # diameter at breast height
-    dat_r /= 2
-    dat_r /= 100
-
-    # dat_h = deleteat!(dat[:,5],rmdx) # height
+    dat_r = (dat[kpdx,4] ./2) ./100
 
     if size(dat,2) == 5
-        dat_tc = deleteat!(dat[:,5],rmdx)
+        dat_tc = dat[kpdx,5]
     else
         dat_tc = fill(NaN,size(dat_x))
     end
 
     return dat_x, dat_y, dat_z, dat_r, dat_tc
 end
-
-
-function loadltc_txt(fname::String,limits::Matrix{Float64},peri::Int64)
-    ltc, _ = readdlm(fname,'\t',header=true)
-    replace!(ltc, -9999=>NaN)
-    _, _, _, rmdx = clipdat(ltc[:,1],ltc[:,2],ltc[:,3],limits,peri)
-    ltc = ltc[setdiff(1:end, findall(rmdx.==1)), :]
-    return ltc
-end
-
 
 function loadltc_laz(fname::String,limits::Matrix{Float64},
     dbh_x::Vector{Float64},dbh_y::Vector{Float64},
@@ -39,11 +25,9 @@ function loadltc_laz(fname::String,limits::Matrix{Float64},
 
     dat = DataFrame(ltcdat)
 
-    ignore = indexin(dat.intensity, lastc)
-
     dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
         (limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
-        (dat.raw_classification .!= 2) .& (ignore .!= nothing)
+        (dat.raw_classification .!= 2) #.& (ignore .!= nothing)
 
     ltc = DataFrame()
     
@@ -71,7 +55,6 @@ function loadltc_laz(fname::String,limits::Matrix{Float64},
         ltc.ang[t_dx] .= ang[tx] # branch angle
     end
 
-    # return ltc_x, ltc_y, ltc_z, tree_num, ltc_tx, ltc_ty, ltc_hd, ltc_ang
     return ltc
 
 end
@@ -111,7 +94,7 @@ end
 
 
 function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_trans::Bool,calc_swr::Int64,
-            append_file::Bool,loc_time=nothing,time_zone=nothing)
+            append_file::Bool,loc_time::Vector{DateTime}=nothing,time_zone::Int64=nothing,season::String="none")
 
     outfile  = outdir*"/Output_"*outstr*".nc"
 
@@ -129,14 +112,16 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 	    defVar(ds,"easting",pts[:,1],("Coordinates",))
 	    defVar(ds,"northing",pts[:,2],("Coordinates",))
 
-	    defVar(ds,"Vf_planar",Int32,("Coordinates",),deflatelevel=5,
-                    attrib=["scale_factor"=>0.01, "comments" =>
-                    "perspective of a horizontal flat uplooking surface;
-                    zenith rings weighted by surface area projected onto a horizontal flat surface",])
-	    defVar(ds,"Vf_hemi",Int32,("Coordinates",),deflatelevel=5,
-                    attrib=["scale_factor"=>0.01, "comments" =>
-                    "perspective of hemipherically shaped surface or plant;
-                    zenith rings weighted by surface area on the hemisphere",])
+        if season != "complete"
+            defVar(ds,"Vf_planar",Int32,("Coordinates",),deflatelevel=5,
+                        attrib=["scale_factor"=>0.01, "comments" =>
+                        "perspective of a horizontal flat uplooking surface;
+                        zenith rings weighted by surface area projected onto a horizontal flat surface",])
+            defVar(ds,"Vf_hemi",Int32,("Coordinates",),deflatelevel=5,
+                        attrib=["scale_factor"=>0.01, "comments" =>
+                        "perspective of hemipherically shaped surface or plant;
+                        zenith rings weighted by surface area on the hemisphere",])
+        end
 
 	    if calc_trans
 	        defDim(ds,"datetime",length(loc_time))
@@ -147,6 +132,17 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 				dt_comment = "time zone UTC-"*string(time_zone)
 			end
 			defVar(ds,"datetime",loc_time,("datetime",),attrib=["comments" => dt_comment])
+
+            if season == "complete"
+                defVar(ds,"Vf_planar",Int32,("datetime","Coordinates",),deflatelevel=5,
+                            attrib=["scale_factor"=>0.01, "comments" =>
+                            "perspective of a horizontal flat uplooking surface;
+                            zenith rings weighted by surface area projected onto a horizontal flat surface",])
+                defVar(ds,"Vf_hemi",Int32,("datetime","Coordinates",),deflatelevel=5,
+                            attrib=["scale_factor"=>0.01, "comments" =>
+                            "perspective of hemipherically shaped surface or plant;
+                            zenith rings weighted by surface area on the hemisphere",])
+            end
 
 	        defVar(ds,"Forest_Transmissivity",Int32,("datetime","Coordinates",),
                         deflatelevel=5,attrib=["scale_factor"=>0.01,])
@@ -169,7 +165,8 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 end
 
 
-function create_exmat(outdir::String,outstr::String,pts::Matrix{Float64},g_img::Matrix{Int64},append_file::Bool)
+function create_exmat(outdir::String,outstr::String,pts::Matrix{Float64},g_img::Matrix{Int64},
+                append_file::Bool,season::String="none")
 
     outfile  = outdir*"/SHIs_"*outstr*".nc"
 
@@ -185,9 +182,16 @@ function create_exmat(outdir::String,outstr::String,pts::Matrix{Float64},g_img::
         defDim(images,"img_y",size(g_img,2))
         defDim(images,"Coordinates",size(pts,1))
 
-        defVar(images,"SHI",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
         defVar(images,"easting",pts[:,1],("Coordinates",),deflatelevel=1)
         defVar(images,"northing",pts[:,2],("Coordinates",),deflatelevel=1)
+
+        if season != "complete"
+            defVar(images,"SHI",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
+        else
+            defDim(images,"Season",2)
+            defVar(images,"SHI",Int8,("img_y","img_x","Coordinates","Season",),deflatelevel=1,
+                    attrib=["seasonal dimension"=>"1. winter, 2. summer",])
+        end
 
 	end
 
