@@ -27,6 +27,7 @@ function CHM2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{
     # > Organise the progress reporting
 
     outdir, outstr, crxstart, append_file, percentdone = organise_outf(taskID,exdir,batch,size(pts_x,1))
+    crxstart = 1; append_file = false; percentdone = 0;     # force restart the tile
     global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crxstart-1)*" of "*string(size(pts,1))*".txt"
     writedlm(joinpath(outdir,outtext),NaN)
 

@@ -236,7 +236,7 @@ function organise_outf(taskID,exdir,batch,numpts)
 	else # restart tile at next point
 		crxstart = parse(Int,split(fx[1])[4])+1
 		append_file = true
-		percentdone = percentdone = Int(floor((crxstart / numpts) * 100))
+		percentdone = Int(floor((crxstart / numpts) * 100))
 	end
 
 	if !isempty(fx)
