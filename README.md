@@ -34,7 +34,7 @@ CanRad requires [SpatialFileIO.jl](https://github.com/c-webster/SpatialFileIO.jl
 
 `scipy` can be added by
 ```
-]add("Conda")
+]add Conda
 using Conda
 Conda.add("scipy")
 ```
