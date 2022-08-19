@@ -1,12 +1,15 @@
 ###############################################################################
 ### User Input
 
-basefolder = "/CanRad/test"
-
 model      = "C2R" #L2R or C2R
 
 ###############################################################################
 ### Define file paths
+
+using CanRad, DelimitedFiles
+
+# get path to test dataset
+basefolder = joinpath(join(split(pathof(CanRad),"/")[1:end-2],"/"),"test")
 
 setf       = joinpath(basefolder,model*"_Settings_test.jl")
 
@@ -16,8 +19,6 @@ exdir      = joinpath(basefolder,"Output_tests_TEST")
 
 ###############################################################################
 ### BEGIN
-
-using CanRad, DelimitedFiles
 
 include(setf)
 
