@@ -130,15 +130,16 @@ function LAS2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{
         if extension(ltcf) == ".txt"
             ltc = loadltc_txt(ltcf,limits_trees,0)
         elseif extension(ltcf) == ".laz"
-            ltc = loadltc_laz(ltcf,limits_trees,dbh_x,dbh_y,lastc)
-
-            if abs(mode(ltc[:,3]) - mode(dtm_z)) < 60 # if the data's not normalised, it needs to be normalised)
-                ltc[:,3] .-= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),ltc[:,1],ltc[:,2])
+             ltc = loadltc_laz(ltcf,limits_trees,dbh_x,dbh_y,lastc)  
+            if abs(mode(ltc.z) - mode(dtm_z)) < 60 # if the data's not normalised, it needs to be normalised)
+                ltc.z .-= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),ltc.x,ltc.y)
             end
-
-            ltc = ltc[setdiff(1:end, findall(ltc[:,3].<1)), :]
+            # remove the points < 1m from the ground
+            ltc = ltc[setdiff(1:end, findall(ltc.z.<1)), :]
         end
-        bsm_x, bsm_y, bsm_z = make_branches(ltc,branch_spacing)
+        bsm_x, bsm_y, bsm_z = make_branches(ltc.x,ltc.y,ltc.z,
+                                        ltc.tx,ltc.ty,ltc.hd,ltc.ang,branch_spacing)
+
         bsm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),bsm_x,bsm_y)
     end
 

@@ -42,7 +42,7 @@ function compatability_check(dat_in,par_in)
     end
 
     # disable tilt option since it is not implemented properly
-    if tilt
+    if !@isdefined(tilt) || tilt 
         par_in["tilt"] = false
     end
 
@@ -65,6 +65,10 @@ function compatability_check(dat_in,par_in)
 		par_in["branch_spacing"] = b_space
     end
 
+    if !@isdefined(season)
+        par_in["season"] = "none"
+    end
+
     return dat_in, par_in
 
 end
@@ -78,7 +82,7 @@ function extract(d::Dict)
     return expr
 end
 
-function clipdat(pc_x::Array{Float64,1},pc_y::Array{Float64,1},pc_z::Array{Float64,1},limits,peri=0::Int64)
+function clipdat(pc_x::Vector{Float64},pc_y::Vector{Float64},pc_z::Vector{Float64},limits,peri=0::Int64)
     rmidx = (pc_x.<(limits[1]-peri)) .| (pc_x.>(limits[2]+peri)) .|
                 (pc_y.<(limits[3]-peri)) .| (pc_y.>(limits[4]+peri))
     deleteat!(pc_x,rmidx)
@@ -143,7 +147,7 @@ function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
 
 end
 
-function check_output(exdir,pts,batch,taskID)
+function check_output(exdir::String,pts::Matrix{Float64},batch::Bool,taskID::String)
 
     if batch
         outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3]
@@ -171,7 +175,7 @@ function check_output(exdir,pts,batch,taskID)
 end
 
 
-function get_constants(g_img::Array{Int64,2},loc_time::Array{DateTime,1})
+function get_constants(g_img::Matrix{Int64},loc_time::Vector{DateTime})
 
     drad      = [0.533 1.066 2.132]./2
     im_centre = size(g_img,1)./2
