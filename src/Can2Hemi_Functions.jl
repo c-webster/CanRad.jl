@@ -367,7 +367,8 @@ end
 
 function findpairs(kdtree::Any,datcrt::Matrix{Float64},tol::Float64,kdtreedims::Int64,knum::Int64)
 
-    distances, indices = scipyspat.cKDTree.query(kdtree,datcrt, k=knum, n_jobs=-1)
+
+    distances, indices = scipyspat.cKDTree.query(kdtree,datcrt, k=knum)
     lia = fill(0,kdtreedims,1)
     lia[indices[distances .<= tol],:] .= 1
 
