@@ -71,7 +71,7 @@ function CHM2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{
     end
 
     # Get the low-res terrain data
-    if terrain_lowres || !horizon_line
+    if terrain_lowres && !horizon_line
 
         limits_lowres = hcat((floor(minimum(pts_x))-terrain_peri),(ceil(maximum(pts_x))+terrain_peri),
                         (floor(minimum(pts_y))-terrain_peri),(ceil(maximum(pts_y))+terrain_peri))
@@ -334,14 +334,15 @@ function CHM2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{
             if pts_m[crx] .== 1
                 for zdx = 1:1:size(rbins,1)-1
                     ridx   = findall(rbins[zdx] .<= pt_chm_r .< rbins[zdx+1])
-                    mat2ev = fillmat(kdtree,hcat(pt_chm_x[ridx],pt_chm_y[ridx]),tol[zdx],kdtreedims,30,radius,mat2ev);
+                    mat2ev = fillmat(kdtree,hcat(pt_chm_x[ridx],pt_chm_y[ridx]),tol[zdx],kdtreedims,40,radius,mat2ev);
                 end
-                if season == "summer" # thick canopy treated as opaque
+                if season == "summer" || for_type == 2 
+                    # thick canopy treated as opaque in summer or in evergren forests
                     mat2ev = fillmat(kdtree,hcat(pt_chm_x_thick,pt_chm_y_thick),2.0,kdtreedims,30,radius,mat2ev); # distance canopy is opaque and treated with terrain
+                    # include canopy surface points
+                    mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts[pt_chm_r_pts .> 10],pt_chm_y_pts[pt_chm_r_pts .> 10]),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
                 end
             end
-            # include canopy surface points
-            # mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts[pt_chm_r_pts .> 10],pt_chm_y_pts[pt_chm_r_pts .> 10]),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
             if terrain
                 mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
             end
