@@ -129,11 +129,11 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 	    defVar(ds,"easting",pts[:,1],("Coordinates",))
 	    defVar(ds,"northing",pts[:,2],("Coordinates",))
 
-	    defVar(ds,"Vf_planar",Int32,("Coordinates",),deflatelevel=5,
+	    defVar(ds,"Vf_planar",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int32(-9999),
                     attrib=["scale_factor"=>0.01, "comments" =>
                     "perspective of a horizontal flat uplooking surface;
                     zenith rings weighted by surface area projected onto a horizontal flat surface",])
-	    defVar(ds,"Vf_hemi",Int32,("Coordinates",),deflatelevel=5,
+	    defVar(ds,"Vf_hemi",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int32(-9999),
                     attrib=["scale_factor"=>0.01, "comments" =>
                     "perspective of hemipherically shaped surface or plant;
                     zenith rings weighted by surface area on the hemisphere",])
@@ -148,7 +148,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 			end
 			defVar(ds,"datetime",loc_time,("datetime",),attrib=["comments" => dt_comment])
 
-	        defVar(ds,"Forest_Transmissivity",Int32,("datetime","Coordinates",),
+	        defVar(ds,"Forest_Transmissivity",Int32,("datetime","Coordinates",),fillvalue = Int32(-9999),
                         deflatelevel=5,attrib=["scale_factor"=>0.01,])
 
 	        if calc_swr > 0

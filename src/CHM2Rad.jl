@@ -129,9 +129,8 @@ function CHM2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{
                         (floor(minimum(pts_y))),(ceil(maximum(pts_y))))
 
         # define forest type for the tile (broadleaf or needleleaf)
-        # make sure higher elevation areas in Jura and central Switzerland
-        #    become needleleaf forests
-        if median(pts_e) > 1000
+        # make sure higher elevation areas are larch, not broadleaf
+        if median(pts_e) > 1500
             for_type = 2
         else # load the forest type data for Switzerland
             # get the dominant forest type for the tile (with check for incomplete
@@ -147,20 +146,48 @@ function CHM2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{
         if season == "winter" # LA value varies with mix ratio of deciduous/evergreen
 
             # load forest mix ratio and correct for lavd
-            mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,true)
-            mr_val[mr_val .== 0] .= 1.0
 
+            
             # get the range of LA values for the tile
-            if for_type == 1 # broadleaf
-                temp_LA = reverse(collect(0.02:(0.2-0.02)/9999:0.2))
-            elseif for_type == 2 # needleleaf
-                temp_LA = reverse(collect(0.05:(0.67-0.05)/9999:0.67))
+            if for_type == 1 # broadleaf (broadleaf -> conifer)
+                mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,true)
+            elseif for_type == 2 # needleleaf (larch -> conifer)
+            # check incompatibilities between mix rate and forest type
+                # if mix rate says evergreen (<50%), but copernicus says deciduous, force larch in mr_val 75%
+                # but only above 1500m
+                if median(pts_e) > 1500
+                    mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,false,true)
+                    _, _, ft_val,_ = read_griddata_window(ftdf,limits_canopy,false,true)
+                    tmp_dx = findall(mr_val .< 5000 .& ft_val .== 1)
+                    if sum(tmp_dx) > 0
+                        mr_val[tmp_dx] .= 7500
+                    end
+                    
+                    # vectorise the mr data
+                    mr_x = vec(mr_x); mr_y = vec(mr_y); mr_val = vec(reverse(mr_val,dims=1))
+                    rows = findall(isnan,mr_val)
+                    deleteat!(mr_x,rows); deleteat!(mr_y,rows); deleteat!(mr_val,rows)
+
+                end
             end
 
+            temp_LA_L = reverse(collect(0.02:(0.2-0.02)/9999:0.2))
+            temp_LA_M = reverse(collect(0.02:(0.67-0.05)/9999:0.67))
+            temp_LA_H = reverse(collect(0.2:(0.67-0.05)/9999:0.67))
+
+            mr_z = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),mr_x,mr_y,10,"cubic")
+
+            mr_val[mr_val .== 0] .= 1.0
             lavd_val = fill(0.0,size(mr_val))
 
             for vx in eachindex(mr_val)
-                lavd_val[vx] = temp_LA[Int.(mr_val[vx])]
+                if mr_z[vx] <= 900
+                    lavd_val[vx] = temp_LA_L[Int.(mr_val[vx])]
+                elseif 900 < mr_z[vx] <= 1500
+                    lavd_val[vx] = temp_LA_M[Int.(mr_val[vx])]
+                elseif mr_z[vx] > 1500
+                    lavd_val[vx] = temp_LA_H[Int.(mr_val[vx])]
+                end
             end
 
             chm_lavd = findelev(copy(mr_x),copy(mr_y),copy(lavd_val),chm_x,chm_y,10,"cubic")
