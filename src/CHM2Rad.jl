@@ -196,11 +196,20 @@ function CHM2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{
 
         elseif season == "summer" # constant LA value across all canopy pixels
 
+            mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,true)
+            temp_LA_L = reverse(collect(1.2:(0.67-1.2)/9999:0.67))
+
+            for vx in eachindex(mr_val)
+                lavd_val[vx] = temp_LA[Int.(mr_val[vx])]
+            end
+
+            chm_lavd = findelev(copy(mr_x),copy(mr_y),copy(lavd_val),chm_x,chm_y,10,"cubic")
+
             if for_type == 1 # broadleaf
-                chm_lavd = fill(1.2,size(chm_x))
+                # chm_lavd = fill(1.2,size(chm_x))
                 cbh = 0.0
             elseif for_type == 2 # needleleaf
-                chm_lavd = fill(0.67,size(chm_x))
+                # chm_lavd = fill(0.67,size(chm_x))
                 cbh = 2.0
             end
 
