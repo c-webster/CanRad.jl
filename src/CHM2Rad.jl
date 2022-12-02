@@ -1,4 +1,5 @@
-function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
+function CHM2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{String, Any},
+    exdir::String,taskID="task")
 
     ################################################################################
     # Initialise
@@ -13,7 +14,22 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     pts_x = float(pts[:,1])
     pts_y = float(pts[:,2])
 
+    # get model number (1 = canopy, 2 = terrain only)
+    if size(pts,2) > 2
+        pts_m = pts[:,3]
+    else
+        pts_m = ones(size(pts_x))
+    end
+
     if progress; start = time(); end
+
+    ################################################################################
+    # > Organise the progress reporting
+
+    outdir, outstr, crxstart, append_file, percentdone = organise_outf(taskID,exdir,batch,size(pts_x,1))
+    crxstart = 1; append_file = false; percentdone = 0;     # force restart the tile
+    global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crxstart-1)*" of "*string(size(pts,1))*".txt"
+    writedlm(joinpath(outdir,outtext),NaN)
 
     ################################################################################
     # > Import surface data
@@ -24,15 +40,16 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits_canopy,true,true)
 
-    # load the trunk data
-    if trunks
-        dbh_x, dbh_y, dbh_z, dbh_r = loaddbh(dbhf,limits_canopy,50)
-        if !isempty(dbh_x)
-            dbh_e = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),dbh_x,dbh_y)
-            tsm_x, tsm_y, tsm_z  = calculate_trunks(dbh_x,dbh_y,dbh_z,dbh_r,30,0.1,dbh_e)
-            trunk = true
-        else; trunk = false; end
-    else; trunk = false; end
+    if isempty(chm_x) # create a dataset of zeros if chm data is unavailable for tile
+
+        limits_chmfill = hcat((floor(minimum(pts_x))-5),(ceil(maximum(pts_x))+5),
+                        (floor(minimum(pts_y))-5),(ceil(maximum(pts_y))+5))
+
+        chm_x = vec((limits_chmfill[1]:2:limits_chmfill[2]-1)'  .* ones(Int(limits_chmfill[4]-limits_chmfill[3])))
+        chm_y = vec(ones(Int(limits_chmfill[2]-limits_chmfill[1]))' .* (limits_chmfill[3]:2:limits_chmfill[4]-1))
+        chm_z = zeros(size(chm_x))
+
+    end
 
     ################################################################################
     # > Import prepare terrain data
@@ -54,7 +71,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     end
 
     # Get the low-res terrain data
-    if terrain_lowres || !horizon_line
+    if terrain_lowres && !horizon_line
 
         limits_lowres = hcat((floor(minimum(pts_x))-terrain_peri),(ceil(maximum(pts_x))+terrain_peri),
                         (floor(minimum(pts_y))-terrain_peri),(ceil(maximum(pts_y))+terrain_peri))
@@ -112,32 +129,65 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                         (floor(minimum(pts_y))),(ceil(maximum(pts_y))))
 
         # define forest type for the tile (broadleaf or needleleaf)
-        # make sure higher elevation areas in Jura and central Switzerland
-        #    become needleleaf forests
-        if median(pts_e) > 1000
+        # make sure higher elevation areas are larch, not broadleaf
+        if median(pts_e) > 1500
             for_type = 2
         else # load the forest type data for Switzerland
-            # get the dominant forest type for the tile
-            for_type = mode(read_griddata_window(fcdf,limits_tile,true,true)[3])
+            # get the dominant forest type for the tile (with check for incomplete
+            #   tiles along the border)
+            types_tile = read_griddata_window(fcdf,limits_tile,true,true)[3]
+            if !isempty(types_tile[types_tile .> 0])
+                for_type = mode(types_tile[types_tile .> 0])
+            else # empty data tiles on the border get to be broadleaf
+                for_type = 1
+            end
         end
 
         if season == "winter" # LA value varies with mix ratio of deciduous/evergreen
 
             # load forest mix ratio and correct for lavd
-            mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,true)
-            mr_val[mr_val .== 0] .= 1.0
 
+            
             # get the range of LA values for the tile
-            if for_type == 1 # broadleaf
-                temp_LA = reverse(collect(0.02:(0.2-0.02)/9999:0.2))
-            elseif for_type == 2 # needleleaf
-                temp_LA = reverse(collect(0.05:(0.67-0.05)/9999:0.67))
+            if for_type == 1 # broadleaf (broadleaf -> conifer)
+                mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,true)
+            elseif for_type == 2 # needleleaf (larch -> conifer)
+            # check incompatibilities between mix rate and forest type
+                # if mix rate says evergreen (<50%), but copernicus says deciduous, force larch in mr_val 75%
+                # but only above 1500m
+                if median(pts_e) > 1500
+                    mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,false,true)
+                    _, _, ft_val,_ = read_griddata_window(ftdf,limits_canopy,false,true)
+                    tmp_dx = findall(mr_val .< 5000 .& ft_val .== 1)
+                    if sum(tmp_dx) > 0
+                        mr_val[tmp_dx] .= 7500
+                    end
+                    
+                    # vectorise the mr data
+                    mr_x = vec(mr_x); mr_y = vec(mr_y); mr_val = vec(reverse(mr_val,dims=1))
+                    rows = findall(isnan,mr_val)
+                    deleteat!(mr_x,rows); deleteat!(mr_y,rows); deleteat!(mr_val,rows)
+
+                end
             end
 
+            temp_LA_L = reverse(collect(0.02:(0.2-0.02)/9999:0.2))
+            temp_LA_M = reverse(collect(0.02:(0.67-0.05)/9999:0.67))
+            temp_LA_H = reverse(collect(0.2:(0.67-0.05)/9999:0.67))
+
+            mr_z = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),mr_x,mr_y,10,"cubic")
+
+            mr_val[mr_val .== 0] .= 1.0
             lavd_val = fill(0.0,size(mr_val))
 
             for vx in eachindex(mr_val)
-                lavd_val[vx] = temp_LA[Int.(mr_val[vx])]
+                if mr_z[vx] <= 900
+                    lavd_val[vx] = temp_LA_L[Int.(mr_val[vx])]
+                elseif 900 < mr_z[vx] <= 1500
+                    lavd_val[vx] = temp_LA_M[Int.(mr_val[vx])]
+                elseif mr_z[vx] > 1500
+                    lavd_val[vx] = temp_LA_H[Int.(mr_val[vx])]
+                end
             end
 
             chm_lavd = findelev(copy(mr_x),copy(mr_y),copy(lavd_val),chm_x,chm_y,10,"cubic")
@@ -150,7 +200,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
                 chm_lavd = fill(1.2,size(chm_x))
                 cbh = 0.0
             elseif for_type == 2 # needleleaf
-                lavd_val = fill(0.67,size(chm_x))
+                chm_lavd = fill(0.67,size(chm_x))
                 cbh = 2.0
             end
 
@@ -199,39 +249,13 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
     ###############################################################################
     # > organise the output folder
 
-    if batch
-        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3]
-        global outdir = exdir*"/"*outstr
-    else
-        outstr = String(split(exdir,"/")[end-1])
-        global outdir = exdir
-    end
-
-    if !ispath(outdir)
-        mkpath(outdir)
-    end
-
-    # set start point within tile
-    fx = readdir(outdir)[findall(startswith.(readdir(outdir),"Processing"))]
-    if isempty(fx)
-        crxstart = 1; append_file = false
-    else
-        crxstart = parse(Int,split(fx[1])[4])
-        if crxstart == size(pts_x,1) # if tile is complete, restart tile
-            crxstart = 1
-            append_file = false
-        else
-            append_file = true
-        end
-    end
-
     # create the output files
     if calc_trans
         loc_time     = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
         loc_time_agg = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
-        dataset      = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg)
+        dataset      = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg,time_zone)
     else
-         dataset     = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
+        dataset     = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
     end
 
     if save_images
@@ -301,44 +325,21 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
             end
         end
 
-        if pt_corr
-            pt_chm_x, pt_chm_y, pt_chm_r, pt_chm_x_thick, pt_chm_y_thick = calcCHM_Ptrans(copy(chm_x),copy(chm_y),copy(chm_z),
-                                copy(chm_b),copy(chm_lavd),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,image_height,chm_cellsize) # calculated points
+        if pts_m[crx] .== 1 # if running the forest model for this point
+            if pt_corr
+                pt_chm_x, pt_chm_y, pt_chm_r, pt_chm_x_thick, pt_chm_y_thick = calcCHM_Ptrans(copy(chm_x),copy(chm_y),copy(chm_z),
+                                    copy(chm_b),copy(chm_lavd),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,image_height,chm_cellsize) # calculated points
 
-            pt_chm_x_pts, pt_chm_y_pts, pt_chm_r_pts = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],
-                                pts_e[crx],surf_peri,"chm",image_height,pts_slp[crx],chm_cellsize) # pts from the CHM
-
-            if trunk
-                pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(tsm_x,tsm_y,tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5))
-                tidx = findall(dist(dbh_x,dbh_y,pts[crx,1],pts[crx,2]) .< 4)
-                if size(tidx,1) > 0
-                    hdt  = dist(dbh_x[tidx],dbh_y[tidx],pts[crx,1],pts[crx,2])
-                    npt  = fill(NaN,(size(tidx)))
-                    hint = fill(NaN,(size(tidx)))
-                    for tixt = 1:1:size(tidx,1)
-                        if hdt[tixt] < 1
-                            npt[tixt] = Int.(150); hint[tixt] = 0.005
-                        else
-                            npt[tixt] = Int.(100); hint[tixt] = 0.01
-                        end
-                    end
-                    tsm_tmp = calculate_trunks(dbh_x[tidx],dbh_y[tidx],dbh_z[tidx],dbh_r[tidx],npt,hint,dbh_e[tidx])
-                    pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(append!(pt_tsm_x,tsm_tmp[1]),append!(pt_tsm_y,tsm_tmp[2]),append!(pt_tsm_z,tsm_tmp[3]),
-                                                        pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",image_height,pts_slp[crx],0);
-
-                else
-                    pt_tsm_x, pt_tsm_y, _ = pcd2pol2cart(pt_tsm_x,pt_tsm_y,pt_tsm_z,
-                                                        pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri*0.5),"surface",image_height,pts_slp[crx],0);
-                end
-            end
-
-        else
-            #  100% opaque canopy:
-            pt_chm_x, pt_chm_y = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"terrain",image_height,pts_slp[crx],chm_cellsize)
-            if terrain # merge if using terrain
-                pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_chm_x,pt_dtm_x),append!(pt_chm_y,pt_dtm_y));
+                pt_chm_x_pts, pt_chm_y_pts, pt_chm_r_pts = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],
+                                    pts_e[crx],surf_peri,"chm",image_height,pts_slp[crx],chm_cellsize) # pts from the CHM
             else
-                pt_dtm_x, pt_dtm_y = prepterdat(pt_chm_x,pt_chm_y);
+                #  100% opaque canopy:
+                pt_chm_x, pt_chm_y = pcd2pol2cart(copy(chm_x),copy(chm_y),copy(chm_z),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri,"terrain",image_height,pts_slp[crx],chm_cellsize)
+                if terrain # merge if using terrain
+                    pt_dtm_x, pt_dtm_y = prepterdat(append!(pt_chm_x,pt_dtm_x),append!(pt_chm_y,pt_dtm_y));
+                else
+                    pt_dtm_x, pt_dtm_y = prepterdat(pt_chm_x,pt_chm_y);
+                end
             end
         end
 
@@ -357,25 +358,24 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
         # occupy matrix
         if pt_corr
-            for zdx = 1:1:size(rbins,1)-1
-                ridx   = findall(rbins[zdx] .<= pt_chm_r .< rbins[zdx+1])
-                mat2ev = fillmat(kdtree,hcat(pt_chm_x[ridx],pt_chm_y[ridx]),tol[zdx],kdtreedims,30,radius,mat2ev);
+            if pts_m[crx] .== 1
+                for zdx = 1:1:size(rbins,1)-1
+                    ridx   = findall(rbins[zdx] .<= pt_chm_r .< rbins[zdx+1])
+                    mat2ev = fillmat(kdtree,hcat(pt_chm_x[ridx],pt_chm_y[ridx]),tol[zdx],kdtreedims,40,radius,mat2ev);
+                end
+                if season == "summer" || for_type == 2 
+                    # thick canopy treated as opaque in summer or in evergren forests
+                    mat2ev = fillmat(kdtree,hcat(pt_chm_x_thick,pt_chm_y_thick),2.0,kdtreedims,30,radius,mat2ev); # distance canopy is opaque and treated with terrain
+                    # include canopy surface points
+                    mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts[pt_chm_r_pts .> 10],pt_chm_y_pts[pt_chm_r_pts .> 10]),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
+                end
             end
-            # include canopy surface points
-            # mat2ev = fillmat(kdtree,hcat(pt_chm_x_pts[pt_chm_r_pts .> 10],pt_chm_y_pts[pt_chm_r_pts .> 10]),4.0,kdtreedims,30,radius,mat2ev); # include canopy surface points
             if terrain
                 mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.5,kdtreedims,10,radius,mat2ev); # distance canopy is opaque and treated with terrain
             end
-            if season == "summer" # thick canopy treated as opaque
-                mat2ev = fillmat(kdtree,hcat(pt_chm_x_thick,pt_chm_y_thick),2.0,kdtreedims,30,radius,mat2ev); # distance canopy is opaque and treated with terrain
-            end
+
         else # treat all canopy as opaque (like terrain) -> all points come in as terrain points from above section
             mat2ev = fillmat(kdtree,hcat(pt_dtm_x,pt_dtm_y),1.0,kdtreedims,10,radius,mat2ev); # use this line if plotting opaque canpoy
-        end
-
-        # add trunks
-        if trunk
-            mat2ev = fillmat(kdtree,hcat(pt_tsm_x,pt_tsm_y),2.0,kdtreedims,15,radius,mat2ev)
         end
 
         mat2ev[isnan.(g_rad)] .= 1;
@@ -449,15 +449,7 @@ function CHM2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
         # save the progress
         percentdone = Int(floor((crx / size(pts,1)) * 100))
-        try
-            rm(outdir*"/"*outtext)
-        catch
-            for f in readdir(outdir)
-                    if startswith.(f,"Processing")
-                            rm(outdir*"/"*f)
-                    end
-            end
-        end
+        rm(joinpath(outdir,outtext))
         global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
         writedlm(joinpath(outdir,outtext),NaN)
 

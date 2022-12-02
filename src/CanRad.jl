@@ -1,19 +1,16 @@
 module CanRad
 
 using DelimitedFiles, DataStructures, LasIO, LazIO,
-    Statistics, Dates, Interpolations,
+    Statistics, Dates, Interpolations, Images,
     DataFrames, Formatting, Distributed, Distributions,
     SpatialFileIO, NCDatasets, Chain, Pkg, MarketTechnicals
 
 using Conda, PyCall
 
-# Conda.add("scipy")
-
 function __init__()
     @eval global pyinterp  = pyimport("scipy.interpolate")
     @eval global scipyspat = pyimport("scipy.spatial")
 end
-
 
 include("File_Functions.jl")
 include("Preparatory_Functions.jl")
@@ -74,9 +71,11 @@ export
     loadltc_laz,
     loadltc_txt,
     make_branches,
+    make_SHIs,
     netcdf,
     normalise,
     np,
+    organise_outf,
     pcd2pol,
     pcd2pol2cart,
     pol2cart,

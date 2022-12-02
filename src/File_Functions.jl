@@ -1,4 +1,4 @@
-function loaddbh(fname::String,limits::Array{Float64,2},peri=0::Int64)
+function loaddbh(fname::String,limits::Matrix{Float64},peri=0::Int64)
     dat, _ = readdlm(fname,'\t',header=true)
 
     dat_x, dat_y, dat_z, rmdx = clipdat(dat[:,1],dat[:,2],dat[:,3],limits,peri)
@@ -18,7 +18,8 @@ function loaddbh(fname::String,limits::Array{Float64,2},peri=0::Int64)
     return dat_x, dat_y, dat_z, dat_r, dat_tc
 end
 
-function loadltc_txt(fname::String,limits::Array{Float64,2},peri::Int64)
+
+function loadltc_txt(fname::String,limits::Matrix{Float64},peri::Int64)
     ltc, _ = readdlm(fname,'\t',header=true)
     replace!(ltc, -9999=>NaN)
     _, _, _, rmdx = clipdat(ltc[:,1],ltc[:,2],ltc[:,3],limits,peri)
@@ -27,43 +28,56 @@ function loadltc_txt(fname::String,limits::Array{Float64,2},peri::Int64)
 end
 
 
-function loadltc_laz(fname::String,limits::Array{Float64,2},
-            dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},
-            lastc::Vector{Float64})
-	# calculate random branch angle for each tree
-	ang = rand(Uniform(60,100),size(lastc,1)) # Norway Spruce
+function loadltc_laz(fname::String,limits::Matrix{Float64},
+    dbh_x::Vector{Float64},dbh_y::Vector{Float64},
+    lastc::Vector{Float64},season::String)
 
-	header, ltcdat = LazIO.load(fname)
+    # calculate random branch angle for each tree
+    ang = rand(Uniform(60,100),size(lastc,1)) # Norway Spruce
 
-	dat = DataFrame(ltcdat)
+    header, ltcdat = LazIO.load(fname)
 
-	ltc_c = Int.(dat.raw_classification)
+    dat = DataFrame(ltcdat)
 
-	dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
-			(limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
-			(ltc_c .!= 2)
+    ignore = indexin(dat.intensity, lastc)
 
-	ltc = fill(NaN,sum(dx),8)
+    dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
+        (limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
+        (dat.raw_classification .!= 2) .& (ignore .!= nothing)
 
-	ltc[:,1] = dat.x[dx] .* header.x_scale .+ header.x_offset
-	ltc[:,2] = dat.y[dx] .* header.y_scale .+ header.y_offset
-	ltc[:,3] = dat.z[dx] .* header.z_scale .+ header.z_offset
-	ltc[:,7] = Int.(dat.intensity[dx]) # tree number
+    ltc = DataFrame()
+    
+    ltc.x = dat.x[dx] .* header.x_scale .+ header.x_offset
+    ltc.y = dat.y[dx] .* header.y_scale .+ header.y_offset
+    ltc.z = dat.z[dx] .* header.z_scale .+ header.z_offset
+    ltc.num = Int32.(dat.intensity[dx]) # tree number
 
-	for tx in eachindex(lastc)
-		t_dx = (lastc[tx] .== ltc[:,7])
-		ltc[t_dx,4] .= dbh_x[tx]
-		ltc[t_dx,5] .= dbh_y[tx]
-		ltc[t_dx,6] .= dist(ltc[t_dx,1],ltc[t_dx,2],dbh_x[tx],dbh_y[tx])
-		ltc[t_dx,8] .= ang[tx]
-	end
+    # get the tree class (0=evergreen, 1=deciduous)
+    if season == "complete"
+        ltc.cls = Int32.(dat.pt_src_id[dx]) # tree class
+    else
+        ltc.cls = Int32.(fill(0,(size(ltc.x)))) # leave empty
+    end
 
-	ltc = ltc[setdiff(1:end, findall(isnan.(ltc[:,4]).==1)), :]
-	return ltc
+    ltc.tx = fill(NaN,size(ltc.x,1))
+    ltc.ty = fill(NaN,size(ltc.x,1))
+    ltc.hd = fill(NaN,size(ltc.x,1))
+    ltc.ang = fill(NaN,size(ltc.x,1))
+    for tx in eachindex(lastc)
+        t_dx = (lastc[tx] .== ltc.num)
+        ltc.tx[t_dx] .= dbh_x[tx] # tree x
+        ltc.ty[t_dx] .= dbh_y[tx] # tree y
+        ltc.hd[t_dx] .= dist(ltc.x[t_dx],ltc.y[t_dx],dbh_x[tx],dbh_y[tx]) # horizontal distance between point and trunk
+        ltc.ang[t_dx] .= ang[tx] # branch angle
+    end
+
+    # return ltc_x, ltc_y, ltc_z, tree_num, ltc_tx, ltc_ty, ltc_hd, ltc_ang
+    return ltc
 
 end
 
-function load_hlm(hlmf::String,taskID)
+
+function load_hlm(hlmf::String,taskID::String)
 
     xllcorner = parse(Int,(split(taskID,"_")[2]))[1]
     yllcorner = parse(Int,(split(taskID,"_")[3]))[1]
@@ -96,8 +110,8 @@ function load_hlm(hlmf::String,taskID)
 end
 
 
-function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_trans::Bool,calc_swr::Int64,
-            append_file::Bool,loc_time=nothing)
+function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_trans::Bool,calc_swr::Int64,
+            append_file::Bool,loc_time=nothing,time_zone=nothing)
 
     outfile  = outdir*"/Output_"*outstr*".nc"
 
@@ -115,20 +129,26 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
 	    defVar(ds,"easting",pts[:,1],("Coordinates",))
 	    defVar(ds,"northing",pts[:,2],("Coordinates",))
 
-	    defVar(ds,"Vf_planar",Int32,("Coordinates",),deflatelevel=5,
+	    defVar(ds,"Vf_planar",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int32(-9999),
                     attrib=["scale_factor"=>0.01, "comments" =>
                     "perspective of a horizontal flat uplooking surface;
                     zenith rings weighted by surface area projected onto a horizontal flat surface",])
-	    defVar(ds,"Vf_hemi",Int32,("Coordinates",),deflatelevel=5,
+	    defVar(ds,"Vf_hemi",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int32(-9999),
                     attrib=["scale_factor"=>0.01, "comments" =>
                     "perspective of hemipherically shaped surface or plant;
                     zenith rings weighted by surface area on the hemisphere",])
 
 	    if calc_trans
 	        defDim(ds,"datetime",length(loc_time))
-	        defVar(ds,"datetime",loc_time,("datetime",))
 
-	        defVar(ds,"Forest_Transmissivity",Int32,("datetime","Coordinates",),
+			if time_zone >= 0
+				dt_comment = "time zone UTC+"*string(time_zone)
+			elseif time_zone < 0
+				dt_comment = "time zone UTC-"*string(time_zone)
+			end
+			defVar(ds,"datetime",loc_time,("datetime",),attrib=["comments" => dt_comment])
+
+	        defVar(ds,"Forest_Transmissivity",Int32,("datetime","Coordinates",),fillvalue = Int32(-9999),
                         deflatelevel=5,attrib=["scale_factor"=>0.01,])
 
 	        if calc_swr > 0
@@ -149,7 +169,7 @@ function createfiles(outdir::String,outstr::String,pts::Array{Float64,2},calc_tr
 end
 
 
-function create_exmat(outdir::String,outstr::String,pts::Array{Float64,2},g_img::Array{Int64,2},append_file::Bool)
+function create_exmat(outdir::String,outstr::String,pts::Matrix{Float64},g_img::Matrix{Int64},append_file::Bool)
 
     outfile  = outdir*"/SHIs_"*outstr*".nc"
 
@@ -204,4 +224,67 @@ get_pkg_version(name::AbstractString) =
        only
        _.version
 
+end
+
+function organise_outf(taskID::String,exdir::String,batch::Bool,numpts::Int)
+
+	if batch
+        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3]
+        global outdir = exdir*"/"*outstr
+    else
+        outstr = String(split(exdir,"/")[end-1])
+        global outdir = exdir
+    end
+
+    if !ispath(outdir)
+        mkpath(outdir)
+    end
+
+	# set start point within tile
+	fx = readdir(outdir)[findall(startswith.(readdir(outdir),"Processing"))]
+	# if tile never started, tile failed on intialisation last time, or tile completed but is being re-run
+	if isempty(fx) || parse(Int,split(fx[1])[4]) == 0 || parse(Int,split(fx[1])[4]) == numpts
+		crxstart = 1
+		append_file = false
+		percentdone = 0
+	else # restart tile at next point
+		crxstart = parse(Int,split(fx[1])[4])+1
+		append_file = true
+		percentdone = Int(floor((crxstart / numpts) * 100))
+	end
+
+	if !isempty(fx)
+		rm(joinpath(outdir,fx[1]))
+	end
+
+	return outdir, outstr, crxstart, append_file, percentdone
+
+end
+
+function make_SHIs(datdir::String)
+
+    files = readdir(datdir)
+    fx = findall(startswith.(files,"SHIs") .& endswith.(files,".nc"))
+
+    images = NCDataset(joinpath(datdir,files[fx][1]),"r")
+
+    coords_x = images["easting"][:]
+    coords_y = images["northing"][:]
+
+    odir = joinpath(datdir,files[fx][1][1:end-3])
+
+    if !ispath(odir)
+        mkpath(odir)
+    end
+
+    fstr = "%07.$(2)f"
+
+    for ix in eachindex(coords_x)
+
+        outf = joinpath(odir,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*".png")
+        save(outf,colorview(Gray,float.(images["SHI"][:,:,ix])))
+
+    end
+
+    close(images)
 end

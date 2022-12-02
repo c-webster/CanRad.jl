@@ -1,4 +1,4 @@
-function calc_ringratios(ring_tht::Array{Float64,1},ring_radius::Array{Float64,1},mat2ev::Array{Int64,2},g_rad::Array{Float64,2})
+function calc_ringratios(ring_tht::Vector{Float64},ring_radius::Vector{Float64},mat2ev::Matrix{Int64},g_rad::Matrix{Float64})
     w2all       = fill(NaN,(size(ring_radius,1)-1))
     surf_area_p = fill(NaN,(size(ring_radius,1)-1))
 	surf_area_h = fill(NaN,(size(ring_radius,1)-1))
@@ -16,7 +16,7 @@ function calc_ringratios(ring_tht::Array{Float64,1},ring_radius::Array{Float64,1
 
 end
 
-function calculateVf(mat2ev::Array{Int64,2},g_rad::Array{Float64,2},radius::Int64)
+function calculateVf(mat2ev::Matrix{Int64},g_rad::Matrix{Float64},radius::Int64)
 
     ring_tht          = collect(0:90/9:90)
     # ring_radius       = pyinterp.interp1d(lens_profile_tht,lens_profile_rpix*radius)(ring_tht)
@@ -27,7 +27,7 @@ function calculateVf(mat2ev::Array{Int64,2},g_rad::Array{Float64,2},radius::Int6
     return sum(w2all.*surf_area_p), sum(w2all.*surf_area_h)
 end
 
-function calcmm(mat2ev::Array{Float64,2},radius::Int64,drad::Float64,
+function calcmm(mat2ev::Matrix{Float64},radius::Int64,drad::Float64,
                     x::Float64,y::Float64)
         dpix = drad / 90*radius*sqrt(pi)/2
         xmm  = Int.(max(1,round(x-dpix)):1:min(size(mat2ev,2),round(x+dpix)))
@@ -35,7 +35,7 @@ function calcmm(mat2ev::Array{Float64,2},radius::Int64,drad::Float64,
     return xmm,ymm
 end
 
-function getsundxs(mat2ev::Array{Float64,2},trans_for::Array{Float64,1},xmm::Array{Int64,1},ymm::Array{Int64,1},
+function getsundxs(mat2ev::Matrix{Float64},trans_for::Vector{Float64},xmm::Vector{Int64},ymm::Vector{Int64},
                     mini::Float64,maxi::Float64,nolp::Int64,noap::Int64,dix::Int64,keepix::Int64)
         mat2ev[ymm,xmm] = min.(mat2ev[ymm,xmm],maxi)
         nolp1 = sum(mini .<= mat2ev[ymm,xmm] .<= maxi)
@@ -44,9 +44,9 @@ function getsundxs(mat2ev::Array{Float64,2},trans_for::Array{Float64,1},xmm::Arr
     return nolp1,noap1,trans_for
 end
 
-function calc_transmissivity(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1},tstep::Int64,radius::Int64,
-                    sol_phi::Array{Float64,1},sol_tht::Array{Float64,1},g_coorpol::Array{Float64,2},
-                    imcX::Float64,imcY::Float64,im_centre::Float64,trans_for::Array{Float64,1},
+function calc_transmissivity(mat2ev::Matrix{Float64},loc_time::Vector{DateTime},tstep::Int64,radius::Int64,
+                    sol_phi::Vector{Float64},sol_tht::Vector{Float64},g_coorpol::Matrix{Float64},
+                    imcX::Float64,imcY::Float64,im_centre::Float64,trans_for::Vector{Float64},
                     lens_profile_tht::StepRange{Int64,Int64},lens_profile_rpix::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}})
 
 
@@ -77,8 +77,8 @@ function calc_transmissivity(mat2ev::Array{Float64,2},loc_time::Array{DateTime,1
 end
 
 
-function calculateSWR(trans_for_wgt::Array{Float64,1},sol_sinelev::Array{Float64,1},sol_tht::Array{Float64,1},
-    sol_phi::Array{Float64,1},loc_time::Array{DateTime,1},swr_open::Array{Float64,1},Vf::Float64)
+function calculateSWR(trans_for_wgt::Vector{Float64},sol_sinelev::Vector{Float64},sol_tht::Vector{Float64},
+    sol_phi::Vector{Float64},loc_time::Vector{DateTime},swr_open::Vector{Float64},Vf::Float64)
 
     # swr_open =  max.(1367*sol_sinelev,0)
 
@@ -125,7 +125,7 @@ function calculateSWR(trans_for_wgt::Array{Float64,1},sol_sinelev::Array{Float64
 end
 
 
-function aggregate_data(loc_time::Array{DateTime,1},loc_time_agg::Array{DateTime,1},dat::Array{Float64,1},tstep::Int64)
+function aggregate_data(loc_time::Vector{DateTime},loc_time_agg::Vector{DateTime},dat::Vector{Float64},tstep::Int64)
 
     agg_dat = fill(0.0,(size(loc_time_agg,1),1))
     tdx_step = (1:Int.((tstep/2)):size(dat,1))
@@ -186,7 +186,7 @@ function utm2deg(loc_x::Float64,loc_y::Float64,zone::Float64,hemi::SubString{Str
     return latitude, longitude
 end
 
-function calc_solar_track(loc_x::Float64,loc_y::Float64,loc_time::Array{DateTime,1},time_zone::Int64,
+function calc_solar_track(loc_x::Float64,loc_y::Float64,loc_time::Vector{DateTime},time_zone::Int64,
 							coor_system)
 
     if split(coor_system)[1] == "CH1903"

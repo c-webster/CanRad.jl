@@ -1,7 +1,8 @@
-function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
+function LAS2Rad(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{String, Any},
+    exdir::String,taskID="task")
 
     ################################################################################
-    # Initialise
+    # > Initialise
 
     # run compatability check then extract settings
     dat_in, par_in = compatability_check(dat_in,par_in)
@@ -14,6 +15,13 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     pts_y = float(pts[:,2])
 
     if progress; start = time(); end
+
+    ################################################################################
+    # > Organise the progress reporting
+
+    outdir, outstr, crxstart, append_file, percentdone = organise_outf(taskID,exdir,batch,size(pts_x,1))
+    global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crxstart-1)*" of "*string(size(pts,1))*".txt"
+    writedlm(joinpath(outdir,outtext),NaN)
 
     ################################################################################
     # > Import surface data
@@ -55,7 +63,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
     # determine ground elevation of points
     if size(pts,2) > 2
-         pts_e = pts[:,3]
+        pts_e = pts[:,3]
     elseif terrain_highres
         pts_e     = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x,pts_y)
     elseif terrain_lowres
@@ -122,15 +130,16 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
         if extension(ltcf) == ".txt"
             ltc = loadltc_txt(ltcf,limits_trees,0)
         elseif extension(ltcf) == ".laz"
-            ltc = loadltc_laz(ltcf,limits_trees,dbh_x,dbh_y,lastc)
-
-            if abs(mode(ltc[:,3]) - mode(dtm_z)) < 60 # if the data's not normalised, it needs to be normalised)
-                ltc[:,3] .-= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),ltc[:,1],ltc[:,2])
+             ltc = loadltc_laz(ltcf,limits_trees,dbh_x,dbh_y,lastc)  
+            if abs(mode(ltc.z) - mode(dtm_z)) < 60 # if the data's not normalised, it needs to be normalised)
+                ltc.z .-= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),ltc.x,ltc.y)
             end
-
-            ltc = ltc[setdiff(1:end, findall(ltc[:,3].<1)), :]
+            # remove the points < 1m from the ground
+            ltc = ltc[setdiff(1:end, findall(ltc.z.<1)), :]
         end
-        bsm_x, bsm_y, bsm_z = make_branches(ltc,branch_spacing)
+        bsm_x, bsm_y, bsm_z = make_branches(ltc.x,ltc.y,ltc.z,
+                                        ltc.tx,ltc.ty,ltc.hd,ltc.ang,branch_spacing)
+
         bsm_z .+= findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),bsm_x,bsm_y)
     end
 
@@ -165,38 +174,11 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
     ###############################################################################
     # > organise the output folder
 
-    if batch
-        # outstr = string(Int(floor(pts[1,1])))*"_"*string(Int(floor(pts[1,2])))
-        outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3][1:end-4]
-        global outdir = exdir*"/"*outstr
-    else
-        outstr = String(split(exdir,"/")[end-1])
-        global outdir = exdir
-    end
-
-    if !ispath(outdir)
-        mkpath(outdir)
-    end
-
-    # set start point within tile
-    fx = readdir(outdir)[findall(startswith.(readdir(outdir),"Processing"))]
-    if isempty(fx)
-        crxstart = 1; append_file = false
-    else
-        crxstart = parse(Int,split(fx[1])[4])
-        if crxstart == size(pts_x,1) # if tile is complete, restart tile
-            crxstart = 1
-            append_file = false
-        else
-            append_file = true
-        end
-    end
-
     # create the output files
     if calc_trans
         loc_time     = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
         loc_time_agg = collect(Dates.DateTime(t_start,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t_end,"dd.mm.yyyy HH:MM:SS"))
-        dataset      = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg)
+        dataset      = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg,time_zone)
     else
         dataset      = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
     end
@@ -410,15 +392,7 @@ function LAS2Rad(pts,dat_in,par_in,exdir,taskID="task")
 
         # save the progress
         percentdone = Int(floor((crx / size(pts,1)) * 100))
-        try
-            rm(outdir*"/"*outtext)
-        catch
-            for f in readdir(outdir)
-                    if startswith.(f,"Processing")
-                            rm(outdir*"/"*f)
-                    end
-            end
-        end
+        rm(joinpath(outdir,outtext))
         global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
         writedlm(joinpath(outdir,outtext),NaN)
 
