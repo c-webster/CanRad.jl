@@ -1,7 +1,7 @@
 name = "CanRad"
 uuid = "aeb86711-de0f-4108-877d-aa9de166218e"
 authors = ["Clare Webster"]
-version = "0.8.3"
+version = "0.9.0"
 
 [deps]
 Chain = "8be319e6-bccf-4806-a6f7-6fae938471bc"
@@ -19,6 +19,7 @@ LasIO = "570499db-eae3-5eb6-bdd5-a5326f375e68"
 LazIO = "c3605908-9f0f-11e8-0a72-0d361c15a277"
 MarketTechnicals = "4f8c86c6-9e40-5506-9807-98571cb48bc8"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
+Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 PolygonOps = "647866c9-e3ac-4575-94e7-e3d426903924"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"

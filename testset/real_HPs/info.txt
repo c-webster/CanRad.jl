@@ -1,0 +1,16 @@
+Img_name	easting	northing	SVF_flat	source
+IMG_2042_bin.png	785622.78	190950.99	0.69	slf_shd_fs1_2019
+IMG_1980_bin.png	785628.29	190958.7	0.7	slf_shd_fs1_2019
+IMG_2034_bin.png	785630.84	190945.45	0.57	slf_shd_fs1_2019
+IMG_1988_bin.png	785636.77	190953.14	0.52	slf_shd_fs1_2019
+IMG_2026_bin.png	785637.82	190938.96	0.33	slf_shd_fs1_2019
+IMG_1996_bin.png	785644.69	190948.15	0.35	slf_shd_fs1_2019
+IMG_0168_bin.png	785702	190985	0.31	slf_shd_met_campaign_2018
+IMG_0173_bin.png	785730	191002	0.11	slf_shd_met_campaign_2018
+IMG_2641_bin.png	785798.19	191125.34	0.29	slf_shd_fs2_2019
+IMG_2639_bin.png	785799.43	191126.09	0.34	slf_shd_fs2_2019
+IMG_2701_bin.png	785801.44	191152.28	0.04	slf_shd_fs2_2019
+IMG_2693_bin.png	785808.88	191158.55	0.04	slf_shd_fs2_2019
+IMG_2581_bin.png	785813.27	191123.39	0.38	slf_shd_fs2_2019
+IMG_2615_bin.png	785823.59	191144.19	0.17	slf_shd_fs2_2019
+IMG_2598_bin.png	785829.62	191136.67	0.26	slf_shd_fs2_2019
