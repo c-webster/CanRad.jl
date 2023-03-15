@@ -171,9 +171,9 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             # check incompatibilities between mix rate and forest type
                 # if mix rate says evergreen (<50%), but copernicus says deciduous, force larch in mr_val 75%
                 # but only above 1500m
+                mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,true)
                 if median(pts_e) > 1500
-                    mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,false,true)
-                    _, _, ft_val,_ = read_griddata_window(ftdf,limits_canopy,false,true)
+                    _, _, ft_val,_ = read_griddata_window(ftdf,limits_canopy,true,true)
                     tmp_dx = findall(mr_val .< 5000 .& ft_val .== 1)
                     if sum(tmp_dx) > 0
                         mr_val[tmp_dx] .= 7500
