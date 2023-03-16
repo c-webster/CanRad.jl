@@ -122,7 +122,6 @@ end
 
     pts_sz::Int64
 
-    dtm_peri::Float64 = 300
     limits_highres::Vector{Float64} = zeros(4)
     pts_e::Vector{Float64} = zeros(pts_sz)
 

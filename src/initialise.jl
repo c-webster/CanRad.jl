@@ -69,6 +69,10 @@ function compatability_check!(par_in::Dict)
         end
     end
 
+    if !haskey(par_in,"dtm_peri")
+        par_in["dtm_peri"] = 300.0
+    end
+
 end
 
 function extract(d::Dict)
