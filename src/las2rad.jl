@@ -66,6 +66,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     if terrain_highres
 
         @unpack dtm_peri, limits_highres, pts_e = ter2rad
+        dtm_peri .= 200 # need to be an input variable
         getlimits!(limits_highres,pts_x,pts_y,dtm_peri)
         dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata_window(dtmf,limits_highres,true, true)
         rbins_dtm = collect(2*dtm_cellsize:sqrt(2).*dtm_cellsize:dtm_peri)
