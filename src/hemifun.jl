@@ -413,7 +413,7 @@ function calcmintht!(ter2rad::TER2RAD,mintht::Vector{Float64},pcd_phi::Vector{Fl
                 fill!(tempmintht,90)
                 tempmintht[tdx] = LinearInterpolation(pcd_phi[fix1[sortperm(pcd_phi[fix1])]],
                             pcd_tht[fix1[sortperm(pcd_phi[fix1])]])(phi_bins[tdx])
-                mintht .= minimum(hcat(mintht,tempmintht),dims=2)
+                mintht .= vec(minimum(hcat(mintht,tempmintht),dims=2))
             end
     end
 

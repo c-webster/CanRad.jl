@@ -56,6 +56,7 @@ export
     create_exmat,
     create_tiles,
     createfiles,
+    create_exhlm,
     dist,
     dist3d,
     extract,
