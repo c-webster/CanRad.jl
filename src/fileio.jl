@@ -259,7 +259,7 @@ function organise_outf(taskID::String,exdir::String,batch::Bool,numpts::Int)
         outstr = split(taskID,"_")[2]*"_"*split(taskID,"_")[3]
         global outdir = exdir*"/"*outstr
     else
-        outstr = String(split(exdir,"/")[end-1])
+        outstr = splitpath(exdir)[end-1]
         global outdir = exdir
     end
 
