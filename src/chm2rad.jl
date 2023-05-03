@@ -213,6 +213,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         elseif season == "summer" # constant LA value across all canopy pixels
 
             mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,true)
+            mr_val[mr_val .== 0] .= 1.0
             temp_LA = reverse(collect(1.2:(0.67-1.2)/9999:0.67))
             lavd_val = fill(0.0,size(mr_val))
 
