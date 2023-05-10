@@ -57,8 +57,6 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
             # test rmse is <0.05
             @test sum(sqrt.((tst_dd .- bmk_dd).^2))/size(pts,1) < 0.05
 
-            rm(exdir,force=true)
-
         end
 
     end
@@ -66,3 +64,7 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
 end
 
 cd("..")
+
+for model in ["T2R","C2R","L2R"]
+    rm(joinpath(datdir,"Output_tests_"*model),force=true)
+end

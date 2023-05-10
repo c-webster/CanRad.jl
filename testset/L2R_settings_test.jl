@@ -9,8 +9,8 @@ function las2rad_settings(basefolder::String)
     "terrain_highres" => true, # include high high resolution local terrain (1-5 m)
     "terrain_lowres" => true, # include low resolution regional terrain (> 25 m)
     "terrain_tile" => false, # calculate terrain_lowres once for the whole tile
-    "terrain_precalc" => true, # if the terrain mask has been pre-calculated by CanRad
-    "horizon_line" => false, # if only the horizon line has been pre-calculated
+    "terrain_precalc" => false, # if the terrain mask has been pre-calculated by CanRad
+    "horizon_line" => true, # if only the horizon line has been pre-calculated
 
     "terrain_peri" => 10000, # radius around points to include lowres terrain
 
