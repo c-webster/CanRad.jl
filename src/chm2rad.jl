@@ -70,8 +70,15 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     # > Import prepare terrain data
 
     # set terrain = true if any terrain is to be plotted in the final image matrix
-    if terrain_precalc
+    if terrainmask_precalc
         terrain_mask = getterrainmask(canrad,terf,pts_x,pts_y)
+    elseif horizon_line
+        ter2rad = TER2RAD(pts_sz = size(pts_x,1))
+        if oshd_flag
+            pt_dem_x, pt_dem_y = load_hlm_oshd(hlmf)
+        elseif !oshd_flag
+            hlm_tht = load_hlm(ter2rad,hlmf,pts_x,pts_y)
+        end
     end
 
     if terrain_highres || terrain_lowres || horizon_line
@@ -121,9 +128,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     end
 
     # get the tile horizon line
-    if horizon_line # get pre-calculated horizon line
-        pt_dem_x, pt_dem_y = load_hlm(hlmf,taskID)
-    elseif terrain_tile && !horizon_line
+    if terrain_tile && (!horizon_line || !terrainmask_precalc)
         pt_dem_x, pt_dem_y, pt_dem_z = getsurfdat(copy(dem_x),copy(dem_y),copy(dem_z),mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri);
 
         pt_dem_x, pt_dem_y = pcd2pol2cart!(ter2rad,pt_dem_x, pt_dem_y, pt_dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),
@@ -298,7 +303,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
         if progress; start = time(); end
 
-        if !terrain_precalc
+        if !terrainmask_precalc
 
             if terrain_highres
                 # get the high-res local terrain
@@ -315,7 +320,9 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         
             end
 
-            if terrain_highres && (terrain_lowres || horizon_line)
+            if horizon_line && !oshd_flag
+                pt_dtm_x,pt_dtm_y = hlm2cart(ter2rad,hlm_tht[:,crx])
+            elseif terrain_highres && (terrain_lowres || (horizon_line && oshd_flag))
                 prepterdat!(append!(pt_dtm_x,pt_dem_x),append!(pt_dtm_y,pt_dem_y));
             elseif terrain_highres
                 prepterdat!(pt_dtm_x,pt_dtm_y)
@@ -331,7 +338,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             
             pt_bhm_x, pt_bhm_y =  pcd2pol2cart!(ter2rad,pt_bhm_x,pt_bhm_y,pt_bhm_z,pts_x[crx],pts_y[crx],pts_e[crx],
                                                 "buildings",rbins_bhm,image_height,pts_slp[crx])
-            if !terrain_precalc
+            if !terrainmask_precalc
                 prepterdat!(append!(pt_dtm_x,pt_bhm_x),append!(pt_dtm_y,pt_bhm_y));
             else
                 pt_dtm_x, pt_dtm_y = prepterdat(pt_bhm_x,pt_bhm_y)
@@ -356,7 +363,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 #  100% opaque canopy:
                 pt_chm_x, pt_chm_y = pcd2pol2cart!(ter2rad,pt_chm_x, pt_chm_y, pt_chm_z,pts_x[crx],pts_y[crx],pts_e[crx],
                                             "terrain",rbins_chm,image_height,pts_slp[crx])
-                if !terrain_precalc # merge if using terrain
+                if !terrainmask_precalc # merge if using terrain
                     prepterdat!(append!(pt_dtm_x,pt_chm_x),append!(pt_dtm_y,pt_chm_y));
                 else
                     pt_dtm_x, pt_dtm_y = prepterdat(pt_chm_x,pt_chm_y)
@@ -375,7 +382,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         ### Classify image
         if progress; start = time(); end
 
-        if terrain_precalc
+        if terrainmask_precalc
             mat2ev .= terrain_mask[:,:,crx]
         else
             fill!(mat2ev,1)
@@ -392,7 +399,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                     fillmat!(canrad,kdtree,hcat(pt_chm_x_pts,pt_chm_y_pts),20,mat2ev); # include canopy surface points
                 end
             end
-            if !terrain_precalc
+            if !terrainmask_precalc
                 fillmat!(canrad,kdtree,hcat(pt_dtm_x,pt_dtm_y),10,mat2ev);
             end
         else # treat all canopy as opaque (like terrain) -> all points come in as terrain points from above section

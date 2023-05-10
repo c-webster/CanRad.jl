@@ -5,9 +5,11 @@ function chm2rad_settings(basefolder="empty"::String)
 
     # terrain settings
     "terrain_highres" => true, # include high high resolution local terrain (1-5 m)
+    # note still needed to calculate surface height of lidar points
     "terrain_lowres" => false, # include low resolution regional terrain (> 25 m)
     "terrain_tile" => false, # calculate terrain_lowres once for the centre point of the whole area
-    "terrain_precalc" => true, # if the terrain mask has been pre-calculated by CanRad
+    "terrainmask_precalc" => true, # if the terrain mask has been pre-calculated by CanRad
+    "horizon_line" => false, # if only the horizon line has been pre-calculated
 
     "terrain_peri" => 10000, # radius around points to include lowres terrain
 
@@ -50,6 +52,8 @@ function chm2rad_settings(basefolder="empty"::String)
     "demf" => basefolder*"/input/dem_50m.tif",
     # terrain mask (if terrain_precalc = true)
     "terf" => basefolder*"/Output_tests_T2R/SHIs_testset.nc",
+    # horizon line file
+    "hlmf" => basefolder*"/Output_tests_T2R/HLM_testset.nc",
     # lavdf
     "lavdf" => basefolder*"/input/test_lavd.asc",
     # dbh

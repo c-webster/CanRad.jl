@@ -73,6 +73,10 @@ function compatability_check!(par_in::Dict)
         par_in["dtm_peri"] = 300.0
     end
 
+    if !haskey(par_in,"oshd_flag")
+        par_in["oshd_flag"] = false
+    end
+
 end
 
 function extract(d::Dict)

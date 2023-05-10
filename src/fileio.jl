@@ -74,37 +74,6 @@ function loadltc_laz(fname::String,limits::Vector{Float64},
 
 end
 
-function load_hlm(hlmf::String,taskID::String)
-
-    xllcorner = parse(Int,(split(taskID,"_")[2]))[1]
-    yllcorner = parse(Int,(split(taskID,"_")[3]))[1]
-
-    if xllcorner % 250 .!== 0.0
-        xllcorner = 250 * round(xllcorner/250)
-    end
-    if yllcorner % 250 .!== 0.0
-        yllcorner = 250 * round(yllcorner/250)
-    end
-
-    hlmds = NCDataset(hlmf,"r")
-    xdx = findall(hlmds["easting"][:,:] .== xllcorner)
-    ydx = findall(hlmds["northing"][:,:] .== yllcorner)
-
-    # phi = vec(hlmds["phi"][:])
-    phi = (-pi:(pi - -pi)/89:pi) .- pi/2
-    tht = (vec(hlmds["tht"][ydx,xdx,:]))
-    close(hlmds)
-
-    rphi = collect(-pi:pi/1080:pi)  .- pi/2
-    rtht = Array{Float64,1}(undef,size(rphi,1))
-
-    rtht = LinearInterpolation(phi,vec(tht))(rphi)
-
-    pol_phi, pol_tht = fillterrain(rphi,rtht,0.0)
-
-    return pol2cart(pol_phi,pol_tht)
-
-end
 
 function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_trans::Bool,calc_swr::Int64,
             append_file::Bool,loc_time=nothing,time_zone=nothing)
@@ -212,9 +181,12 @@ function create_exhlm(outdir::String,outstr::String,pts::Matrix{Float64},ter2rad
 
     defVar(hlm,"easting",pts[:,1],("Coordinates",),deflatelevel=1)
     defVar(hlm,"northing",pts[:,2],("Coordinates",),deflatelevel=1)
-    defVar(hlm,"phi",(round.(phi_bins))[p_srt],("phi",),deflatelevel=1)
+    defVar(hlm,"phi",(round.(phi_bins)),("phi",),deflatelevel=1)
+    defVar(hlm,"phi_oshd",(round.(phi_bins))[p_srt],("phi",),deflatelevel=1)
 
     defVar(hlm,"tht",Int32,("phi","Coordinates",),fillvalue = Int32(-9999),
+            deflatelevel=5,attrib=["scale_factor"=>0.01,"comments"=>"zenith angle of horizon line"],)
+    defVar(hlm,"tht_oshd",Int32,("phi","Coordinates",),fillvalue = Int32(-9999),
             deflatelevel=5,attrib=["scale_factor"=>0.01,"comments"=>"zenith angle of horizon line"],)
 
     return hlm, p_srt
@@ -341,6 +313,42 @@ function getterrainmask(canrad::CANRAD,terf::String,pts_x::Vector{Float64},pts_y
 
 end
 
+
+function load_hlm(ter2rad::TER2RAD,hlmf::String,pts_x::Vector{Float64},pts_y::Vector{Float64})
+
+    hlmds = NCDataset(hlmf)
+    easting = hlmds["easting"][:]
+    northing = hlmds["northing"][:]
+    tht = identity.(hlmds["tht"][:]) ./ 100
+    close(hlmds)
+
+    # correct if coordinates aren't in the correct order
+    if !(size(pts_x,1) .== size(easting,1)) || ((sum(abs.(easting .- pts_x)) .== 0.0) && (sum(abs.(northing .- pts_y))) .== 0.0)
+        tht_new = Matrix{Float64}(undef,(size(tht,1),size(pts_x,1)))
+        for dx in eachindex(pts_x)
+            tmx = (abs.(easting .- pts_x[dx]) .== 0.0) .& (abs.(northing .- pts_y[dx]) .== 0.0)
+            tht_new[:,dx] = tht[:,tmx]
+            ###!!!! reorder tht to match coordinates of pts (not easting/northing of input file)
+        end
+    else
+        tht_new = tht
+    end
+
+    @unpack rphi, phi_bins, dx1, dx2 = ter2rad
+    phi = phi_bins[dx1:dx2]
+    rtht = Matrix{Float64}(undef,(size(rphi,1),size(easting,1)))
+
+    for dx in eachindex(pts_x)
+
+        rtht[:,dx] = LinearInterpolation(phi,push!(tht_new[:,dx],tht_new[end,dx]))(rphi)
+
+    end
+
+    return rtht
+
+end
+
+
 function getterrainmask(canrad::CANRAD,terf::String,pts_x::Float64,pts_y::Float64)
 
     terrain_mask = Array{Int8}(undef,(size(canrad.mat2ev,1),size(canrad.mat2ev,2),1))
@@ -357,5 +365,59 @@ function getterrainmask(canrad::CANRAD,terf::String,pts_x::Float64,pts_y::Float6
     close(tm_ds)
 
     return terrain_mask
+
+end
+
+function load_hlm(ter2rad::TER2RAD,hlmf::String,pts_x::Float64,pts_y::Float64)
+
+    hlmds = NCDataset(hlmf)
+    easting = hlmds["easting"][:]
+    northing = hlmds["northing"][:]
+    tht = identity.(hlmds["tht"][:]) ./ 100
+    close(hlmds)
+
+    # correct if coordinates aren't in the correct order
+    tmx = (abs.(easting .- pts_x) .== 0.0) .& (abs.(northing .- pts_y) .== 0.0)
+    tht_new = tht[:,tmx]
+
+    @unpack rphi, phi_bins, dx1, dx2 = ter2rad
+    phi = phi_bins[dx1:dx2]
+    rtht = LinearInterpolation(phi,push!(tht_new,tht_new[end]))(rphi)
+
+    return rtht
+
+end
+
+function load_hlm_oshd(hlmf::String,taskID::String)
+
+    error("you haven't updated the load_hlm_oshd function yet")
+
+    # xllcorner = parse(Int,(split(taskID,"_")[2]))[1]
+    # yllcorner = parse(Int,(split(taskID,"_")[3]))[1]
+
+    # if xllcorner % 250 .!== 0.0
+    #     xllcorner = 250 * round(xllcorner/250)
+    # end
+    # if yllcorner % 250 .!== 0.0
+    #     yllcorner = 250 * round(yllcorner/250)
+    # end
+
+    # hlmds = NCDataset(hlmf,"r")
+    # xdx = findall(hlmds["easting"][:,:] .== xllcorner)
+    # ydx = findall(hlmds["northing"][:,:] .== yllcorner)
+
+    # # phi = vec(hlmds["phi"][:])
+    # phi = (-pi:(pi - -pi)/89:pi) .- pi/2
+    # tht = (vec(hlmds["tht"][ydx,xdx,:]))
+    # close(hlmds)
+
+    # rphi = collect(-pi:pi/1080:pi)  .- pi/2
+    # rtht = Array{Float64,1}(undef,size(rphi,1))
+
+    # rtht = LinearInterpolation(phi,vec(tht))(rphi)
+
+    # pol_phi, pol_tht = fillterrain(rphi,rtht,0.0)
+
+    # return pol2cart(pol_phi,pol_tht)
 
 end

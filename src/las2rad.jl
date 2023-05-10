@@ -55,8 +55,15 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     ################################################################################
     # > Import and prepare terrain data
 
-    if terrain_precalc
+    if terrainmask_precalc
         terrain_mask = getterrainmask(canrad,terf,pts_x,pts_y)
+    elseif horizon_line
+        ter2rad = TER2RAD(pts_sz = size(pts_x,1))
+        if oshd_flag
+            pt_dem_x, pt_dem_y = load_hlm_oshd(hlmf)
+        elseif !oshd_flag
+            hlm_tht = load_hlm(ter2rad,hlmf,pts_x,pts_y)
+        end
     end
 
     if terrain_highres || terrain_lowres || horizon_line
@@ -111,9 +118,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     end
 
     # get the tile horizon line
-    if horizon_line  # get pre-calculated horizon line
-        pt_dem_x, pt_dem_y = load_hlm(hlmf,taskID)
-    elseif terrain_tile && !horizon_line
+    if terrain_tile && (!horizon_line || !terrainmask_precalc)
         pt_dem_x, pt_dem_y, pt_dem_z = getsurfdat(copy(dem_x),copy(dem_y),copy(dem_z),mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri);
 
         pt_dem_x, pt_dem_y = pcd2pol2cart!(ter2rad,pt_dem_x, pt_dem_y, pt_dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),
@@ -260,14 +265,13 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             end
         end
 
-        if !terrain_precalc
+        if !terrainmask_precalc
 
             if terrain_highres
                 # get the high-res local terrain
                 pt_dtm_x, pt_dtm_y, pt_dtm_z = getsurfdat(copy(dtm_x),copy(dtm_y),copy(dtm_z),
                                                 pts_x[crx],pts_y[crx],pts_e[crx],dtm_peri);
-                pt_dtm_x, pt_dtm_y = pcd2pol2cart!(ter2rad,pt_dtm_x, pt_dtm_y, pt_dtm_z,pts_x[crx],pts_y[crx],pts_e[crx],
-                                                    "terrain",rbins_dtm,image_height)
+                pt_dtm_x, pt_dtm_y = pcd2pol2cart!(ter2rad,pt_dtm_x, pt_dtm_y, pt_dtm_z,pts_x[crx],pts_y[crx],pts_e[crx],"terrain",rbins_dtm,image_height)
         
             end
 
@@ -278,13 +282,16 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         
             end
 
-            if terrain_highres && (terrain_lowres || horizon_line)
+            if horizon_line && !oshd_flag
+                pt_dtm_x,pt_dtm_y = hlm2cart(ter2rad,hlm_tht[:,crx])
+            elseif terrain_highres && (terrain_lowres || (horizon_line && oshd_flag))
                 prepterdat!(append!(pt_dtm_x,pt_dem_x),append!(pt_dtm_y,pt_dem_y));
             elseif terrain_highres
                 prepterdat!(pt_dtm_x,pt_dtm_y)
             elseif (terrain_lowres && !terrain_highres)
                 pt_dtm_x, pt_dtm_y = prepterdat(pt_dem_x,pt_dem_y)
             end
+
         end
 
         if build
@@ -292,7 +299,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             pt_bhm_x, pt_bhm_y, pt_bhm_z = getsurfdat(copy(bhm_x),copy(bhm_y),copy(bhm_z),pts_x[crx],pts_y[crx],pts_e[crx],300);    
             pt_bhm_x, pt_bhm_y =  pcd2pol2cart!(ter2rad,pt_bhm_x,pt_bhm_y,pt_bhm_z,pts_x[crx],pts_y[crx],pts_e[crx],
                                                 "buildings",rbins_bhm,image_height)
-            if !terrain_precalc
+            if !terrainmask_precalc
                 prepterdat!(append!(pt_dtm_x,pt_bhm_x),append!(pt_dtm_y,pt_bhm_y));
             else
                 pt_dtm_x, pt_dtm_y = prepterdat(pt_bhm_x,pt_bhm_y)
@@ -311,25 +318,25 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         ### Classify image
         if progress; start = time(); end
 
-        if terrain_precalc
+        if terrainmask_precalc
             mat2ev .= terrain_mask[:,:,crx]
         else
             fill!(mat2ev,1)
         end
 
-        # occupy matrix with surface points
-        for zdx = 1:1:size(rbins,1)-1
-            ridx = findall(rbins[zdx] .<= pt_dsm_z .< rbins[zdx+1])
-            fillmat!(canrad,kdtree,hcat(pt_dsm_x[ridx],pt_dsm_y[ridx]),knum[zdx],mat2ev)
+        # # occupy matrix with surface points
+        # for zdx = 1:1:size(rbins,1)-1
+        #     ridx = findall(rbins[zdx] .<= pt_dsm_z .< rbins[zdx+1])
+        #     fillmat!(canrad,kdtree,hcat(pt_dsm_x[ridx],pt_dsm_y[ridx]),knum[zdx],mat2ev)
             
-            if season == "winter" && trunks
-                tridx = findall(rbins[zdx] .<= pt_tsm_z .< rbins[zdx+1])
-                fillmat!(canrad,kdtree,hcat(pt_tsm_x[tridx],pt_tsm_y[tridx]),knum_t[zdx],mat2ev)
-            end
-        end
+        #     if season == "winter" && trunks
+        #         tridx = findall(rbins[zdx] .<= pt_tsm_z .< rbins[zdx+1])
+        #         fillmat!(canrad,kdtree,hcat(pt_tsm_x[tridx],pt_tsm_y[tridx]),knum_t[zdx],mat2ev)
+        #     end
+        # end
 
         # add terrain
-        if !terrain_precalc
+        if !terrainmask_precalc
             fillmat!(canrad,kdtree,hcat(pt_dtm_x,pt_dtm_y),10,mat2ev);
         end
 

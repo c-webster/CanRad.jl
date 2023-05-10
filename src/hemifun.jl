@@ -327,6 +327,16 @@ function pol2cart(pcd_phi::Vector{Float64},pcd_tht::Vector{Float64})
     return pcd_tht .* cos.(pcd_phi), pcd_tht .* sin.(pcd_phi)
 end
 
+function hlm2cart(ter2rad::TER2RAD,rtht::Vector{Float64})
+
+    @unpack rphi = ter2rad
+
+    pol_phi, pol_tht = fillterrain(rphi,rtht,0.0)
+    pt_dtm_x, pt_dtm_y = pol2cart(pol_phi,pol_tht)
+    return prepterdat(pt_dtm_x,pt_dtm_y)
+
+end
+
 function filterbyradius(phi::Vector{Float64},tht::Vector{Float64},rad::Vector{Float64},peri::Int64)
     rmdx = rad .> peri
     return deleteat!(phi,rmdx), deleteat!(tht,rmdx), deleteat!(rad,rmdx)

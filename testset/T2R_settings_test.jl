@@ -24,6 +24,8 @@ function ter2rad_settings(basefolder="empty"::String)
 
     "save_hlm" => true, # save the calculated horizon line matrix 
 
+    "save_images" => true, # to save the calculated terrain mask as an image
+
     "batch" => false,
 
     "buildings" => false, # include buildings as opague features (requires a building height model, bhmf, like the chm)

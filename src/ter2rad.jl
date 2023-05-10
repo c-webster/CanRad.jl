@@ -146,10 +146,12 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
             if save_hlm
                 if !isempty(dtm_x) && terrain_highres
-                    dem_mintht = copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])      
-                    hlm["tht"][:,crx] = Int.(round.(minimum(hcat(dtm_mintht,dem_mintht),dims=2)[p_srt] .*100))
+                    dem_mintht = copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+                    hlm["tht"][:,crx] = Int.(round.(minimum(hcat(dtm_mintht,dem_mintht),dims=2) .*100))
+                    hlm["tht_oshd"][:,crx] = Int.(round.(minimum(hcat(dtm_mintht,dem_mintht),dims=2)[p_srt] .*100))
                 else
-                    hlm["tht"][:,crx] = Int.(round.(copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])[p_srt] .*100))
+                    hlm["tht"][:,crx] = Int.(round.(copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1]) .* 100))
+                    hlm["tht_oshd"][:,crx] = Int.(round.(copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])[p_srt] .*100))
                 end
             end
         

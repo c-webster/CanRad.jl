@@ -10,6 +10,7 @@ function las2rad_settings(basefolder::String)
     "terrain_lowres" => true, # include low resolution regional terrain (> 25 m)
     "terrain_tile" => false, # calculate terrain_lowres once for the whole tile
     "terrain_precalc" => true, # if the terrain mask has been pre-calculated by CanRad
+    "horizon_line" => false, # if only the horizon line has been pre-calculated
 
     "terrain_peri" => 10000, # radius around points to include lowres terrain
 
@@ -52,7 +53,9 @@ function las2rad_settings(basefolder::String)
     # dem
     "demf" => basefolder*"/input/dem_50m.tif",
     # terrain mask (if terrain_precalc = true)
-    "terf" => basefolder*"/Output_tests_D2R/SHIs_test.nc",
+    "terf" => basefolder*"/Output_tests_T2R/SHIs_testset.nc",
+    # horizon line file
+    "hlmf" => basefolder*"/Output_tests_T2R/HLM_testset.nc",
     # dbh
     "dbhf" => basefolder*"/input/test_treeinfo.txt",
     # ltc

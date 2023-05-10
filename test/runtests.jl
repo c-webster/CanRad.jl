@@ -40,7 +40,7 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
     
                 dat_in, par_in = las2rad_settings(datdir)
                 println("Testing L2R ...")
-                # las2rad!(pts,dat_in,par_in,exdir,"L2R test")
+                las2rad!(pts,dat_in,par_in,exdir,"L2R test")
 
             end
 
@@ -56,6 +56,8 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
 
             # test rmse is <0.05
             @test sum(sqrt.((tst_dd .- bmk_dd).^2))/size(pts,1) < 0.05
+
+            rm(exdir,force=true)
 
         end
 
