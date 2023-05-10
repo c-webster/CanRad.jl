@@ -324,16 +324,16 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             fill!(mat2ev,1)
         end
 
-        # # occupy matrix with surface points
-        # for zdx = 1:1:size(rbins,1)-1
-        #     ridx = findall(rbins[zdx] .<= pt_dsm_z .< rbins[zdx+1])
-        #     fillmat!(canrad,kdtree,hcat(pt_dsm_x[ridx],pt_dsm_y[ridx]),knum[zdx],mat2ev)
+        # occupy matrix with surface points
+        for zdx = 1:1:size(rbins,1)-1
+            ridx = findall(rbins[zdx] .<= pt_dsm_z .< rbins[zdx+1])
+            fillmat!(canrad,kdtree,hcat(pt_dsm_x[ridx],pt_dsm_y[ridx]),knum[zdx],mat2ev)
             
-        #     if season == "winter" && trunks
-        #         tridx = findall(rbins[zdx] .<= pt_tsm_z .< rbins[zdx+1])
-        #         fillmat!(canrad,kdtree,hcat(pt_tsm_x[tridx],pt_tsm_y[tridx]),knum_t[zdx],mat2ev)
-        #     end
-        # end
+            if season == "winter" && trunks
+                tridx = findall(rbins[zdx] .<= pt_tsm_z .< rbins[zdx+1])
+                fillmat!(canrad,kdtree,hcat(pt_tsm_x[tridx],pt_tsm_y[tridx]),knum_t[zdx],mat2ev)
+            end
+        end
 
         # add terrain
         if !terrainmask_precalc
