@@ -18,9 +18,6 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     canrad  = CANRAD()
     ter2rad = TER2RAD(pts_sz = size(pts_x,1))
 
-    # hard code save_images for now
-    save_images = true
-
     ################################################################################
     # > Get constants, organise the output and initiate progress reporting
 
