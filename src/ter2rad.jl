@@ -51,10 +51,17 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     if terrain_highres
 
         limits_highres = getlimits!(Vector{Float64}(undef,4),pts_x,pts_y,dtm_peri)
-        dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata_window(dtmf,limits_highres,true, true)
-        if !isempty(dtm_x) 
+        dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata_window(dtmf,limits_highres,true, false);
+        
+        if !isempty(dtm_x) || !isnan(sum(dtm_z))
             pts_e = findelev!(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x,pts_y,limits_highres,10.0,Vector{Float64}(undef,size(pts_x)))
             rbins_dtm = collect(2*dtm_cellsize:sqrt(2).*dtm_cellsize:dtm_peri)
+            rows = findall(isnan,dtm_z); deleteat!(dtm_x,rows); deleteat!(dtm_y,rows); deleteat!(dtm_z,rows)
+        # silly workaround to dealing with terrain data that doesn't have the same boundaries as grids.
+        # this workaround loads the data including nans so that the above doesn't fail, and a horizon line
+        #   can be calculated where high-res data exists. however, it will fill pts_e with nans, so this is 
+        #   fixed below where the low-res terrain information is used. 
+        # This fix is intended for the swissalti3d data which is clipped to the swiss border. 
         end
 
     end
@@ -68,7 +75,7 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
     end
 
-    if isempty(dtm_x)
+    if isempty(dtm_x) || isnan(sum(pts_e))
         pts_e = copy(pts_e_dem)
     end
 
