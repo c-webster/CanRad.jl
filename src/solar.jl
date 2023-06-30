@@ -29,6 +29,21 @@ function getsundxs!(window::Matrix{Float64},trans_for::Vector{Float64},
 
 end
 
+function filter_trans_for!(trans_for::Vector{Float64},sol_phi::Vector{Float64},asp::Float64)
+
+    asp_range = [(asp - 90) , (asp + 90)]
+    asp_range[asp_range .>= 360] .-= 360
+    asp_range[asp_range .< 0] .+= 360
+
+    if asp_range[1] .< asp_range[2]
+        trans_for[asp_range[1] .<= sol_phi .<= asp_range[2]] .= 0.0
+    elseif asp_range[2] .<  asp_range[1]
+        trans_for[sol_phi .> asp_range[1]] .= 0.0
+        trans_for[sol_phi .< asp_range[2]] .= 0.0
+    end
+
+end
+
 function calc_transmissivity!(canrad::CANRAD,solar::SOLAR,trans_for::Vector{Float64},
     mat2ev::Matrix{Float64},sol_phi::Vector{Float64},sol_tht::Vector{Float64},
     imcX=0.0::Float64,imcY=0.0::Float64) # imcX and imcY are offsets from centre if 'tilt' is enabled
@@ -44,7 +59,7 @@ function calc_transmissivity!(canrad::CANRAD,solar::SOLAR,trans_for::Vector{Floa
 
     x = ((im_centre .+ sin.(deg2rad.(sol_phi[keepix])) .* prad[keepix]) .- (imcX / (90 / radius)))
     y = ((im_centre .+ cos.(deg2rad.(sol_phi[keepix])) .* prad[keepix]) .- (imcY / (90 / radius)))
-
+    
     x_lower = Int.(max.(1,round.(x .- dpix)))
     y_lower = Int.(max.(1,round.(y .- dpix)))
     x_upper = Int.(min.(imsize[2],round.(x .+ dpix)))
@@ -281,3 +296,5 @@ function calculateSWR(radiation::RADIATION,trans_for::Vector{Float64},sol_sinele
     return (dif_frac .* swr_open .* Vf) + swr_for_dir_flat, swr_for_dir_flat
     # return swr_tot, swr_dir
 end
+
+

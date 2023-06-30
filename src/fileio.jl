@@ -76,7 +76,7 @@ end
 
 
 function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_trans::Bool,calc_swr::Int64,
-            append_file::Bool,loc_time=nothing,time_zone=nothing)
+            append_file::Bool,dimensions::Int64=2,loc_time=nothing,time_zone=nothing)
 
     outfile  = outdir*"/Output_"*outstr*".nc"
 
@@ -93,6 +93,10 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 	    defDim(ds,"Coordinates",size(pts,1))
 	    defVar(ds,"easting",pts[:,1],("Coordinates",))
 	    defVar(ds,"northing",pts[:,2],("Coordinates",))
+
+        if dimensions == 3
+            defVar(ds,"height",pts[:,3],("Coordinates",))
+        end
 
 	    defVar(ds,"Vf_planar",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int32(-9999),
                     attrib=["scale_factor"=>0.01, "comments" =>
@@ -134,7 +138,8 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 end
 
 
-function create_exmat(outdir::String,outstr::String,pts::Matrix{Float64},g_img::Matrix{Int64},append_file::Bool)
+function create_exmat(outdir::String,outstr::String,pts::Matrix{Float64},
+    g_img::Matrix{Int64},append_file::Bool,dimensions::Int64=2)
 
     outfile  = outdir*"/SHIs_"*outstr*".nc"
 
@@ -153,6 +158,10 @@ function create_exmat(outdir::String,outstr::String,pts::Matrix{Float64},g_img::
         defVar(images,"SHI",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
         defVar(images,"easting",pts[:,1],("Coordinates",),deflatelevel=1)
         defVar(images,"northing",pts[:,2],("Coordinates",),deflatelevel=1)
+
+        if dimensions == 3
+            defVar(images,"height",pts[:,3],("Coordinates",))
+        end
 
 	end
 
@@ -269,6 +278,7 @@ function make_SHIs(datdir::String)
 
     coords_x = images["easting"][:]
     coords_y = images["northing"][:]
+    coords_z = images["height"][:]
 
     odir = joinpath(datdir,files[fx][1][1:end-3])
 
@@ -279,8 +289,13 @@ function make_SHIs(datdir::String)
     fstr = "%07.$(2)f"
 
     for ix in eachindex(coords_x)
+        
+        if haskey(images,"height")
+            outf = joinpath(odir,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*"_"*sprintf1.(fstr,coords_z[ix])*".png")
 
-        outf = joinpath(odir,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*".png")
+        else
+            outf = joinpath(odir,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*".png")
+        end
         save(outf,colorview(Gray,float.(images["SHI"][:,:,ix])))
 
     end

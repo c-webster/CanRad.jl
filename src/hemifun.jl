@@ -53,6 +53,13 @@ function getlimits!(limits,pts_x,pts_y,peri)
 
 end
 
+function getlimits(pts_x,pts_y,peri)
+
+    return hcat((floor(minimum(pts_x)-peri)),(ceil(maximum(pts_x)+peri)),    
+                (floor(minimum(pts_y)-peri)),(ceil(maximum(pts_y)+peri)))    
+
+end
+
 
 function trunkpoints(x1::Float64,y1::Float64,h::Float64,r::Float64,bh::Float64,npt::Any,hint::Any,e::Float64)
 
@@ -254,12 +261,23 @@ function normalise!(pcd_x::Vector{Float64},pcd_y::Vector{Float64},pcd_z::Vector{
 end
 
 function cart2sph!(in_x::Vector{Float64},in_y::Vector{Float64},in_z::Vector{Float64},
-    pcd_phi::Vector{Float64},pcd_tht::Vector{Float64})
+    pcd_phi::Vector{Float64},pcd_tht::Vector{Float64},tilt=false::Bool)
     
     pcd_phi    .= atan.(in_y,in_x) # az
     pcd_tht    .= ((pi/2) .- (atan.(in_z,hypot.(in_x,in_y)))) * (180/pi) # elev/zenith
-    pcd_tht[pcd_tht.> 90] .= 90
+    if !tilt
+        pcd_tht[pcd_tht.> 90] .= 90
+    end
     in_z    .= hypot.(hypot.(in_x,in_y),in_z) # r
+
+end
+
+function cart2pol(in_x::Vector{Float64},in_y::Vector{Float64})
+
+    # in_x .= atan.(in_y,in_x) # az/phi
+    # in_y .= ((pi/2) .- (atan.(ones(size(in_x)),hypot.(in_x,in_y)))) * (180/pi) # elev/zenith/tht
+
+    return atan.(in_y,in_x),((pi/2) .- (atan.(ones(size(in_x)),hypot.(in_x,in_y)))) * (180/pi)
 
 end
 
@@ -281,15 +299,37 @@ function pcd2pol2cart!(pcd_x::Vector{Float64},pcd_y::Vector{Float64},pcd_z::Vect
 
 end
 
-function pcd2pol2cart!(pcd_x::Vector{Float64},pcd_y::Vector{Float64},pcd_z::Vector{Float64},
-    xcoor::Float64,ycoor::Float64,ecoor::Float64,dat_type::String,image_height::Float64)     
+function rotate_pc!(pcd_x::Vector{Float64},pcd_y::Vector{Float64},pcd_z::Vector{Float64},
+    slp::Float64,asp::Float64)
 
-    # for lidar points
+    # rotate aspect about z axis
+    tmp_x = copy(pcd_x)
+    tmp_y = copy(pcd_y)
+    pcd_x .= tmp_x.*cos.(asp) - tmp_y.*sin.(asp);
+    pcd_y .= tmp_x.*sin.(asp) + tmp_y.*cos.(asp);
+
+    # rotate to slope about the x axis
+    tmp_y = copy(pcd_y)
+    tmp_z = copy(pcd_z)
+    pcd_y .= tmp_y.*cos.(slp) - tmp_z.*sin.(slp);
+    pcd_z .= tmp_y.*sin.(slp) + tmp_z.*cos.(slp);
+
+end
+
+function pcd2pol2cart!(pcd_x::Vector{Float64},pcd_y::Vector{Float64},pcd_z::Vector{Float64},
+    xcoor::Float64,ycoor::Float64,ecoor::Float64,dat_type::String,
+    image_height::Float64,tilt=false::Bool,slp=0.0::Float64,asp=0.0::Float64)     
+
+    # for lidar/"surface" points
     normalise!(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,image_height)
 
+    if tilt # rotate the normalised point cloud so nadir of image is normal to slope
+        rotate_pc!(pcd_x,pcd_y,pcd_z,slp,asp)
+    end
+
     pcd_phi = Vector{Float64}(undef,size(pcd_x,1))
-    pcd_tht = Vector{Float64}(undef,size(pcd_x,1))  
-    cart2sph!(pcd_x,pcd_y,pcd_z,pcd_phi,pcd_tht) # pcd_z is pcd_rad in radial distance (r)
+    pcd_tht = Vector{Float64}(undef,size(pcd_x,1))
+    cart2sph!(pcd_x,pcd_y,pcd_z,pcd_phi,pcd_tht,tilt) # pcd_z is pcd_rad in radial distance (r)
 
     pol2cart!(pcd_phi,pcd_tht,pcd_x,pcd_y)
 
@@ -303,10 +343,16 @@ end
 
 function pcd2pol2cart!(ter2rad::TER2RAD,pcd_x::Vector{Float64},pcd_y::Vector{Float64},pcd_z::Vector{Float64},
     xcoor::Float64,ycoor::Float64,ecoor::Float64,dat_type::String,rbins::Vector{Float64},
-    image_height::Float64,slp=0.0::Float64)     
+    image_height::Float64,tilt=false::Bool,slp=0.0::Float64,asp=0.0::Float64)   
 
     # for terrain points
     normalise!(pcd_x,pcd_y,pcd_z,xcoor,ycoor,ecoor,image_height)
+
+    if tilt # rotate the normalised point cloud so nadir of image is normal to slope
+        rotate_pc!(pcd_x,pcd_y,pcd_z,slp,asp)
+    else
+        slp = 0.0
+    end
 
     pcd_phi = Vector{Float64}(undef,size(pcd_x,1))
     pcd_tht = Vector{Float64}(undef,size(pcd_x,1))  
@@ -324,6 +370,10 @@ function pol2cart!(pol_phi::Vector{Float64},pol_tht::Vector{Float64},pcd_x::Vect
 end
 
 function pol2cart(pcd_phi::Vector{Float64},pcd_tht::Vector{Float64})
+    return pcd_tht .* cos.(pcd_phi), pcd_tht .* sin.(pcd_phi)
+end
+
+function pol2cart(pcd_phi::Float64,pcd_tht::Float64)
     return pcd_tht .* cos.(pcd_phi), pcd_tht .* sin.(pcd_phi)
 end
 

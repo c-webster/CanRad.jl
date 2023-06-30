@@ -17,6 +17,7 @@
 
     # g_coorpol::Matrix{Float64} = [vec(g_phi) vec(g_tht)]
     g_coorcrt::Matrix{Float64} = [vec(tgrid1) vec(tgrid2)]
+    # g_coorcrt_tilt::Matrix{Float64} = [vec(tgrid1) vec(tgrid2)]
 
     lia::BitVector = Bool.(zeros(size(g_coorcrt,1)))
     kdtreedims::Int64  = size(g_coorcrt,1)
@@ -49,6 +50,7 @@ end
     ### parameters and constants for solar track and transmissivity calculations
     loc_time::Vector{DateTime}
     trans_for::Vector{Float64} = zeros(size(loc_time,1))
+    time_zone::Int64
 
     loc_time_agg::Vector{DateTime}
     tstep::Int64
@@ -179,7 +181,7 @@ end
     rbins::Vector{Float64} = collect(0:(surf_peri-0)/5:surf_peri)
 
     tolerance::Vector{Float64}
-    knum::Vector{Float64} = collect(tolerance[1]:(diff(tolerance)/5)[1]:tolerance[2])
+    knum_c::Vector{Float64} = collect(tolerance[1]:(diff(tolerance)/5)[1]:tolerance[2])
 
     knum_t::Vector{Float64} = collect(15:(diff([10,1])/5)[1]:1)
 

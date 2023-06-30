@@ -36,16 +36,16 @@ function compatability_check!(par_in::Dict)
     end
 
     # disable tilt option since it is not implemented properly
-    if !haskey(par_in,"tilt") || par_in["tilt"]
-        par_in["tilt"] = false
-    end
+    # if !haskey(par_in,"tilt") || par_in["tilt"]
+    #     par_in["tilt"] = false
+    # end
 
     if !haskey(par_in,"OSHD")
         par_in["OSHD"] = false
     end
 
 	# renamed variables with version 0.7.0
-	if !haskey(par_in,"image_height")
+	if !haskey(par_in,"image_height") && !haskey(par_in,"dimensions")
 		par_in["image_height"] = par_in["ch"]
 	end
 
@@ -75,6 +75,10 @@ function compatability_check!(par_in::Dict)
 
     if !haskey(par_in,"oshd_flag")
         par_in["oshd_flag"] = false
+    end
+
+    if !haskey(par_in,"dimensions")
+        par_in["dimensions"] = 2
     end
 
 end

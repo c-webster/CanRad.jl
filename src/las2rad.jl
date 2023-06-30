@@ -13,7 +13,12 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     progress && (start = time())
 
     # separate the points to vectors
-    pts_x, pts_y =[pts[:,x] for x in 1:size(pts,2)]
+    if size(pts,2) == 2
+        pts_x, pts_y = [pts[:,x] for x in 1:2]
+        pts_z = fill(image_height,size(pts_x,1))
+    else
+        pts_x, pts_y, pts_z = [pts[:,x] for x in 1:3]
+    end
 
     # get model number (1 = canopy, 2 = terrain only)
     size(pts,2) > 2 ? pts_m = pts[:,3] : pts_m = ones(size(pts_x))
@@ -33,15 +38,16 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         loc_time     = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
         loc_time_agg = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
     
-        dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg,time_zone)
+        dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,dimensions,loc_time_agg,time_zone)
         pts_lat, pts_lon = calc_latlon(pts_x,pts_y,coor_system)
-        solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = tstep, radius = canrad.radius)
+        solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, 
+                    tstep = tstep, time_zone = time_zone, radius = canrad.radius)
     else    
-        dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
+        dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,dimensions)
     end
 
     if save_images 
-        images = create_exmat(outdir,outstr,pts,canrad.mat2ev,append_file)
+        images = create_exmat(outdir,outstr,pts,canrad.mat2ev,append_file,dimensions)
     end
 
     ################################################################################
@@ -93,9 +99,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     end
 
     # determine ground elevation of points
-    if size(pts,2) > 2
-        pts_e = pts[:,3]
-    elseif terrain_highres
+    if terrain_highres
         pts_e     = findelev!(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x,pts_y,limits_highres,10,Vector{Float64}(undef,size(pts_x)))
     elseif terrain_lowres
         pts_e     = pts_e_dem
@@ -111,14 +115,26 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     end
 
     # > Calculate slope and aspect from dtm data
-    if tilt # currently disabled in Preparatory_Functions.jl
-        pts_slp = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_s),pts_x,pts_y)
+
+    if tilt || filter_for_tilt# currently disabled in Preparatory_Functions.jl
+        # load the slope and aspect data
+        slp_x , slp_y , slp_v, _ = read_griddata_window(slpf,limits_highres,true,true)
+        asp_x , asp_y , asp_v, _ = read_griddata_window(aspf,limits_highres,true,true)
+
+        pts_slp = findelev(copy(slp_x),copy(slp_y),copy(slp_v),pts_x,pts_y)
+        pts_asp = findelev(copy(asp_x),copy(asp_y),copy(asp_v),pts_x,pts_y)
+
+        if slope == "canopy"
+            pts_slp[pts_z .<= 2] .= 0.0
+            pts_asp[pts_z .<= 2] .= 0.0
+        end
     else
         pts_slp = zeros(size(pts_x))
+        pts_asp = zeros(size(pts_x))
     end
 
     # get the tile horizon line
-    if terrain_tile && (!horizon_line || !terrainmask_precalc)
+    if terrain_tile && (dimensions != 3) && (!horizon_line || !terrainmask_precalc)
         pt_dem_x, pt_dem_y, pt_dem_z = getsurfdat(copy(dem_x),copy(dem_y),copy(dem_z),mean(pts_x),mean(pts_y),mean(pts_e_dem),terrain_peri);
 
         pt_dem_x, pt_dem_y = pcd2pol2cart!(ter2rad,pt_dem_x, pt_dem_y, pt_dem_z,mean(pts_x),mean(pts_y),mean(pts_e_dem),
@@ -218,10 +234,12 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     ###############################################################################
     # > get a couple more constants
 
-    @unpack rbins, knum, knum_t = las2rad
+    @unpack rbins, knum_c, knum_t = las2rad
 
     ###############################################################################
     # > Loop through the points
+
+    # crude hack for tilt function right now:        
 
     @simd for crx = crxstart:size(pts_x,1)
 
@@ -233,13 +251,14 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         else
             pt_dsm_x, pt_dsm_y, pt_dsm_z = getsurfdat(copy(dsm_x),copy(dsm_y),copy(dsm_z),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri);
         end
-        pt_dsm_x, pt_dsm_y, pt_dsm_z = pcd2pol2cart!(pt_dsm_x,pt_dsm_y,pt_dsm_z,pts_x[crx],pts_y[crx],pts_e[crx],"surface",image_height)
+        pt_dsm_x, pt_dsm_y, pt_dsm_z = pcd2pol2cart!(pt_dsm_x,pt_dsm_y,pt_dsm_z,pts_x[crx],pts_y[crx],
+                    pts_e[crx],"surface",pts_z[crx],tilt,pts_slp[crx],pts_asp[crx])
 
         prepsurfdat!(pt_dsm_x, pt_dsm_y, pt_dsm_z) 
 
         if include_trunks
             pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(copy(tsm_x),copy(tsm_y),copy(tsm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(surf_peri))
-            tidx = findall(dist(dbh_x,dbh_y,pts_x[crx],pts_y[crx]) .< 5)
+            tidx = findall(dist(dbh_x,dbh_y,pts_x[crx],pts_y[crx]) .< 6)
             if size(tidx,1) > 0
                 hdt  = dist(dbh_x[tidx],dbh_y[tidx],pts_x[crx],pts_y[crx])
                 npt  = fill(NaN,(size(tidx)))
@@ -253,10 +272,10 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 end
                 tsm_tmp = calculate_trunks(dbh_x[tidx],dbh_y[tidx],dbh_z[tidx],dbh_r[tidx],npt,hint,dbh_e[tidx])
                 pt_tsm_x, pt_tsm_y, pt_tsm_z = pcd2pol2cart!(append!(pt_tsm_x,tsm_tmp[1]),append!(pt_tsm_y,tsm_tmp[2]),append!(pt_tsm_z,tsm_tmp[3]),
-                                                        pts_x[crx],pts_y[crx],pts_e[crx],"trunks",image_height)
+                                                        pts_x[crx],pts_y[crx],pts_e[crx],"trunks",pts_z[crx],tilt,pts_slp[crx],pts_asp[crx])
 
             else
-                pcd2pol2cart!(pt_tsm_x,pt_tsm_y,pt_tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],"trunks",image_height)
+                pcd2pol2cart!(pt_tsm_x,pt_tsm_y,pt_tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],"trunks",pts_z[crx],tilt,pts_slp[crx],pts_asp[crx])
             end
             if season == "winter"
                 prepsurfdat!(pt_tsm_x,pt_tsm_y,pt_tsm_z)
@@ -271,14 +290,14 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 # get the high-res local terrain
                 pt_dtm_x, pt_dtm_y, pt_dtm_z = getsurfdat(copy(dtm_x),copy(dtm_y),copy(dtm_z),
                                                 pts_x[crx],pts_y[crx],pts_e[crx],dtm_peri);
-                pt_dtm_x, pt_dtm_y = pcd2pol2cart!(ter2rad,pt_dtm_x, pt_dtm_y, pt_dtm_z,pts_x[crx],pts_y[crx],pts_e[crx],"terrain",rbins_dtm,image_height)
+                pt_dtm_x, pt_dtm_y = pcd2pol2cart!(ter2rad,pt_dtm_x, pt_dtm_y, pt_dtm_z,pts_x[crx],pts_y[crx],pts_e[crx],"terrain",rbins_dtm,pts_z[crx],tilt,pts_slp[crx],pts_asp[crx])
         
             end
 
             if terrain_lowres && !terrain_tile
                 # get the low-res regional terrain
                 pt_dem_x, pt_dem_y, pt_dem_z = getsurfdat(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e[crx],terrain_peri);
-                pt_dem_x, pt_dem_y = pcd2pol2cart!(ter2rad,pt_dem_x, pt_dem_y, pt_dem_z,pts_x[crx],pts_y[crx],pts_e_dem[crx],"terrain",rbins_dem,image_height);
+                pt_dem_x, pt_dem_y = pcd2pol2cart!(ter2rad,pt_dem_x, pt_dem_y, pt_dem_z,pts_x[crx],pts_y[crx],pts_e_dem[crx],"terrain",rbins_dem,pts_z[crx],tilt,pts_slp[crx],pts_asp[crx])
         
             end
 
@@ -298,7 +317,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
             pt_bhm_x, pt_bhm_y, pt_bhm_z = getsurfdat(copy(bhm_x),copy(bhm_y),copy(bhm_z),pts_x[crx],pts_y[crx],pts_e[crx],300);    
             pt_bhm_x, pt_bhm_y =  pcd2pol2cart!(ter2rad,pt_bhm_x,pt_bhm_y,pt_bhm_z,pts_x[crx],pts_y[crx],pts_e[crx],
-                                                "buildings",rbins_bhm,image_height)
+                                                "buildings",rbins_bhm,pts_z[crx])
             if !terrainmask_precalc
                 prepterdat!(append!(pt_dtm_x,pt_bhm_x),append!(pt_dtm_y,pt_bhm_y));
             else
@@ -318,16 +337,24 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         ### Classify image
         if progress; start = time(); end
 
-        if terrainmask_precalc
+        # if tilt && ((slope == "terrain") || (slope == "canopy" && pts_z[crx] > 2))
+        #     dtm_knum = 15
+        # else
+        #     imcX = 0.0; imcY = 0.0
+        #     dtm_knum = 10
+        # end
+
+        if terrainmask_precalc && !tilt
             mat2ev .= terrain_mask[:,:,crx]
         else
             fill!(mat2ev,1)
         end
+        # mat2ev = Int.(mat2ev)
 
         # occupy matrix with surface points
         for zdx = 1:1:size(rbins,1)-1
             ridx = findall(rbins[zdx] .<= pt_dsm_z .< rbins[zdx+1])
-            fillmat!(canrad,kdtree,hcat(pt_dsm_x[ridx],pt_dsm_y[ridx]),knum[zdx],mat2ev)
+            fillmat!(canrad,kdtree,hcat(pt_dsm_x[ridx],pt_dsm_y[ridx]),knum_c[zdx],mat2ev)
             
             if season == "winter" && trunks
                 tridx = findall(rbins[zdx] .<= pt_tsm_z .< rbins[zdx+1])
@@ -335,13 +362,11 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             end
         end
 
-        # add terrain
-        if !terrainmask_precalc
-            fillmat!(canrad,kdtree,hcat(pt_dtm_x,pt_dtm_y),10,mat2ev);
-        end
+        # colorview(Gray,float.(mat2ev))
 
-        if season == "winter" && trunks
-            fillmat!(canrad,kdtree,hcat(pt_dtm_x,pt_dtm_y),10,mat2ev)
+        # add terrain (note trunks included here if not included in step above)
+        if !terrainmask_precalc
+            fillmat!(canrad,kdtree,hcat(pt_dtm_x,pt_dtm_y),10.0,mat2ev);
         end
 
         mat2ev[outside_img] .= 1
@@ -372,7 +397,19 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             sol_tht, sol_phi, sol_sinelev  = calc_solar_track(solar,pts_lat[crx],pts_lon[crx],time_zone)
 
             @unpack trans_for = solar
-            calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
+            fill!(trans_for,0)
+
+            # if tilt
+                # convert sol_tht/phi so they're relative to the centre of the image
+                # sol_x, sol_y = rotate_solartrack(sol_tht,sol_phi,pts_slp[crx],pts_asp[crx])
+                # calc_transmissivity_tilt!(canrad,solar,trans_for,float(mat2ev),sol_x,sol_y,sol_tht,pts_slp[crx],addtrack_mat2ev)
+            # else
+                calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
+            # end
+
+            if filter_for_tilt && ((pts_asp[crx] .> 0) && (pts_slp[crx] .> 0))
+                filter_trans_for!(trans_for,sol_phi,pts_asp[crx])
+            end
 
             dataset["Forest_Transmissivity"][:,crx] = Int.(round.((vec(aggregate_data(solar,trans_for))).*100));
 
