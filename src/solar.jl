@@ -36,10 +36,10 @@ function filter_trans_for!(trans_for::Vector{Float64},sol_phi::Vector{Float64},a
     asp_range[asp_range .< 0] .+= 360
 
     if asp_range[1] .< asp_range[2]
-        trans_for[asp_range[1] .<= sol_phi .<= asp_range[2]] .= 0.0
+        trans_for[sol_phi .< asp_range[1]] .= 0.0
+        trans_for[sol_phi .> asp_range[2]] .= 0.0
     elseif asp_range[2] .<  asp_range[1]
-        trans_for[sol_phi .> asp_range[1]] .= 0.0
-        trans_for[sol_phi .< asp_range[2]] .= 0.0
+        trans_for[asp_range[2] .<= sol_phi .<= asp_range[1]] .= 0.0
     end
 
 end

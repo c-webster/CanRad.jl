@@ -21,7 +21,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     end
 
     # get model number (1 = canopy, 2 = terrain only)
-    size(pts,2) > 2 ? pts_m = pts[:,3] : pts_m = ones(size(pts_x))
+    # size(pts,2) > 2 ? pts_m = pts[:,3] : pts_m = ones(size(pts_x))
 
     canrad  = CANRAD()
     las2rad = LAS2RAD(tolerance=tolerance,surf_peri=surf_peri)
@@ -118,15 +118,15 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
     if tilt || filter_for_tilt# currently disabled in Preparatory_Functions.jl
         # load the slope and aspect data
-        slp_x , slp_y , slp_v, _ = read_griddata_window(slpf,limits_highres,true,true)
-        asp_x , asp_y , asp_v, _ = read_griddata_window(aspf,limits_highres,true,true)
+        limits_asp =  getlimits!(Vector{Float64}(undef,4),pts_x,pts_y,5)
+        asp_x , asp_y , asp_v, _ = read_griddata_window(aspf,limits_asp,true,true)
+        pts_asp = findelev(copy(asp_x),copy(asp_y),copy(asp_v),pts_x,pts_y,0.0,"nearest")
 
-        pts_slp = findelev(copy(slp_x),copy(slp_y),copy(slp_v),pts_x,pts_y)
-        pts_asp = findelev(copy(asp_x),copy(asp_y),copy(asp_v),pts_x,pts_y)
-
-        if slope == "canopy"
-            pts_slp[pts_z .<= 2] .= 0.0
-            pts_asp[pts_z .<= 2] .= 0.0
+        if tilt
+            slp_x , slp_y , slp_v, _ = read_griddata_window(slpf,limits_highres,true,true)
+            pts_slp = findelev(copy(slp_x),copy(slp_y),copy(slp_v),pts_x,pts_y,0.0,"nearest")
+        else
+            pts_slp = zeros(size(pts_x))
         end
     else
         pts_slp = zeros(size(pts_x))
@@ -407,7 +407,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
             # end
 
-            if filter_for_tilt && ((pts_asp[crx] .> 0) && (pts_slp[crx] .> 0))
+            if filter_for_tilt && (pts_z[crx] .>= 2)
                 filter_trans_for!(trans_for,sol_phi,pts_asp[crx])
             end
 
