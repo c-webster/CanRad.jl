@@ -15,8 +15,8 @@ Webster C, Mazzotti G, Essery E and Jonas T 2020, [Enhancing airborne lidar data
 
 L2R is an optimised and improved version of [Lidar2HemiEval](https://github.com/c-webster/Lidar2HemiEval), which was based on [Lidar2Hemi](https://github.com/Tobias-Jonas-SLF/Lidar2Hemi), written in MATLAB. 
 
-A detailed description of C2R is currently under review in Agricultural and Forest Meteorology:
-Webster, C, Essery E, Mazzotti G and Jonas T, Using just a canopy height model to obtain lidar-level accuracy in 3D forest canopy shortwave transmissivity estimates. Submitted to AfM June 2022
+For a detailed description of C2R, see:
+Webster, C, Essery E, Mazzotti G and Jonas T, 2023 [Using just a canopy height model to obtain lidar-level accuracy in 3D forest canopy shortwave transmissivity estimate](https://doi.org/10.1016/j.agrformet.2023.109429), Agricultural and Forest Meteorology
 
 Both models require some additional preperatory steps. Scripts to easily carry out these steps are currently under development to facilitate easy implementation for different sites/users and will be added ~/examples/prep/ as they are completed. In the meantime, please contact the author if you wish to have earlier access. 
 

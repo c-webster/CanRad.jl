@@ -1,7 +1,9 @@
 ### functions for calculating the synthetic hemispheric images
 
 
-function clipdat(pc_x::Vector{Float64},pc_y::Vector{Float64},pc_z::Vector{Float64},limits,peri=0::Int64)
+function clipdat(pc_x::Vector{Float64},pc_y::Vector{Float64},pc_z::Vector{Float64},
+    limits::Vector{Float64},peri=0::Int64)
+    
     rmidx = (pc_x.<(limits[1]-peri)) .| (pc_x.>(limits[2]+peri)) .|
                 (pc_y.<(limits[3]-peri)) .| (pc_y.>(limits[4]+peri))
     deleteat!(pc_x,rmidx)

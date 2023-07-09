@@ -16,8 +16,10 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     if size(pts,2) == 2
         pts_x, pts_y = [pts[:,x] for x in 1:2]
         pts_z = fill(image_height,size(pts_x,1))
+        dimensions = 2
     else
         pts_x, pts_y, pts_z = [pts[:,x] for x in 1:3]
+        dimensions = 3
     end
 
     # get model number (1 = canopy, 2 = terrain only)
