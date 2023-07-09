@@ -122,7 +122,16 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         # load the slope and aspect data
         limits_asp =  getlimits!(Vector{Float64}(undef,4),pts_x,pts_y,5)
         asp_x , asp_y , asp_v, _ = read_griddata_window(aspf,limits_asp,true,true)
-        pts_asp = findelev(copy(asp_x),copy(asp_y),copy(asp_v),pts_x,pts_y,0.0,"nearest")
+
+        if size(pts,1) > 3
+            pts_asp = zeros(size(pts_x,1))
+            canpts = ((pts[:,4] .== 0) .| (pts_z .> 6))
+            pts_asp[.!canpts] = pts[.!canpts,5]
+            pts_asp[canpts] = findelev(copy(asp_x),copy(asp_y),copy(asp_v),pts_x[canpts],pts_y[canpts],0.0,"nearest")
+            # pts_asp = pts[:,5]
+        else
+            pts_asp = findelev(copy(asp_x),copy(asp_y),copy(asp_v),pts_x,pts_y,0.0,"nearest")
+        end
 
         if tilt
             slp_x , slp_y , slp_v, _ = read_griddata_window(slpf,limits_highres,true,true)
