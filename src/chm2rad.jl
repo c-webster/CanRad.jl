@@ -517,7 +517,8 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     end # end crx
 
     close(dataset)
-    if save_images; close(images); end
+    save_images && close(images)
+    save_hlm && close(hlm)
 
     println("done with "*taskID)
 
