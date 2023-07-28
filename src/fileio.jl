@@ -150,32 +150,32 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 
 	        if calc_swr > 0
 	            defVar(ds,"SWR_total_winter",Int16,("datetime","Coordinates",),
-                            deflatelevel=5,fillvalue = Int8(-999),
+                            deflatelevel=5,fillvalue = Int16(-999),
                             attrib=["units"=>"Watts per metre squared", "comments" =>
                             "total incoming shortwave radiation (diffuse + direct);
                             calcualated for winter canopy conditions",])
 	            defVar(ds,"SWR_direct_winter",Int16,("datetime","Coordinates",),
-	                        deflatelevel=5,fillvalue = Int8(-999),
+	                        deflatelevel=5,fillvalue = Int16(-999),
 	                        attrib=["units"=>"Watts per metre squared;
                             calcualated for winter canopy conditions",])
 
                 defVar(ds,"SWR_total_summer",Int16,("datetime","Coordinates",),
-                            deflatelevel=5,fillvalue = Int8(-999),
+                            deflatelevel=5,fillvalue = Int16(-999),
                             attrib=["units"=>"Watts per metre squared", "comments" =>
                             "total incoming shortwave radiation (diffuse + direct);
                             calcualated for summer canopy conditions",])
 	            defVar(ds,"SWR_direct_summer",Int16,("datetime","Coordinates",),
-	                        deflatelevel=5,fillvalue = Int8(-999),
+	                        deflatelevel=5,fillvalue = Int16(-999),
 	                        attrib=["units"=>"Watts per metre squared;
                             calcualated for summer canopy conditions",])
 
                 defVar(ds,"SWR_total_terrain",Int16,("datetime","Coordinates",),
-                            deflatelevel=5,fillvalue = Int8(-999),
+                            deflatelevel=5,fillvalue = Int16(-999),
                             attrib=["units"=>"Watts per metre squared", "comments" =>
                             "total incoming shortwave radiation (diffuse + direct);
                             calcualated for terrain only",])
 	            defVar(ds,"SWR_direct_terrain",Int16,("datetime","Coordinates",),
-	                        deflatelevel=5,fillvalue = Int8(-999),
+	                        deflatelevel=5,fillvalue = Int16(-999),
 	                        attrib=["units"=>"Watts per metre squared", "comments" =>"
                             calcualated for terrain only",])
 
@@ -655,32 +655,32 @@ function collate2tilefile(tile_outdir::String,limits::Matrix{Int64},input::Strin
                     "calcualated for terrain only",])
 
         defVar(ds,"SWR_total_winter",Int16.(swrtot_newdim_w),("datetime","Coordinates",),
-                    deflatelevel=5,fillvalue = Int8(-999),
+                    deflatelevel=5,fillvalue = Int16(-999),
                     attrib=["units"=>"Watts per metre squared", "comments" =>
                     "total incoming shortwave radiation (diffuse + direct);
                     calcualated for winter (leaf-off) canopy conditions",])
         defVar(ds,"SWR_direct_winter",Int16.(swrdir_newdim_w),("datetime","Coordinates",),
-                    deflatelevel=5,fillvalue = Int8(-999),
+                    deflatelevel=5,fillvalue = Int16(-999),
                     attrib=["units"=>"Watts per metre squared;
                     calcualated for winter (leaf-off) canopy conditions",])
 
         defVar(ds,"SWR_total_summer",Int16.(swrtot_newdim_s),("datetime","Coordinates",),
-                    deflatelevel=5,fillvalue = Int8(-999),
+                    deflatelevel=5,fillvalue = Int16(-999),
                     attrib=["units"=>"Watts per metre squared", "comments" =>
                     "total incoming shortwave radiation (diffuse + direct);
                     calcualated for summer (leaf-on) canopy conditions",])
         defVar(ds,"SWR_direct_summer",Int16.(swrdir_newdim_s),("datetime","Coordinates",),
-                    deflatelevel=5,fillvalue = Int8(-999),
+                    deflatelevel=5,fillvalue = Int16(-999),
                     attrib=["units"=>"Watts per metre squared;
                     calcualated for summer (leaf-on) canopy conditions",])
 
         defVar(ds,"SWR_total_terrain",Int16.(swrtot_newdim_t),("datetime","Coordinates",),
-                    deflatelevel=5,fillvalue = Int8(-999),
+                    deflatelevel=5,fillvalue = Int16(-999),
                     attrib=["units"=>"Watts per metre squared", "comments" =>
                     "total incoming shortwave radiation (diffuse + direct);
                     calcualated for terrain only",])
         defVar(ds,"SWR_direct_terrain",Int16.(swrdir_newdim_t),("datetime","Coordinates",),
-                    deflatelevel=5,fillvalue = Int8(-999),
+                    deflatelevel=5,fillvalue = Int16(-999),
                     attrib=["units"=>"Watts per metre squared", "comments" =>"
                     calcualated for terrain only",])
 
@@ -690,8 +690,6 @@ function collate2tilefile(tile_outdir::String,limits::Matrix{Int64},input::Strin
 
 
 end
-
-
 
 
 
