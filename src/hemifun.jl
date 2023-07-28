@@ -692,6 +692,17 @@ function getimagecentre(slp::Float64,asp::Float64)
 
 end
 
+function getsurfdat_chm_2seasons(dsm_x::Vector{Float64},dsm_y::Vector{Float64},dsm_z::Vector{Float64},
+    dsm_b_w::Vector{Float64},dsm_b_s::Vector{Float64},
+    dsm_lavd_w::Vector{Float64},dsm_lavd_s::Vector{Float64},xcoor::Float64,ycoor::Float64,ecoor::Float64,peri::Int64)
+
+    dsm_d = dist3d(dsm_x,dsm_y,dsm_z,xcoor,ycoor,ecoor) .< peri
+
+    return deleteat!(dsm_x,.!dsm_d),deleteat!(dsm_y,.!dsm_d), deleteat!(dsm_z,.!dsm_d),
+            deleteat!(dsm_b_w,.!dsm_d), deleteat!(dsm_b_s,.!dsm_d),
+            deleteat!(dsm_lavd_w,.!dsm_d), deleteat!(dsm_lavd_s,.!dsm_d)
+
+end
 
 # function trunk_locs(dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_r::Array{Float64,1})
 #

@@ -32,7 +32,7 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     
         dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg,time_zone)
         pts_lat, pts_lon = calc_latlon(pts_x,pts_y,coor_system)
-        solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = tstep, radius = canrad.radius)
+        solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = tstep, radius = canrad.radius, time_zone = time_zone)
     else    
         dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
     end
@@ -42,7 +42,7 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     end
 
     if save_hlm
-        hlm, p_srt = create_exhlm(outdir,outstr,pts,ter2rad)
+        hlm = create_exhlm(outdir,outstr,pts,ter2rad)
     end
 
     ################################################################################
@@ -123,6 +123,9 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         writedlm(joinpath(progdir,progtextinit),NaN)            
     end
 
+    dtm_mintht = copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+    dem_mintht = copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+
     ###############################################################################
     # > Loop through the points
 
@@ -137,7 +140,7 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             pt_dtm_x, pt_dtm_y = pcd2pol2cart!(ter2rad,pt_dtm_x, pt_dtm_y, pt_dtm_z,pts_x[crx],pts_y[crx],pts_e[crx],"terrain",rbins_dtm,image_height)
 
             if save_hlm 
-                dtm_mintht = copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+                copy!(dtm_mintht,ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
             end
 
         end
@@ -150,12 +153,10 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
             if save_hlm
                 if !isempty(dtm_x) && terrain_highres
-                    dem_mintht = copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
-                    hlm["tht"][:,crx] = Int.(round.(minimum(hcat(dtm_mintht,dem_mintht),dims=2) .*100))
-                    hlm["tht_oshd"][:,crx] = Int.(round.(minimum(hcat(dtm_mintht,dem_mintht),dims=2)[p_srt] .*100))
+                    copy!(dem_mintht,ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+                    hlm["tht"][:,crx] = Int8.(round.(minimum(hcat(dtm_mintht,dem_mintht),dims=2)))
                 else
-                    hlm["tht"][:,crx] = Int.(round.(copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1]) .* 100))
-                    hlm["tht_oshd"][:,crx] = Int.(round.(copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])[p_srt] .*100))
+                    hlm["tht"][:,crx] = Int8.(round.(copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])))
                 end
             end
         
@@ -175,13 +176,11 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         # create the image matrix
         mat2ev[outside_img] .= 1;
 
-        save_images && (images["SHI"][:,:,crx] = mat2ev;)
-
         # calculate Vf and transmissivity
         Vf_p, Vf_h = calculateVf(canrad,mat2ev)
 
-        dataset["Vf_planar"][crx] = Int(round(Vf_p*100));
-        dataset["Vf_hemi"][crx]   = Int(round(Vf_h*100));
+        dataset["Vf_planar_terrain"][crx] = Int8(round(Vf_p*100));
+        dataset["Vf_hemi_terrain"][crx]   = Int8(round(Vf_h*100));
 
         if calc_trans
 
@@ -190,12 +189,12 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             @unpack trans_for = solar
             calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
 
-            dataset["Forest_Transmissivity"][:,crx] = Int.(round.((vec(aggregate_data(solar,trans_for))).*100));
+            dataset["Forest_Transmissivity_terrain"][:,crx] = Int8.(round.(vec(aggregate_data(solar,trans_for))).*100);
 
             if calc_swr > 0
                 swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,Vf_p,calc_swr)
-                dataset["SWR_total"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
-                dataset["SWR_direct"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
+                dataset["SWR_total_terrain"][:,crx]  = Int16.(round.(vec(aggregate_data(solar,swrtot))))
+                dataset["SWR_direct_terrain"][:,crx] = Int16.(round.(vec(aggregate_data(solar,swrdir))))
             end
         
         end

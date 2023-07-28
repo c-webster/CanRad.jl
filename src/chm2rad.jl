@@ -35,7 +35,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     
         dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg,time_zone)
         pts_lat, pts_lon = calc_latlon(pts_x,pts_y,coor_system)
-        solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = tstep, radius = canrad.radius)
+        solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = tstep, radius = canrad.radius, time_zone = time_zone)
     else    
         dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
     end
@@ -83,6 +83,10 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
     if terrain_highres || terrain_lowres || horizon_line
         ter2rad = TER2RAD(pts_sz = size(pts_x,1))
+    end
+
+    if save_hlm
+        hlm = create_exhlm(outdir,outstr,pts,ter2rad)
     end
 
     if terrain_highres
@@ -166,7 +170,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             end
         end
 
-        if season == "winter" # LA value varies with mix ratio of deciduous/evergreen
+        # if season == "winter" # LA value varies with mix ratio of deciduous/evergreen
 
             # load forest mix ratio and correct for lavd
             # get the range of LA values for the tile
@@ -176,10 +180,10 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             # check incompatibilities between mix rate and forest type
                 # if mix rate says evergreen (<50%), but copernicus says deciduous, force larch in mr_val 75%
                 # but only above 1500m
-                mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,true)
+                mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,false)
                 if median(pts_e) > 1500
-                    _, _, ft_val,_ = read_griddata_window(ftdf,limits_canopy,true,true)
-                    tmp_dx = findall(mr_val .< 5000 .& ft_val .== 1)
+                    _, _, ft_val,_ = read_griddata_window(ftdf,limits_canopy,true,false)
+                    tmp_dx = findall((mr_val .< 5000) .& (ft_val .== 1))
                     if sum(tmp_dx) > 0
                         mr_val[tmp_dx] .= 7500
                     end
@@ -193,8 +197,8 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             end
 
             temp_LA_L = reverse(collect(0.04:(0.2-0.04)/9999:0.2)) # low elevation
-            temp_LA_M = reverse(collect(0.02:(0.67-0.05)/9999:0.67)) # mid elevation
-            temp_LA_H = reverse(collect(0.2:(0.67-0.05)/9999:0.67)) # high elevation
+            temp_LA_M = reverse(collect(0.02:(0.67-0.02)/9999:0.67)) # mid elevation
+            temp_LA_H = reverse(collect(0.2:(0.67-0.2)/9999:0.67)) # high elevation
 
             mr_z = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),mr_x,mr_y,10)
 
@@ -211,11 +215,11 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 end
             end
 
-            chm_lavd = findelev(copy(mr_x),copy(mr_y),copy(lavd_val),chm_x,chm_y,10,"cubic")
+            chm_lavd_winter = findelev(copy(mr_x),copy(mr_y),copy(lavd_val),chm_x,chm_y,10,"cubic")
 
-            cbh = 0.0
+            cbh_w = 0.0
 
-        elseif season == "summer" # constant LA value across all canopy pixels
+        # elseif season == "summer" # constant LA value across all canopy pixels
 
             mr_x, mr_y, mr_val, _ = read_griddata_window(mrdf,limits_canopy,true,true)
             mr_val[mr_val .== 0] .= 1.0
@@ -226,17 +230,17 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 lavd_val[vx] = temp_LA[Int.(mr_val[vx])]
             end
 
-            chm_lavd = findelev(copy(mr_x),copy(mr_y),copy(lavd_val),chm_x,chm_y,10,"cubic")
+            chm_lavd_summer = findelev(copy(mr_x),copy(mr_y),copy(lavd_val),chm_x,chm_y,10,"cubic")
 
             if for_type == 1 # broadleaf
                 # chm_lavd = fill(1.2,size(chm_x))
-                cbh = 0.0
+                cbh_s = 0.0
             elseif for_type == 2 # needleleaf
                 # chm_lavd = fill(0.67,size(chm_x))
-                cbh = 2.0
+                cbh_s = 2.0
             end
 
-        end
+        # end
 
     elseif @isdefined(lavdf)
 
@@ -249,8 +253,11 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     end
 
     # create the canopy base height vector based on above settings
-    chm_b = fill(cbh,size(chm_z))
-    chm_b .+= chm_e
+    chm_b_w = fill(cbh_w,size(chm_z))
+    chm_b_w .+= chm_e
+
+    chm_b_s = fill(cbh_s,size(chm_z))
+    chm_b_s .+= chm_e
 
     ###############################################################################
     # > Image matrix  preparation
@@ -270,6 +277,11 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         surf_area_p[rix] = sin(ring_tht[rix+1]/360*2*pi)^2 - sin(ring_tht[rix]/360*2*pi)^2
         surf_area_h[rix] = 2*pi*(cos(ring_tht[rix]/360*2*pi) - cos(ring_tht[rix+1]/360*2*pi))/2/pi
     end
+
+    mat2ev_w = copy(mat2ev)
+    mat2ev_s = copy(mat2ev)
+
+    @unpack trans_for = solar
 
     ###############################################################################
     # > SWR calculations
@@ -296,6 +308,9 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         writedlm(joinpath(progdir,progtextinit),NaN)            
     end
 
+    dtm_mintht = copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+    dem_mintht = copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+
     ###############################################################################
     # > Loop through the points
 
@@ -311,6 +326,10 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                                                 pts_x[crx],pts_y[crx],pts_e[crx],dtm_peri);
                 pt_dtm_x, pt_dtm_y = pcd2pol2cart!(ter2rad,pt_dtm_x, pt_dtm_y, pt_dtm_z,pts_x[crx],pts_y[crx],pts_e[crx],"terrain",rbins_dtm,image_height)
         
+                if save_hlm 
+                    copy!(dtm_mintht,ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+                end
+
             end
 
             if terrain_lowres && !terrain_tile
@@ -318,6 +337,15 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 pt_dem_x, pt_dem_y, pt_dem_z = getsurfdat(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e[crx],terrain_peri);
                 pt_dem_x, pt_dem_y = pcd2pol2cart!(ter2rad,pt_dem_x, pt_dem_y, pt_dem_z,pts_x[crx],pts_y[crx],pts_e_dem[crx],"terrain",rbins_dem,image_height);
         
+                if save_hlm
+                    if !isempty(dtm_x) && terrain_highres
+                        copy!(dem_mintht,ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+                        hlm["tht"][:,crx] = Int8.(round.(minimum(hcat(dtm_mintht,dem_mintht),dims=2)))
+                    else
+                        hlm["tht"][:,crx] = Int8.(round.(copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])))
+                    end
+                end
+
             end
 
             if horizon_line && !oshd_flag
@@ -348,16 +376,25 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
         if pts_m[crx] .== 1 # if running the forest model for this point
            
-            pt_chm_x, pt_chm_y, pt_chm_z, pt_chm_b, pt_lavd = getsurfdat_chm(copy(chm_x),copy(chm_y),copy(chm_z),
-                                copy(chm_b),copy(chm_lavd),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri)
-            
             if pt_corr
 
-                pt_chm_x_pts, pt_chm_y_pts = pcd2pol2cart!(copy(pt_chm_x),copy(pt_chm_y),copy(pt_chm_z),pts_x[crx],pts_y[crx],
-                                pts_e[crx],image_height,chm_cellsize) # pts from the CHM
+                # winter
+                pt_chm_x, pt_chm_y, pt_chm_z, pt_chm_b_w, pt_lavd_w = getsurfdat_chm(copy(chm_x),copy(chm_y),copy(chm_z),
+                            copy(chm_b_w),copy(chm_lavd_winter),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri)
 
-                pt_chm_x, pt_chm_y, pt_chm_x_thick, pt_chm_y_thick = calcCHM_Ptrans!(chm2rad,pt_chm_x,pt_chm_y,pt_chm_z,pt_chm_b,pt_lavd,
-                                pts_x[crx],pts_y[crx],pts_e[crx],image_height,chm_cellsize,rbins_chm,cbh) # calculated points
+                pt_chm_x_w, pt_chm_y_w, _, _ = calcCHM_Ptrans!(chm2rad,pt_chm_x,pt_chm_y,pt_chm_z,pt_chm_b_w,pt_lavd_w,
+                                pts_x[crx],pts_y[crx],pts_e[crx],image_height,chm_cellsize,rbins_chm,cbh_w) # calculated points
+
+                # summer    
+                pt_chm_x, pt_chm_y, pt_chm_z, pt_chm_b_s, pt_lavd_s = getsurfdat_chm(copy(chm_x),copy(chm_y),copy(chm_z),
+                            copy(chm_b_s),copy(chm_lavd_summer),pts_x[crx],pts_y[crx],pts_e[crx],surf_peri)
+
+                pt_chm_x_s, pt_chm_y_s, pt_chm_x_thick_s, pt_chm_y_thick_s = calcCHM_Ptrans!(chm2rad,pt_chm_x,pt_chm_y,pt_chm_z,pt_chm_b_s,pt_lavd_s,
+                                pts_x[crx],pts_y[crx],pts_e[crx],image_height,chm_cellsize,rbins_chm,cbh_s) # calculated points
+
+                # pts from the CHM
+                pt_chm_x_pts, pt_chm_y_pts = pcd2pol2cart!(copy(pt_chm_x),copy(pt_chm_y),copy(pt_chm_z),pts_x[crx],pts_y[crx],
+                                pts_e[crx],image_height,chm_cellsize) 
 
             else
                 #  100% opaque canopy:
@@ -383,34 +420,33 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         if progress; start = time(); end
 
         if terrainmask_precalc
-            mat2ev .= terrain_mask[:,:,crx]
+            copy!(mat2ev,terrain_mask[:,:,crx])
         else
             fill!(mat2ev,1)
         end
 
+        fillmat!(canrad,kdtree,hcat(pt_dtm_x,pt_dtm_y),10,mat2ev);
+        copy!(mat2ev_w,mat2ev)
+        copy!(mat2ev_s,mat2ev)
+
         # occupy matrix
-        if pt_corr
-            if pts_m[crx] .== 1
-                fillmat!(canrad,kdtree,hcat(pt_chm_x,pt_chm_y),30,mat2ev)
-                if season == "summer" || for_type == 2 
-                    # thick canopy treated as opaque in summer or in evergreen forests
-                    fillmat!(canrad,kdtree,hcat(pt_chm_x_thick,pt_chm_y_thick),15,mat2ev); # distance canopy is opaque and treated with terrain
-                    # include canopy surface points for more definition at the tops of trees
-                    fillmat!(canrad,kdtree,hcat(pt_chm_x_pts,pt_chm_y_pts),20,mat2ev); # include canopy surface points
-                end
+        if pts_m[crx] .== 1
+            fillmat!(canrad,kdtree,hcat(pt_chm_x_w,pt_chm_y_w),30,mat2ev_w)
+            fillmat!(canrad,kdtree,hcat(pt_chm_x_s,pt_chm_y_s),30,mat2ev_s)
+            if for_type == 2 
+                # thick canopy treated as opaque in summer or in evergreen forests
+                fillmat!(canrad,kdtree,hcat(pt_chm_x_thick_s,pt_chm_y_thick_s),15,mat2ev_s); # distance canopy is opaque and treated with terrain
+                # include canopy surface points for more definition at the tops of trees
+                fillmat!(canrad,kdtree,hcat(pt_chm_x_pts,pt_chm_y_pts),20,mat2ev_s); # include canopy surface points
             end
-            if !terrainmask_precalc
-                fillmat!(canrad,kdtree,hcat(pt_dtm_x,pt_dtm_y),10,mat2ev);
-            end
-        else # treat all canopy as opaque (like terrain) -> all points come in as terrain points from above section
-            fillmat!(canrad,kdtree,hcat(pt_dtm_x,pt_dtm_y),10,mat2ev); # use this line if plotting opaque canpoy
-        end      
-
-        mat2ev[outside_img] .= 1
-
-        if save_images
-            images["SHI"][:,:,crx] = mat2ev;
         end
+ 
+        mat2ev_w[outside_img] .= 1
+        mat2ev_s[outside_img] .= 1
+
+        # if save_images
+        #     images["SHI"][:,:,crx] = mat2ev;
+        # end
 
         if progress
             elapsed = time() - start
@@ -425,25 +461,43 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         if progress; start = time(); end
 
         ##### Calculate Vf and save
-        Vf_p, Vf_h = calculateVf(canrad,mat2ev)
+        Vf_p_w, Vf_h_w = calculateVf(canrad,mat2ev_w)
+        Vf_p_s, Vf_h_s = calculateVf(canrad,mat2ev_s)
+        Vf_p_t, Vf_h_t = calculateVf(canrad,mat2ev)
 
-        dataset["Vf_planar"][crx] = Int(round(Vf_p*100))
-        dataset["Vf_hemi"][crx]   = Int(round(Vf_h*100))
+        dataset["Vf_planar_winter"][crx] = Int8(round(Vf_p_w*100))
+        dataset["Vf_hemi_winter"][crx]   = Int8(round(Vf_h_w*100))
+
+        dataset["Vf_planar_summer"][crx] = Int8(round(Vf_p_s*100))
+        dataset["Vf_hemi_summer"][crx]   = Int8(round(Vf_h_s*100))
+
+        dataset["Vf_planar_terrain"][crx] = Int8(round(Vf_p_t*100))
+        dataset["Vf_hemi_terrain"][crx]   = Int8(round(Vf_h_t*100))
 
         ##### CalcSWR
         if calc_trans
             sol_tht, sol_phi, sol_sinelev  = calc_solar_track(solar,pts_lat[crx],pts_lon[crx],time_zone)
 
-            @unpack trans_for = solar
-            calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
-            
-            dataset["Forest_Transmissivity"][:,crx] = Int.(round.((vec(aggregate_data(solar,trans_for))).*100));
+            fill!(trans_for,0)
+            calc_transmissivity!(canrad,solar,trans_for,float(mat2ev_w),sol_phi,sol_tht)
+            dataset["Forest_Transmissivity_winter"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))));
+            swrtot_w, swrdir_w = calculateSWR(radiation,trans_for,sol_sinelev,Vf_p_w,calc_swr)
+            dataset["SWR_total_winter"][:,crx]  = Int16.(round.(vec(aggregate_data(solar,swrtot_w))))
+            dataset["SWR_direct_winter"][:,crx] = Int16.(round.(vec(aggregate_data(solar,swrdir_w))))
 
-            if calc_swr > 0
-                swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,Vf_p,calc_swr)
-                dataset["SWR_total"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
-                dataset["SWR_direct"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
-            end
+            fill!(trans_for,0)
+            calc_transmissivity!(canrad,solar,trans_for,float(mat2ev_s),sol_phi,sol_tht)
+            dataset["Forest_Transmissivity_summer"][:,crx] = Int16.(round.((vec(aggregate_data(solar,trans_for)))));
+            swrtot_s, swrdir_s = calculateSWR(radiation,trans_for,sol_sinelev,Vf_p_s,calc_swr)
+            dataset["SWR_total_summer"][:,crx]  = Int16.(round.(vec(aggregate_data(solar,swrtot_s))))
+            dataset["SWR_direct_summer"][:,crx] = Int16.(round.(vec(aggregate_data(solar,swrdir_s))))
+
+            fill!(trans_for,0)
+            calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
+            dataset["Forest_Transmissivity_terrain"][:,crx] = Int16.(round.((vec(aggregate_data(solar,trans_for)))));
+            swrtot_s, swrdir_s = calculateSWR(radiation,trans_for,sol_sinelev,Vf_p_s,calc_swr)
+            dataset["SWR_total_terrain"][:,crx]  = Int16.(round.(vec(aggregate_data(solar,swrtot_s))))
+            dataset["SWR_direct_terrain"][:,crx] = Int16.(round.(vec(aggregate_data(solar,swrdir_s))))
 
         end
 
