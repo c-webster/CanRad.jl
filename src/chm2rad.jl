@@ -480,21 +480,21 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
             fill!(trans_for,0)
             calc_transmissivity!(canrad,solar,trans_for,float(mat2ev_w),sol_phi,sol_tht)
-            dataset["Forest_Transmissivity_winter"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))));
+            dataset["Forest_Transmissivity_winter"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))*100));
             # swrtot_w, swrdir_w = calculateSWR(radiation,trans_for,sol_sinelev,Vf_p_w,calc_swr)
             # dataset["SWR_total_winter"][:,crx]  = Int16.(round.(vec(aggregate_data(solar,swrtot_w))))
             # dataset["SWR_direct_winter"][:,crx] = Int16.(round.(vec(aggregate_data(solar,swrdir_w))))
 
             fill!(trans_for,0)
             calc_transmissivity!(canrad,solar,trans_for,float(mat2ev_s),sol_phi,sol_tht)
-            dataset["Forest_Transmissivity_summer"][:,crx] = Int16.(round.((vec(aggregate_data(solar,trans_for)))));
+            dataset["Forest_Transmissivity_summer"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))*100));
             # swrtot_s, swrdir_s = calculateSWR(radiation,trans_for,sol_sinelev,Vf_p_s,calc_swr)
             # dataset["SWR_total_summer"][:,crx]  = Int16.(round.(vec(aggregate_data(solar,swrtot_s))))
             # dataset["SWR_direct_summer"][:,crx] = Int16.(round.(vec(aggregate_data(solar,swrdir_s))))
 
             fill!(trans_for,0)
             calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
-            dataset["Forest_Transmissivity_terrain"][:,crx] = Int16.(round.((vec(aggregate_data(solar,trans_for)))));
+            dataset["Forest_Transmissivity_terrain"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))*100));
             # swrtot_s, swrdir_s = calculateSWR(radiation,trans_for,sol_sinelev,Vf_p_s,calc_swr)
             # dataset["SWR_total_terrain"][:,crx]  = Int16.(round.(vec(aggregate_data(solar,swrtot_s))))
             # dataset["SWR_direct_terrain"][:,crx] = Int16.(round.(vec(aggregate_data(solar,swrdir_s))))
