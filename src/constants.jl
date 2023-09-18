@@ -49,6 +49,7 @@ end
     ### parameters and constants for solar track and transmissivity calculations
     loc_time::Vector{DateTime}
     trans_for::Vector{Float64} = zeros(size(loc_time,1))
+    time_zone::Int64
 
     loc_time_agg::Vector{DateTime}
     tstep::Int64
