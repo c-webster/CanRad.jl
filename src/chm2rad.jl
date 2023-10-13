@@ -47,7 +47,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     ################################################################################
     # > Import surface data
 
-    limits_canopy = getlimits!(Vector{Float64}(undef,4),pts_x,pts_y,surf_peri)
+    limits_canopy = getlimits!(Vector{Float64}(undef,4),pts_x,pts_y,surf_peri+10)
 
     chm_x, chm_y, chm_z, chm_cellsize = read_griddata_window(chmf,limits_canopy,true,true)
 
