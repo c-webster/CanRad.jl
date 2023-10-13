@@ -32,7 +32,7 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     
         dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg,time_zone)
         pts_lat, pts_lon = calc_latlon(pts_x,pts_y,coor_system)
-        solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = tstep, radius = canrad.radius)
+        solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = tstep, radius = canrad.radius, time_zone = time_zone)
     else    
         dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
     end
