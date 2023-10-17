@@ -4,7 +4,7 @@ using DelimitedFiles, DataStructures, LasIO, LazIO,
     Statistics, Dates, Interpolations, Images,
     DataFrames, Formatting, Distributed, Distributions,
     SpatialFileIO, NCDatasets, Chain, Pkg, MarketTechnicals,
-    Parameters
+    Parameters, Impute
 
 using Conda, PyCall
 
