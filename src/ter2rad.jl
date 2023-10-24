@@ -140,7 +140,12 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             pt_dtm_x, pt_dtm_y = pcd2pol2cart!(ter2rad,pt_dtm_x, pt_dtm_y, pt_dtm_z,pts_x[crx],pts_y[crx],pts_e[crx],"terrain",rbins_dtm,image_height)
 
             if save_hlm 
-                copy!(dtm_mintht,ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+                if sum(isnan.(ter2rad.mintht)) .> 0
+                    temp_mintht = replace(ter2rad.mintht,NaN=>missing)
+                    dtm_mintht = Impute.interp(temp_mintht)[ter2rad.dx1:ter2rad.dx2-1]
+                else
+                    copy!(dtm_mintht,ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+                end
             end
 
         end
