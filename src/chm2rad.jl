@@ -200,6 +200,9 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             temp_LA_M = reverse(collect(0.02:(0.67-0.02)/9999:0.67)) # mid elevation
             temp_LA_H = reverse(collect(0.2:(0.67-0.2)/9999:0.67)) # high elevation
 
+            rows = findall(isnan,mr_val)
+            deleteat!(mr_x,rows); deleteat!(mr_y,rows); deleteat!(mr_val,rows)
+
             mr_z = findelev(copy(dtm_x),copy(dtm_y),copy(dtm_z),mr_x,mr_y,10)
 
             mr_val[mr_val .== 0] .= 1.0
