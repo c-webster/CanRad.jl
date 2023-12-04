@@ -158,7 +158,12 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
             if save_hlm
                 if !isempty(dtm_x) && terrain_highres
-                    copy!(dem_mintht,ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+                    if sum(isnan.(ter2rad.mintht)) .> 0
+                        temp_mintht = replace(ter2rad.mintht,NaN=>missing)
+                        dem_mintht = Impute.interp(temp_mintht)[ter2rad.dx1:ter2rad.dx2-1]
+                    else
+                        copy!(dem_mintht,ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
+                    end
                     hlm["tht"][:,crx] = Int8.(round.(minimum(hcat(dtm_mintht,dem_mintht),dims=2)))
                 else
                     hlm["tht"][:,crx] = Int8.(round.(copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])))
