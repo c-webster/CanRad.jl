@@ -91,8 +91,8 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 	    ds = NCDataset(outfile,"c",format=:netcdf4_classic)
 
 	    defDim(ds,"Coordinates",size(pts,1))
-	    defVar(ds,"easting",Int32.(pts[:,1]),("Coordinates",))
-	    defVar(ds,"northing",Int32.(pts[:,2]),("Coordinates",))
+	    defVar(ds,"easting",Float32.(pts[:,1]),("Coordinates",))
+	    defVar(ds,"northing",Float32.(pts[:,2]),("Coordinates",))
 
 	    defVar(ds,"Vf_planar_winter",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-99),
                     attrib=["comments" =>
@@ -236,8 +236,8 @@ function create_exhlm(outdir::String,outstr::String,pts::Matrix{Float64},ter2rad
     defDim(hlm,"Coordinates",size(pts,1))
     defDim(hlm,"phi",size(phi_bins,1))
 
-    defVar(hlm,"easting",Int32.(pts[:,1]),("Coordinates",),deflatelevel=1)
-    defVar(hlm,"northing",Int32.(pts[:,2]),("Coordinates",),deflatelevel=1)
+    defVar(hlm,"easting",Float32.(pts[:,1]),("Coordinates",),deflatelevel=1)
+    defVar(hlm,"northing",Float32.(pts[:,2]),("Coordinates",),deflatelevel=1)
     defVar(hlm,"phi",Int16.((round.(phi_bins))),("phi",),deflatelevel=1)
     # defVar(hlm,"phi_oshd",Int16.((round.(phi_bins))[p_srt]),("phi",),deflatelevel=1)
 
@@ -497,7 +497,7 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
             # create the Radiation output dataset
             ds = NCDataset(joinpath(exdir,"Output_"*input*".nc"),"c",format=:netcdf4_classic)
             defDim(ds,"locX",size(xlim,1)); defDim(ds,"locY",size(ylim,1))
-            defVar(ds,"Easting",Int32.(unique(ptsx)),("locX",)); defVar(ds,"Northing",Int32.(reverse(unique(ptsy))),("locY",))
+            defVar(ds,"Easting",Float32.(unique(ptsx)),("locX",)); defVar(ds,"Northing",Float32.(reverse(unique(ptsy))),("locY",))
             loc_time = NCDataset(joinpath(outdir,tiles[1],"Output_"*tiles[1]*".nc"))["datetime"][:]
             defDim(ds,"DateTime",size(loc_time,1))
             time_zone = par_in["time_zone"]
@@ -512,7 +512,7 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
             hlm = NCDataset(joinpath(hlmexdir,"HLM_"*input*".nc"),"c",format=:netcdf4_classic)
             phi_bins = NCDataset(joinpath(outdir,tiles[1],"HLM_"*tiles[1]*".nc"))["phi"][:]
             defDim(hlm,"locX",size(xlim,1)); defDim(hlm,"locY",size(ylim,1))
-            defVar(hlm,"Easting",Int32.(unique(ptsx)),("locX",)); defVar(hlm,"Northing",Int32.(reverse(unique(ptsy))),("locY",))
+            defVar(hlm,"Easting",Float32.(unique(ptsx)),("locX",)); defVar(hlm,"Northing",Float32.(reverse(unique(ptsy))),("locY",))
             defDim(hlm,"phi",size(phi_bins,1))
             defVar(hlm,"Horizon_Line_phi",Int16.(phi_bins),("phi",),deflatelevel=1,attrib=["units" =>
                 "degrees clockwise from north"])
