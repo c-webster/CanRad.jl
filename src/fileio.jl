@@ -207,7 +207,10 @@ function create_exmat(outdir::String,outstr::String,pts::Matrix{Float64},g_img::
         defDim(images,"img_y",size(g_img,2))
         defDim(images,"Coordinates",size(pts,1))
 
-        defVar(images,"SHI",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
+        defVar(images,"SHI_winter",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
+        defVar(images,"SHI_summer",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
+        defVar(images,"SHI_terrain",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
+
         defVar(images,"easting",pts[:,1],("Coordinates",),deflatelevel=1)
         defVar(images,"northing",pts[:,2],("Coordinates",),deflatelevel=1)
 
@@ -331,17 +334,27 @@ function make_SHIs(datdir::String)
     coords_y = images["northing"][:]
 
     odir = joinpath(datdir,files[fx][1][1:end-3])
+    odir_w = joinpath(odir,"winter")
+    odir_s = joinpath(odir,"summer")
+    odir_t = joinpath(odir,"terrain")
 
-    if !ispath(odir)
-        mkpath(odir)
-    end
+    if !ispath(odir); mkpath(odir); end
+    if !ispath(odir_w); mkpath(odir_w); end
+    if !ispath(odir_s); mkpath(odir_s); end
+    if !ispath(odir_t); mkpath(odir_t); end
 
     fstr = "%07.$(2)f"
 
     for ix in eachindex(coords_x)
 
-        outf = joinpath(odir,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*".png")
-        save(outf,colorview(Gray,float.(images["SHI"][:,:,ix])))
+        outf_w = joinpath(odir_w,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*"_winter.png")
+        save(outf_w,colorview(Gray,float.(images["SHI_winter"][:,:,ix])))
+
+        outf_s = joinpath(odir_s,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*"_summer.png")
+        save(outf_s,colorview(Gray,float.(images["SHI_summer"][:,:,ix])))
+
+        outf_t = joinpath(odir_t,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*"_terrain.png")
+        save(outf_t,colorview(Gray,float.(images["SHI_terrain"][:,:,ix])))
 
     end
 

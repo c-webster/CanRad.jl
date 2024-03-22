@@ -457,9 +457,11 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         mat2ev_w[outside_img] .= 1
         mat2ev_s[outside_img] .= 1
 
-        # if save_images
-        #     images["SHI"][:,:,crx] = mat2ev;
-        # end
+        if save_images
+            images["SHI_winter"][:,:,crx] = mat2ev_w;
+            images["SHI_summer"][:,:,crx] = mat2ev_s;
+            images["SHI_terrain"][:,:,crx] = mat2ev;
+        end
 
         if progress
             elapsed = time() - start
@@ -532,6 +534,8 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     close(dataset)
     save_images && close(images)
     save_hlm && close(hlm)
+
+    save_images && make_SHIs(outdir)
 
     println("done with "*taskID)
 
