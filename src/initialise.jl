@@ -1,81 +1,40 @@
 
 function compatability_check!(par_in::Dict)
 
-    if !haskey(par_in,"buildings") # include buildings as solid objects (not floating carpets)
-        par_in["buildings"] = false
-    end
+    # basic warnings/errors
+    # write check for presence of required user settings and datasets
 
-    if !haskey(par_in,"pt_corr") # correct for probability of transmissivity
-        par_in["pt_corr"] = true
-    end
+    # check point size has two values
+    (haskey(par_in,"point_size") && length(par_in["point_size"]) < 2) && error("point size requires two values") 
 
-    # renamed terrain options
-    if haskey(par_in,"terrain")
-        if par_in["terrain"] == 1
-            par_in["terrain_tile"] = false
-        elseif par_in["terrain"] == 2
-            par_in["terrain_tile"] = true
-        end
-    end
 
-    if haskey(par_in,"tershad")
-        if par_in["tershad"] == 1
-            par_in["terrain_highres"] = true
-            par_in["terrain_lowres"] = true
-        elseif par_in["tershad"] == 2
-            par_in["terrain_highres"] = true
-            par_in["terrain_lowres"] = false
-        elseif par_in["tershad"] == 3
-            par_in["terrain_highres"] = false
-            par_in["terrain_lowres"] = false
-        end
-    end
+    ### fill default settings
+    !haskey(par_in,"terrainmask_precalc") && (par_in["terrainmask_precalc"] = false)
+    !haskey(par_in,"calc_terrain") && (par_in["calc_terrain"] = false)
+    !haskey(par_in,"buildings") && (par_in["buildings"] = false)
+    !haskey(par_in,"hlm_precalc") && (par_in["hlm_precalc"] = false)
 
-    if !haskey(par_in,"horizon_line")
-        par_in["horizon_line"] = false
-    end
+    !haskey(par_in,"save_images") && (par_in["save_images"] = false)
+    !haskey(par_in,"save_horizon") && (par_in["save_horizon"] = false)
+    !haskey(par_in,"progress") && (par_in["progress"] = false)
 
-    # disable tilt option since it is not implemented properly
-    if !haskey(par_in,"tilt") || par_in["tilt"]
-        par_in["tilt"] = false
-    end
+    !haskey(par_in,"branch_spacing") && (par_in["branch_spacing"] = 0.1)
 
-    if !haskey(par_in,"OSHD")
-        par_in["OSHD"] = false
-    end
 
-	# renamed variables with version 0.7.0
-	if !haskey(par_in,"image_height")
-		par_in["image_height"] = par_in["ch"]
-	end
+    ### disable tilt option since it is not implemented properly
+    (!haskey(par_in,"tilt") || par_in["tilt"]) && (par_in["tilt"] = false)
 
-	if haskey(par_in,"utm_zone") && par_in["coor_system"] == "UTM"
-		par_in["coor_system"] = "UTM"*" "*utm_zone
-	end
 
-	if !haskey(par_in,"b_space") && !haskey(par_in,"branch_spacing") # spacing between branch points in cm
-        par_in["branch_spacing"] = 0.1
-	elseif @isdefined(b_space)
-		par_in["branch_spacing"] = b_space
-    end
+    ### back compatibility with perimeter variable names in <v0.10
+    haskey(par_in,"terrain_peri") && (par_in["lowres_peri"] = par_in["terrain_peri"])
 
-    if !haskey(par_in,"season")
-        par_in["season"] = "evergreen"
-    end
+    haskey(par_in,"dtm_peri") && (par_in["highres_peri"] = par_in["dtm_peri"])
+    !haskey(par_in,"highres_peri") && (par_in["highres_peri"] = 300)
 
-    if haskey(par_in,"tolerance")
-        if length(par_in["tolerance"]) < 2
-            error("update tolerance value") # accomodate tolerance changing to pixels
-        end
-    end
+    haskey(par_in,"surf_peri") && (par_in["forest_peri"] = par_in["surf_peri"])
 
-    if !haskey(par_in,"dtm_peri")
-        par_in["dtm_peri"] = 300.0
-    end
+    !haskey(par_in,"oshd_flag") && (par_in["oshd_flag"] = false)
 
-    if !haskey(par_in,"oshd_flag")
-        par_in["oshd_flag"] = false
-    end
 
 end
 
@@ -88,62 +47,6 @@ function extract(d::Dict)
     return expr
 end
 
-
-function create_tiles(basefolder::String,ptsf::String,settings_fun::Function)
-
-    tsize = readdlm(basefolder*"/TileSize.txt")
-
-    segs = readdir(basefolder*"/Segments")
-
-    try
-        mkdir(basefolder*"/Tiles"); catch
-    end
-
-    pts_full = (readdlm(ptsf))
-
-    analysis_limits = readdlm(basefolder*"/AnalysisAreaLimits.txt")
-
-    pts_idx = (analysis_limits[1] .<= pts_full[:,1] .< analysis_limits[2]) .&
-            (analysis_limits[3] .<= pts_full[:,2] .< analysis_limits[4])
-
-    pts_all = pts_full[pts_idx,:]
-
-    tdx = 0
-
-    ptsfname     = String[]
-    inputsegname = String[]
-
-    for segname in segs
-
-        limits = readdlm(basefolder*"/Segments"*"/"*segname*"/"*segname*"_analysisarea.txt")
-
-        limx = (collect(limits[1]:tsize[1]:limits[2]))
-        limy = (collect(limits[3]:tsize[1]:limits[4]))
-
-        if limy[end] < limits[4]; push!(limy,limy[end].+tsize[1]); end
-        if limx[end] < limits[2]; push!(limx,limx[end].+tsize[1]); end
-
-        for x in eachindex(limx[1:end-1]), y in eachindex(limy[1:end-1])
-            # create the tasks
-            idx = (limx[x] .<= pts_all[:,1] .< limx[x+1]) .&
-                    (limy[y] .<= pts_all[:,2] .< limy[y+1])
-
-            if sum(idx) > 0
-                tdx += 1
-                # push!(ptsfname,sprintf1.("%03.$(0)f",tdx)*".txt")
-                push!(ptsfname,sprintf1.("%03.$(0)f",tdx)*"_"*sprintf1.("%03.$(0)f", limx[x])*"_"*sprintf1.("%03.$(0)f", limy[y])*".txt")
-                f = open(basefolder*"/Tiles"*"/"*ptsfname[end],"w")
-                    writedlm(f,sprintf1.("%7.$(2)f",pts_all[idx,:]))
-                close(f)
-                push!(inputsegname,segname)
-            end
-        end
-
-    end
-
-    return ptsfname, inputsegname, basefolder*"/Output/", collect(1:1:size(ptsfname,1))
-
-end
 
 function check_output(exdir::String,pts::Matrix{Float64},batch::Bool,taskID::String)
 
@@ -158,11 +61,7 @@ function check_output(exdir::String,pts::Matrix{Float64},batch::Bool,taskID::Str
     if ispath(outdir)
         try
             crxstart = parse(Int,(split(reduce(1,readdir(outdir)[findall(occursin.("Processing",readdir(outdir)))])))[4])
-            if crxstart == size(pts,1)
-                out = true
-            else
-                out = false
-            end
+            (crxstart == size(pts,1)) ? (out = true) : (out = false)
         catch
             out = false
         end

@@ -11,7 +11,7 @@ function calcringratios(canrad::CANRAD,mat2ev::Matrix{Int64})
 
 end
 
-function calculateVf(canrad::CANRAD,mat2ev::Matrix{Int64})
+function calc_svf(canrad::CANRAD,mat2ev::Matrix{Int64})
 
     w2all = calcringratios(canrad,mat2ev)
 
@@ -232,7 +232,7 @@ function calc_solar_track(solar::SOLAR,lat::Float64,lon::Float64,time_zone::Int6
 end
 
 function calculateSWR(radiation::RADIATION,trans_for::Vector{Float64},sol_sinelev::Vector{Float64},
-        Vf::Float64,calc_swr::Int64)
+        svf::Float64,calc_swr::Int64)
 
     @unpack solar_const, dif_frac = radiation
     @unpack swr_open, trans_atm = radiation
@@ -263,7 +263,7 @@ function calculateSWR(radiation::RADIATION,trans_for::Vector{Float64},sol_sinele
     max_dir        = min.(solar_const .* exp.(log(trans_dirmax) ./ max.(sol_sinelev,0)),
                         solar_const .* trans_atm .* dir_frac)
 
-    # swr_for_dif      = dif_frac .* swr_open .* Vf
+    # swr_for_dif      = dif_frac .* swr_open .* svf
     swr_for_dir_flat = min.(dir_frac .* swr_open,max_dir) .* trans_for
 
     # calculated incoming to a tilted surface (currently disabled)
@@ -278,6 +278,6 @@ function calculateSWR(radiation::RADIATION,trans_for::Vector{Float64},sol_sinele
     # swr_for_dir_incl = min.(dir_frac .* swr_open ./ cang_1,max_dir) .* trans_for_wgt .* cang_2
     # swr_for_all_incl = swr_for_dif + swr_for_dir_incl
 
-    return (dif_frac .* swr_open .* Vf) + swr_for_dir_flat, swr_for_dir_flat
+    return (dif_frac .* swr_open .* svf) + swr_for_dir_flat, swr_for_dir_flat
     # return swr_tot, swr_dir
 end

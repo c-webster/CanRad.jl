@@ -472,6 +472,10 @@ function calc_horizon_lines(ter2rad::TER2RAD,pcd_phi::Vector{Float64},pcd_tht::V
         # rphi = collect(-pi:pi/720:pi)
     end
 
+    if sum(isnan.(mintht)) .> 0
+        mintht .= Impute.interp(replace(mintht,NaN=>missing))
+    end
+
     @unpack rphi, rtht, dx1, dx2, phi_bins = ter2rad
     # increase sampling along horizonline to create opaque terrain
     rtht = LinearInterpolation(phi_bins[dx1:dx2],vec(mintht[dx1:dx2]))(rphi)
@@ -691,28 +695,3 @@ function getimagecentre(slp::Float64,asp::Float64)
     return X,Y
 
 end
-
-
-# function trunk_locs(dbh_x::Array{Float64,1},dbh_y::Array{Float64,1},dbh_r::Array{Float64,1})
-#
-#     t_x =  Vector{Float64}(); t_y =  Vector{Float64}();
-#
-#     for tx = 1:1:size(dbh_r,1)
-#
-#         xunit = (dbh_r[tx] * cos.((0:(pi/10):(2*pi))) .+ dbh_x[tx])
-#         yunit = (dbh_r[tx] * sin.((0:(pi/10):(2*pi))) .+ dbh_y[tx])
-#
-#         points = vec(SVector.((minimum(xunit):0.05:maximum(xunit))',(minimum(yunit):0.05:maximum(yunit))))
-#
-#         polygon = SVector.(xunit,yunit)
-#         inside = [inpolygon(p, polygon; in=true, on=true, out=false) for p in points]
-#
-#         rows = findall(inside.==0)
-#         append!(t_x,first.(points)[rows])
-#         append!(t_y,last.(points)[rows])
-#
-#     end
-#
-#     return t_x, t_y
-#
-# end

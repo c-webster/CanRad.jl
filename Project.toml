@@ -1,7 +1,7 @@
 name = "CanRad"
 uuid = "aeb86711-de0f-4108-877d-aa9de166218e"
 authors = ["Clare Webster"]
-version = "0.9.1"
+version = "0.10.0"
 
 [deps]
 Chain = "8be319e6-bccf-4806-a6f7-6fae938471bc"
@@ -14,6 +14,7 @@ Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 Formatting = "59287772-0a20-5a39-b81b-1366585eb4c0"
 Images = "916415d5-f1e6-5110-898d-aaa5f9f070e0"
+Impute = "f7bf1975-0170-51b9-8c5f-a992d46b9575"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 LasIO = "570499db-eae3-5eb6-bdd5-a5326f375e68"
 LazIO = "c3605908-9f0f-11e8-0a72-0d361c15a277"

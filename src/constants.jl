@@ -175,12 +175,12 @@ end
 
 @with_kw struct LAS2RAD
 
-    surf_peri::Float64
+    forest_peri::Float64
     
-    rbins::Vector{Float64} = collect(0:(surf_peri-0)/5:surf_peri)
+    rbins::Vector{Float64} = collect(0:(forest_peri-0)/5:forest_peri)
 
-    tolerance::Vector{Float64}
-    knum::Vector{Float64} = collect(tolerance[1]:(diff(tolerance)/5)[1]:tolerance[2])
+    point_size::Vector{Float64}
+    knum::Vector{Float64} = collect(point_size[1]:(diff(point_size)/5)[1]:point_size[2])
 
     knum_t::Vector{Float64} = collect(15:(diff([10,1])/5)[1]:1)
 

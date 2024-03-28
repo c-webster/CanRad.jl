@@ -4,7 +4,7 @@ using DelimitedFiles, DataStructures, LasIO, LazIO,
     Statistics, Dates, Interpolations, Images,
     DataFrames, Formatting, Distributed, Distributions,
     SpatialFileIO, NCDatasets, Chain, Pkg, MarketTechnicals,
-    Parameters
+    Parameters, Impute
 
 using Conda, PyCall
 
@@ -47,7 +47,7 @@ export
     calcThickness!,
     calculate_trunks,
     calculateSWR,
-    calculateVf,
+    calc_svf,
     cart2sph!,
     check_output,
     clipdat,

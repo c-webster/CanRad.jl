@@ -21,41 +21,36 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     ################################################################################
     # > Get constants, organise the output and initiate progress reporting
 
-    outdir, outstr, crxstart, append_file, percentdone = organise_outf(taskID,exdir,batch,size(pts_x,1))
-    crxstart = 1; append_file = false; percentdone = 0;     # force restart the tile
-    global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crxstart-1)*" of "*string(size(pts,1))*".txt"
+    outdir, outstr  = organise_outf(taskID,exdir,batch)
+    global outtext = "Processing "*sprintf1.("%.$(0)f", 0)*"% ... "*string(0)*" of "*string(size(pts,1))*".txt"
     writedlm(joinpath(outdir,outtext),NaN)
 
     if calc_trans
         loc_time     = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
         loc_time_agg = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
     
-        dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file,loc_time_agg,time_zone)
+        dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,loc_time_agg,time_zone)
         pts_lat, pts_lon = calc_latlon(pts_x,pts_y,coor_system)
         solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = tstep, radius = canrad.radius, time_zone = time_zone)
     else    
-        dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,append_file)
+        dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr)
     end
 
-    if save_images 
-        images = create_exmat(outdir,outstr,pts,canrad.mat2ev,append_file)
-    end
+    save_images && (images = create_exmat(outdir,outstr,pts,canrad.mat2ev))
 
-    if save_hlm
-        hlm, p_srt = create_exhlm(outdir,outstr,pts,ter2rad)
-    end
+    save_horizon && (hlm = create_exhlm(outdir,outstr,pts,ter2rad))
 
     ################################################################################
     # > Import surface data
 
     if terrain_highres
 
-        limits_highres = getlimits!(Vector{Float64}(undef,4),pts_x,pts_y,dtm_peri)
+        limits_highres = getlimits!(Vector{Float64}(undef,4),pts_x,pts_y,highres_peri)
         dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata_window(dtmf,limits_highres,true, false);
         
         if !isempty(dtm_x) || !isnan(sum(dtm_z))
             pts_e = findelev!(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x,pts_y,limits_highres,10.0,Vector{Float64}(undef,size(pts_x)))
-            rbins_dtm = collect(2*dtm_cellsize:sqrt(2).*dtm_cellsize:dtm_peri)
+            rbins_dtm = collect(2*dtm_cellsize:sqrt(2).*dtm_cellsize:highres_peri)
             rows = findall(isnan,dtm_z); deleteat!(dtm_x,rows); deleteat!(dtm_y,rows); deleteat!(dtm_z,rows)
         # silly workaround to dealing with terrain data that doesn't have the same boundaries as grids.
         # this workaround loads the data including nans so that the above doesn't fail, and a horizon line
@@ -68,10 +63,10 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
     if terrain_lowres
 
-        limits_lowres = getlimits!(Vector{Float64}(undef,4),pts_x,pts_y,terrain_peri)
+        limits_lowres = getlimits!(Vector{Float64}(undef,4),pts_x,pts_y,lowres_peri)
         dem_x, dem_y, dem_z, dem_cellsize = read_griddata_window(demf,limits_lowres,true,true)
         pts_e_dem = findelev!(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,limits_lowres,50,Vector{Float64}(undef,size(pts_x)))
-        rbins_dem = collect(2*dem_cellsize:sqrt(2).*dem_cellsize:terrain_peri)
+        rbins_dem = collect(2*dem_cellsize:sqrt(2).*dem_cellsize:lowres_peri)
 
     end
 
@@ -126,17 +121,17 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     ###############################################################################
     # > Loop through the points
 
-    @simd for crx = crxstart:size(pts_x,1)
+    @simd for crx = 1:size(pts_x,1)
 
-        if progress; start = time(); end
+        progress && (start = time())
 
         # get the high-res local terrain
         if !isempty(dtm_x) && terrain_highres
 
-            pt_dtm_x, pt_dtm_y, pt_dtm_z = getsurfdat(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],dtm_peri);
+            pt_dtm_x, pt_dtm_y, pt_dtm_z = getsurfdat(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x[crx],pts_y[crx],pts_e[crx],highres_peri);
             pt_dtm_x, pt_dtm_y = pcd2pol2cart!(ter2rad,pt_dtm_x, pt_dtm_y, pt_dtm_z,pts_x[crx],pts_y[crx],pts_e[crx],"terrain",rbins_dtm,image_height)
 
-            if save_hlm 
+            if save_horizon 
                 dtm_mintht = copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
             end
 
@@ -145,17 +140,15 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         # get the low-res regional terrain
         if terrain_lowres
 
-            pt_dem_x, pt_dem_y, pt_dem_z = getsurfdat(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],terrain_peri);
+            pt_dem_x, pt_dem_y, pt_dem_z = getsurfdat(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e_dem[crx],lowres_peri);
             pt_dem_x, pt_dem_y = pcd2pol2cart!(ter2rad,pt_dem_x, pt_dem_y, pt_dem_z,pts_x[crx],pts_y[crx],pts_e_dem[crx],"terrain",rbins_dem,image_height);
 
-            if save_hlm
+            if save_horizon
                 if !isempty(dtm_x) && terrain_highres
                     dem_mintht = copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
                     hlm["tht"][:,crx] = Int.(round.(minimum(hcat(dtm_mintht,dem_mintht),dims=2) .*100))
-                    hlm["tht_oshd"][:,crx] = Int.(round.(minimum(hcat(dtm_mintht,dem_mintht),dims=2)[p_srt] .*100))
                 else
                     hlm["tht"][:,crx] = Int.(round.(copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1]) .* 100))
-                    hlm["tht_oshd"][:,crx] = Int.(round.(copy(ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])[p_srt] .*100))
                 end
             end
         
@@ -177,11 +170,11 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
         save_images && (images["SHI"][:,:,crx] = mat2ev;)
 
-        # calculate Vf and transmissivity
-        Vf_p, Vf_h = calculateVf(canrad,mat2ev)
+        # calculate svf and transmissivity
+        svf_p, svf_h = calc_svf(canrad,mat2ev)
 
-        dataset["Vf_planar"][crx] = Int(round(Vf_p*100));
-        dataset["Vf_hemi"][crx]   = Int(round(Vf_h*100));
+        dataset["svf_planar"][crx] = Int(round(svf_p*100));
+        dataset["svf_hemi"][crx]   = Int(round(svf_h*100));
 
         if calc_trans
 
@@ -190,12 +183,12 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             @unpack trans_for = solar
             calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
 
-            dataset["Forest_Transmissivity"][:,crx] = Int.(round.((vec(aggregate_data(solar,trans_for))).*100));
+            dataset["for_trans"][:,crx] = Int.(round.((vec(aggregate_data(solar,trans_for))).*100));
 
             if calc_swr > 0
-                swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,Vf_p,calc_swr)
-                dataset["SWR_total"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
-                dataset["SWR_direct"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
+                swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,svf_p,calc_swr)
+                dataset["swr_total"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
+                dataset["swr_direct"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
             end
         
         end
@@ -216,7 +209,9 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
     close(dataset)
     save_images && close(images)
-    save_hlm && close(hlm)
+    save_horizon && close(hlm)
+
+    save_images && make_SHIs(outdir)
 
     println("done with "*taskID)
 
