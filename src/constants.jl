@@ -148,8 +148,8 @@ end
 @with_kw struct CHM2RAD
 
     ### for the canopy horizon line + ptrans calcs
-    phi_bins_long::Vector{Float64}  = collect(-2*pi:pi/360:2*pi)[1:end-1]
-    phi_bins_short::Vector{Float64} = collect(-pi:pi/360:pi)[1:end-1]
+    phi_bins_long::Vector{Float64}  = collect(-2*pi:pi/360:2*pi)
+    phi_bins_short::Vector{Float64} = collect(-pi:pi/360:pi)
 
     dx1_pbl::Int64 = findall(abs.(phi_bins_long .+ pi) .== 0)[1]
     dx2_pbl::Int64 = findall(abs.(phi_bins_long .- pi) .== 0)[1]
