@@ -544,7 +544,7 @@ function make_SHIs(datdir::String)
 
     for ix in eachindex(coords_x)
 
-        outf = joinpath(odir,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*".png")
+        outf = joinpath(odir,"SHI_"*cfmt.(fstr,coords_x[ix])*"_"*cfmt.(fstr,coords_y[ix])*".png")
         save(outf,colorview(Gray,float.(images["SHI"][:,:,ix])))
 
     end
@@ -589,24 +589,24 @@ function make_SHIs(datdir::String,forest_type::String,season::String,calc_terrai
     for ix in eachindex(coords_x)
 
         if forest_type == "evergreen"
-            outf = joinpath(odir,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*"_evergreen.png")
+            outf = joinpath(odir,"SHI_"*cfmt.(fstr,coords_x[ix])*"_"*cfmt.(fstr,coords_y[ix])*"_evergreen.png")
             save(outf,colorview(Gray,float.(images["SHI_evergreen"][:,:,ix])))
 
         elseif (forest_type == "deciduous") || (forest_type == "mixed")
         
             if (season == "summer") || (season == "both")
-                outf_s = joinpath(odir_s,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*"_summer.png")
+                outf_s = joinpath(odir_s,"SHI_"*cfmt.(fstr,coords_x[ix])*"_"*cfmt.(fstr,coords_y[ix])*"_summer.png")
                 save(outf_s,colorview(Gray,float.(images["SHI_summer"][:,:,ix])))
             end
         
             if (season == "winter") || (season == "both")
-                outf_w = joinpath(odir_w,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*"_winter.png")
+                outf_w = joinpath(odir_w,"SHI_"*cfmt.(fstr,coords_x[ix])*"_"*cfmt.(fstr,coords_y[ix])*"_winter.png")
                 save(outf_w,colorview(Gray,float.(images["SHI_winter"][:,:,ix])))
             end
         end
         
         if calc_terrain
-            outf_t = joinpath(odir_t,"SHI_"*sprintf1.(fstr,coords_x[ix])*"_"*sprintf1.(fstr,coords_y[ix])*"_terrain.png")
+            outf_t = joinpath(odir_t,"SHI_"*cfmt.(fstr,coords_x[ix])*"_"*cfmt.(fstr,coords_y[ix])*"_terrain.png")
             save(outf_t,colorview(Gray,float.(images["SHI_terrain"][:,:,ix])))
         end
 

@@ -22,7 +22,7 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     # > Get constants, organise the output and initiate progress reporting
 
     outdir, outstr  = organise_outf(taskID,exdir,batch)
-    global outtext = "Processing "*sprintf1.("%.$(0)f", 0)*"% ... "*string(0)*" of "*string(size(pts,1))*".txt"
+    global outtext = "Processing "*cfmt.("%.$(0)f", 0)*"% ... "*string(0)*" of "*string(size(pts,1))*".txt"
     writedlm(joinpath(outdir,outtext),NaN)
 
     if calc_trans
@@ -109,7 +109,7 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     if progress
         elapsed = time() - start
         progdir = joinpath(outdir,"ProgressLastPoint")
-        progtextinit = "0. Pre-calc took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
+        progtextinit = "0. Pre-calc took "*cfmt.("%.$(2)f", elapsed)*" seconds"
         if ispath(progdir)
             rm(progdir,recursive=true); mkdir(progdir)
         else
@@ -196,13 +196,13 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         if progress
             elapsed = time() - start
             if crx != 1; try; rm(joinpath(progdir,progtext1)); catch; end; end
-            global progtext1 = "Process took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
+            global progtext1 = "Process took "*cfmt.("%.$(2)f", elapsed)*" seconds"
             writedlm(joinpath(progdir,progtext1),NaN)
         end
 
         # save the progress
         rm(joinpath(outdir,outtext))
-        global outtext = "Processing "*sprintf1.("%.$(0)f", Int(floor((crx / size(pts,1)) * 100)))*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
+        global outtext = "Processing "*cfmt.("%.$(0)f", Int(floor((crx / size(pts,1)) * 100)))*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
         writedlm(joinpath(outdir,outtext),NaN)
 
     end

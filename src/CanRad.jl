@@ -2,7 +2,7 @@ module CanRad
 
 using DelimitedFiles, DataStructures, LasIO, LazIO,
     Statistics, Dates, Interpolations, Images,
-    DataFrames, Formatting, Distributed, Distributions,
+    DataFrames, Format, Distributed, Distributions,
     SpatialFileIO, NCDatasets, Chain, Pkg, MarketTechnicals,
     Parameters, Impute
 

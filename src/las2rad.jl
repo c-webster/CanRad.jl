@@ -26,7 +26,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
     outdir, outstr  = organise_outf(taskID,exdir,batch)
     crxstart = 1; percentdone = 0; # initialise the tile
-    global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crxstart-1)*" of "*string(size(pts,1))*".txt"
+    global outtext = "Processing "*cfmt.("%.$(0)f", percentdone)*"% ... "*string(crxstart-1)*" of "*string(size(pts,1))*".txt"
     writedlm(joinpath(outdir,outtext),NaN)
 
     if calc_trans
@@ -194,7 +194,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     if progress
         elapsed = time() - start
         progdir = joinpath(outdir,"ProgressLastPoint")
-        progtextinit = "0. Pre-calc took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
+        progtextinit = "0. Pre-calc took "*cfmt.("%.$(2)f", elapsed)*" seconds"
         if ispath(progdir)
             rm(progdir,recursive=true); mkdir(progdir)
         else
@@ -299,7 +299,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         if progress
             elapsed = time() - start
             if crx != 1; try; rm(joinpath(progdir,progtext1)); catch; end; end
-            global progtext1 = "1. Transferring to polar took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
+            global progtext1 = "1. Transferring to polar took "*cfmt.("%.$(2)f", elapsed)*" seconds"
             writedlm(joinpath(progdir,progtext1),NaN)
         end
 
@@ -332,7 +332,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         if progress
             elapsed = time() - start
             if crx != 1; try; rm(joinpath(progdir,progtext2)); catch; end; end
-            global progtext2 = "2. Classifying image took "*sprintf1.("%.$(2)f", elapsed)*" seconds"
+            global progtext2 = "2. Classifying image took "*cfmt.("%.$(2)f", elapsed)*" seconds"
             writedlm(joinpath(progdir,progtext2),NaN)
         end
 
@@ -366,14 +366,14 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         if progress
             elapsed = time() - start
             if crx != 1; try; rm(joinpath(progdir,progtext3)); catch; end; end
-            global progtext3 = "3. Calculations and export "*sprintf1.("%.$(2)f", elapsed)*" seconds"
+            global progtext3 = "3. Calculations and export "*cfmt.("%.$(2)f", elapsed)*" seconds"
             writedlm(joinpath(progdir,progtext3),NaN)
         end
 
         # save the progress
         percentdone = Int(floor((crx / size(pts,1)) * 100))
         rm(joinpath(outdir,outtext))
-        global outtext = "Processing "*sprintf1.("%.$(0)f", percentdone)*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
+        global outtext = "Processing "*cfmt.("%.$(0)f", percentdone)*"% ... "*string(crx)*" of "*string(size(pts,1))*".txt"
         writedlm(joinpath(outdir,outtext),NaN)
 
     end # end crx
