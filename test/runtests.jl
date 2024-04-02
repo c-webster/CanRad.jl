@@ -53,24 +53,24 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
 
             elseif model == "L2R"
 
-                if (Sys.free_memory()/2^20) > 15000
     
-                    dat_in, par_in = las2rad_settings(datdir)
-                    println("Testing L2R ...")
-                    las2rad!(pts,dat_in,par_in,exdir,"L2R test")
+                dat_in, par_in = las2rad_settings(datdir)
 
-                    ncds = Dataset(joinpath(exdir,"Output_testset.nc"))
-                    tst_dd = ncds["svf_planar"][:].*0.01
-                    close(ncds)
-
-                    # test rmse is <0.05
-                    @test sum(sqrt.((tst_dd .- bmk_dd).^2))/size(pts,1) < 0.05
-
-                else
-
-                    warning("not enough available RAM to test L2R . . .  skipping test ")
-
+                if (Sys.free_memory()/2^20) < 12000
+                    @warn "not enough available RAM to test L2R . . .  skipping test "
+                    continue
                 end
+
+                println("Testing L2R ...")
+                las2rad!(pts,dat_in,par_in,exdir,"L2R test")
+
+                ncds = Dataset(joinpath(exdir,"Output_testset.nc"))
+                tst_dd = ncds["svf_planar"][:].*0.01
+                close(ncds)
+
+                # test rmse is <0.05
+                @test sum(sqrt.((tst_dd .- bmk_dd).^2))/size(pts,1) < 0.05
+
                 
             end
 

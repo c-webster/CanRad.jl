@@ -34,7 +34,7 @@ function las2rad_settings(basefolder::String)
 
         # image settings
         "image_height" => 0.25, #FLOAT NUMBER  !!!!!!!!
-        "point_size"  => [30,10], # how big to make the points in the output image in pixels (image is 1000x1000) this needs to be calibrated for point cloud density
+        "point_size"  => [30.0,10.0], # how big to make the points in the output image in pixels (image is 1000x1000) this needs to be calibrated for point cloud density
 
         # run settings
         "batch"       => false,

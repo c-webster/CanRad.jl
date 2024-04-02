@@ -180,9 +180,9 @@ end
     rbins::Vector{Float64} = collect(0:(forest_peri-0)/5:forest_peri)
 
     point_size::Vector{Float64}
-    knum::Vector{Float64} = collect(point_size[1]:(diff(point_size)/5)[1]:point_size[2])
+    knum::Vector{Int64} = Int.(round.(collect(point_size[1]:(diff(point_size)/5)[1]:point_size[2])))
 
-    knum_t::Vector{Float64} = collect(15:(diff([10,1])/5)[1]:1)
+    knum_t::Vector{Int64} = Int.(round.(collect(15:(diff([10,1])/5)[1]:1)))
 
     # eventually default parameters for the trunks instead of pre-allo trunks
 end
