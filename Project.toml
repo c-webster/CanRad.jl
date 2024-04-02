@@ -29,6 +29,8 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
+Images = "= 0.24.1"
+Interpolations = "= 0.13.1"
 julia = "1.7,1.8,1.9,1.10"
 
 [extras]
