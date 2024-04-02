@@ -404,6 +404,23 @@ function frbins(pcd::Vector{Float64},rbin1::Float64,rbin2::Float64)
     return ((pcd .>= rbin1) .& (pcd .< rbin2))
 end
 
+function remove_duplicates!(indat::Vector{Float64})
+    # remove indices in fix1 that create duplicates
+    # method taken from dedeplicate_knot!() in Interpolations.jl [line 121:gridded.jl]
+    # used here to prevent warning in Interpolations caused phi values along 
+    # same azimuth included in zenith ring (happens along N,E,S,W trajectories)
+
+    last_val = first(indat)
+    for i in 2:length(indat)
+        if indat[i] == last_val
+            indat[i] = nextfloat(indat[i-1])
+        else
+            last_val = indat[i]
+        end
+    end
+
+end
+
 function calcmintht!(ter2rad::TER2RAD,mintht::Vector{Float64},pcd_phi::Vector{Float64},pcd_tht::Vector{Float64},pcd_rad::Vector{Float64},
     rbins::Vector{Float64})
 
@@ -416,15 +433,22 @@ function calcmintht!(ter2rad::TER2RAD,mintht::Vector{Float64},pcd_phi::Vector{Fl
     idx = 1:size(pcd_phi,1)
 
     @inbounds @simd for rbix = length(rbins)-1:-1:1
+        
             fix1 = idx[frbins(pcd_rad,rbins[rbix],rbins[rbix+1])]
+
             if size(fix1) > (1,)
-                tdx = (minimum(pcd_phi[fix1[sortperm(pcd_phi[fix1])]]) .<= phi_bins
-                                    .<= maximum(pcd_phi[fix1[sortperm(pcd_phi[fix1])]]))
+
+                phi_srtdx = sortperm(pcd_phi[fix1])
+                phi_vals = pcd_phi[fix1][phi_srtdx]
+                !allunique(phi_vals) && remove_duplicates!(phi_vals)
+
+                tdx = minimum(phi_vals) .<= phi_bins .<= maximum(phi_vals)
                 fill!(tempmintht,90)
-                tempmintht[tdx] = LinearInterpolation(pcd_phi[fix1[sortperm(pcd_phi[fix1])]],
-                            pcd_tht[fix1[sortperm(pcd_phi[fix1])]])(phi_bins[tdx])
+                tempmintht[tdx] = linear_interpolation(phi_vals,pcd_tht[fix1[phi_srtdx]])(phi_bins[tdx])
                 mintht .= vec(minimum(hcat(mintht,tempmintht),dims=2))
+
             end
+
     end
 
 end
@@ -478,7 +502,7 @@ function calc_horizon_lines(ter2rad::TER2RAD,pcd_phi::Vector{Float64},pcd_tht::V
 
     @unpack rphi, rtht, dx1, dx2, phi_bins = ter2rad
     # increase sampling along horizonline to create opaque terrain
-    rtht = LinearInterpolation(phi_bins[dx1:dx2],vec(mintht[dx1:dx2]))(rphi)
+    rtht = linear_interpolation(phi_bins[dx1:dx2],vec(mintht[dx1:dx2]))(rphi)
 
     return fillterrain(rphi,rtht,slp)
 
@@ -553,18 +577,20 @@ function calcThickness!(chm2rad::CHM2RAD,rbins::Vector{Float64},sum_lavd_thick::
         fix_chm = idx_chm[frbins(chm_rad,rbins[rbix],rbins[rbix+1])]
         if size(fix_chm) > (1,)
 
-            tdx_chm .= (minimum(chm_phi[fix_chm[sortperm(chm_phi[fix_chm])]]) .<= phi_bins_long
-                                .<= maximum(chm_phi[fix_chm[sortperm(chm_phi[fix_chm])]]))
+            phi_srtdx = sortperm(chm_phi[fix_chm])
+            phi_vals  = chm_phi[fix_chm][phi_srtdx]
+
+            !allunique(phi_vals) && remove_duplicates!(phi_vals)
+
+            tdx_chm .= (minimum(phi_vals) .<= phi_bins_long .<= maximum(phi_vals))
 
             fill!(chm_temptht_long,90.0)
-            chm_temptht_long[tdx_chm] = LinearInterpolation(chm_phi[fix_chm[sortperm(chm_phi[fix_chm])]],
-                        chm_tht[fix_chm[sortperm(chm_phi[fix_chm])]])(phi_bins_long[tdx_chm])
+            chm_temptht_long[tdx_chm] = linear_interpolation(phi_vals,chm_tht[fix_chm[phi_srtdx]])(phi_bins_long[tdx_chm])
 
-            if sum(isnan.(chm_temptht_long)) > 0; chm_temptht_long[isnan.(chm_temptht_long)] .= 90.0; end
+            (sum(isnan.(chm_temptht_long)) > 0) && (chm_temptht_long[isnan.(chm_temptht_long)] .= 90.0)
 
             fill!(temp_lavd,0.0) 
-            temp_lavd[tdx_chm] = LinearInterpolation(chm_phi[fix_chm[sortperm(chm_phi[fix_chm])]],
-                        lavd[fix_chm[sortperm(chm_phi[fix_chm])]])(phi_bins_long[tdx_chm])
+            temp_lavd[tdx_chm] = linear_interpolation(phi_vals,lavd[fix_chm[phi_srtdx]])(phi_bins_long[tdx_chm])
 
             fill!(chm_temptht_short,90)
             chm_temptht_short .= Int.(round.(chm_temptht_long[dx1_pbl:dx2_pbl]))
@@ -574,11 +600,13 @@ function calcThickness!(chm2rad::CHM2RAD,rbins::Vector{Float64},sum_lavd_thick::
                 # get the canopy base line
                 fix_bse = idx_bse[frbins(bse_rad,rbins[rbix],rbins[rbix+1])]
                 if size(fix_bse) > (1,)
-                    tdx_bse .= (minimum(bse_phi[fix_bse[sortperm(bse_phi[fix_bse])]]) .<= phi_bins_short
-                                        .<= maximum(bse_phi[fix_bse[sortperm(bse_phi[fix_bse])]]))
+                    phi_srtdx_bse = sortperm(bse_phi[fix_bse])
+                    phi_vals_bse  = bse_phi[fix_bse][phi_srtdx_bse]
+                    !allunique(phi_vals_bse) && remove_duplicates!(phi_vals_bse)
+                    tdx_bse .= (minimum(phi_vals_bse) .<= phi_bins_short .<= maximum(phi_vals_bse))
                     fill!(bse_temptht,90.0)
-                    bse_temptht[tdx_bse] = LinearInterpolation(bse_phi[fix_bse[sortperm(bse_phi[fix_bse])]],
-                                bse_tht[fix_bse[sortperm(bse_phi[fix_bse])]])(phi_bins_short[tdx_bse])
+                    bse_temptht[tdx_bse] = linear_interpolation(phi_vals_bse,
+                                bse_tht[fix_bse[phi_srtdx_bse]])(phi_bins_short[tdx_bse])
                     sum(isnan.(bse_temptht)) > 0 && (bse_temptht[isnan.(bse_temptht)] .= 90.0)
                 end
             end
