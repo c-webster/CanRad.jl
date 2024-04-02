@@ -1,7 +1,7 @@
 name = "CanRad"
 uuid = "aeb86711-de0f-4108-877d-aa9de166218e"
 authors = ["Clare Webster"]
-version = "0.10.0"
+version = "0.11.0"
 
 [deps]
 Chain = "8be319e6-bccf-4806-a6f7-6fae938471bc"
@@ -29,8 +29,6 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
-Images = "= 0.24.1"
-Interpolations = "= 0.13.1"
 julia = "1.7,1.8,1.9,1.10"
 
 [extras]
