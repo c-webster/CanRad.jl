@@ -40,7 +40,7 @@ function calc_transmissivity!(canrad::CANRAD,solar::SOLAR,trans_for::Vector{Floa
     fill!(trans_for,0)
 
     keepix       = findall(sol_tht .<= 90)
-    prad[keepix] = LinearInterpolation(lens_profile_tht,lens_profile_rpix*radius)(sol_tht[keepix])
+    prad[keepix] = linear_interpolation(lens_profile_tht,lens_profile_rpix*radius)(sol_tht[keepix])
 
     x = ((im_centre .+ sin.(deg2rad.(sol_phi[keepix])) .* prad[keepix]) .- (imcX / (90 / radius)))
     y = ((im_centre .+ cos.(deg2rad.(sol_phi[keepix])) .* prad[keepix]) .- (imcY / (90 / radius)))

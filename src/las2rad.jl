@@ -323,7 +323,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         # add terrain
         !terrainmask_precalc && (fillmat!(canrad,kdtree,hcat(pt_dtm_x,pt_dtm_y),10,mat2ev))
 
-        (season == "winter" && trunks) && (fillmat!(canrad,kdtree,hcat(pt_dtm_x,pt_dtm_y),10,mat2ev))
+        (season == "winter" && trunks) && (fillmat!(canrad,kdtree,hcat(pt_tsm_x,pt_tsm_y),10,mat2ev))
 
         mat2ev[outside_img] .= 1
 
