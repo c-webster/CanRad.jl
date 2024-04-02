@@ -130,14 +130,14 @@ end
     pts_e_dem::Vector{Float64} = zeros(pts_sz)
 
     # terrain horizon line parameters
-    phi_bins::Vector{Float64} = collect(-2*pi:pi/180:2*pi)
+    phi_bins::Vector{Float64} = collect(-2*pi:pi/180:2*pi)[1:end-1]
 
     fix1::Vector{Int64} = zeros(10000)
     tdx::Vector{Bool} = zeros(size(phi_bins,1))
     mintht::Vector{Float64} = fill(90.0,size(phi_bins,1))
     tempmintht::Vector{Float64} = fill(90.0,size(phi_bins,1))
 
-    rphi::Vector{Float64} = collect(-pi:pi/1080:pi)
+    rphi::Vector{Float64} = collect(-pi:pi/1080:pi)[1:end-1]
     rtht::Vector{Float64} = zeros(size(rphi,1))
 
     dx1::Int64 = findall(abs.(phi_bins .+ pi) .== 0)[1]
@@ -148,8 +148,8 @@ end
 @with_kw struct CHM2RAD
 
     ### for the canopy horizon line + ptrans calcs
-    phi_bins_long::Vector{Float64}  = collect(-2*pi:pi/360:2*pi)
-    phi_bins_short::Vector{Float64} = collect(-pi:pi/360:pi)
+    phi_bins_long::Vector{Float64}  = collect(-2*pi:pi/360:2*pi)[1:end-1]
+    phi_bins_short::Vector{Float64} = collect(-pi:pi/360:pi)[1:end-1]
 
     dx1_pbl::Int64 = findall(abs.(phi_bins_long .+ pi) .== 0)[1]
     dx2_pbl::Int64 = findall(abs.(phi_bins_long .- pi) .== 0)[1]
