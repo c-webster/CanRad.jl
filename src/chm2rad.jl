@@ -244,8 +244,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
     if @isdefined(lavdf)
 
-        ch_x, ch_y, chm_lavd, _ = read_griddata(lavdf,true,true)
-        clipdat!(copy(ch_x),copy(ch_y),chm_lavd,limits_canopy,Vector{Bool}(undef,size(chm_lavd,1)))
+        chm_lavd = read_griddata_window(lavdf,limits_canopy,true,true)[3]
         cbh = 2.0
 
     end
