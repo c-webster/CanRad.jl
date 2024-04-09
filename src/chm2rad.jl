@@ -245,29 +245,36 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     if @isdefined(lavdf)
 
         chm_lavd = read_griddata_window(lavdf,limits_canopy,true,true)[3]
-        cbh = 2.0
 
     end
 
     # create the canopy base height vector based on above settings
-    if forest_type == "evergreen"
+    if @isdefined(cbhf)
 
-        chm_b = fill(cbh,size(chm_z))
-        chm_b .+= chm_e
+        println("using cbh raster")
+        chm_b = read_griddata_window(cbhf,limits_canopy,true,true)[3]
 
-    elseif (forest_type == "deciduous") || (forest_type == "mixed")
+    else
 
-        if (season == "summer") || (season == "both")
-            chm_b_s = fill(cbh_s,size(chm_z))
-            chm_b_s .+= chm_e
+        if forest_type == "evergreen"
+
+            chm_b = fill(cbh,size(chm_z))
+            chm_b .+= chm_e
+
+        elseif (forest_type == "deciduous") || (forest_type == "mixed")
+
+            if (season == "summer") || (season == "both")
+                chm_b_s = fill(cbh,size(chm_z))
+                chm_b_s .+= chm_e
+            end
+        
+            if (season == "winter") || (season == "both")
+                chm_b_w = fill(cbh,size(chm_z))
+                chm_b_w .+= chm_e
+            end
         end
-    
-        if (season == "winter") || (season == "both")
-            chm_b_w = fill(cbh_w,size(chm_z))
-            chm_b_w .+= chm_e
-        end
+
     end
-
 
 
     ###############################################################################

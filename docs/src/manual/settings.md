@@ -96,6 +96,11 @@ spacing interval for creating branches/
 units = metres/
 default = 0.1/
 
+**cbh [ C2R ]**
+*Float*
+height of canopy base above ground in m across field area/
+defual = 2/
+
 ## Calculation settings
 
 **calc_trans**\

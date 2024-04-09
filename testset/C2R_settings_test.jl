@@ -18,7 +18,8 @@ function chm2rad_settings(basefolder="empty"::String)
         "season"       => "both", # summer, winter, both
         "forest_type"  => "evergreen", # evergreen, deciduous, mixed
         "tree_species" => "needleleaf", # needleleaf, broadleaf, both
-        "forest_peri"    => 100, # radius within which forest is included in SHI calculation
+        "forest_peri"  => 100, # radius within which forest is included in SHI calculation
+        "cbh"          => 2, # height of canopy base above ground (can also be input as raster for varied base height)
 
         # calculation settings
         "calc_trans" => true, # calculate time-varying transmissivity
