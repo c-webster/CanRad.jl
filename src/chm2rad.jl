@@ -240,11 +240,25 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
         end
 
+    else
+
+        cbh_w = copy(cbh)
+        cbh_s = copy(cbh)
+
     end
 
     if @isdefined(lavdf)
 
         chm_lavd = read_griddata_window(lavdf,limits_canopy,true,true)[3]
+        
+        if (season == "summer") || (season == "both")
+            chm_lavd_summer = copy(chm_lavd)
+        end
+    
+        if (season == "winter") || (season == "both")
+            chm_lavd_winter = copy(chm_lavd)
+        end
+
 
     end
 
@@ -252,7 +266,19 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     if @isdefined(cbhf)
 
         println("using cbh raster")
-        chm_b = read_griddata_window(cbhf,limits_canopy,true,true)[3]
+        chm_b = read_griddata_window(cbhf,limits_canopy,true,true)[3] .+ chm_e
+
+        if (forest_type == "deciduous") || (forest_type == "mixed")
+
+            if (season == "summer") || (season == "both")
+                chm_b_s = copy(chm_b)
+            end
+        
+            if (season == "winter") || (season == "both")
+                chm_b_w = copy(chm_b)
+            end
+        
+        end
 
     else
 
@@ -264,16 +290,22 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         elseif (forest_type == "deciduous") || (forest_type == "mixed")
 
             if (season == "summer") || (season == "both")
-                chm_b_s = fill(cbh,size(chm_z))
+                chm_b_s = fill(cbh_s,size(chm_z))
                 chm_b_s .+= chm_e
             end
         
             if (season == "winter") || (season == "both")
-                chm_b_w = fill(cbh,size(chm_z))
+                chm_b_w = fill(cbh_w,size(chm_z))
                 chm_b_w .+= chm_e
             end
         end
 
+    end
+
+    if @isdefined(cbhf) || cbh > 0
+        cbh_flag = true
+    else
+        cbh_flag = false
     end
 
 
@@ -413,7 +445,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 end
 
                 pt_chm_x, pt_chm_y, pt_chm_x_thick, pt_chm_y_thick = calcCHM_Ptrans!(chm2rad,pt_chm_x,pt_chm_y,pt_chm_z,pt_chm_b,pt_lavd,
-                                pts_x[crx],pts_y[crx],pts_e[crx],image_height,chm_cellsize,rbins_chm,cbh) # calculated points
+                                pts_x[crx],pts_y[crx],pts_e[crx],image_height,chm_cellsize,rbins_chm,cbh_flag) # calculated points
 
 
             elseif (forest_type == "deciduous") || (forest_type == "mixed")
@@ -424,7 +456,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                         copy(chm_b_s),copy(chm_lavd_summer),pts_x[crx],pts_y[crx],pts_e[crx],forest_peri)
 
                     pt_chm_x_s, pt_chm_y_s, pt_chm_x_thick_s, pt_chm_y_thick_s = calcCHM_Ptrans!(chm2rad,pt_chm_x,pt_chm_y,pt_chm_z,pt_chm_b_s,pt_lavd_s,
-                        pts_x[crx],pts_y[crx],pts_e[crx],image_height,chm_cellsize,rbins_chm,cbh_s) # calculated points
+                        pts_x[crx],pts_y[crx],pts_e[crx],image_height,chm_cellsize,rbins_chm,cbh_flag) # calculated points
 
                 end
             
@@ -434,7 +466,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                         copy(chm_b_w),copy(chm_lavd_winter),pts_x[crx],pts_y[crx],pts_e[crx],forest_peri)
 
                     pt_chm_x_w, pt_chm_y_w, _, _ = calcCHM_Ptrans!(chm2rad,pt_chm_x,pt_chm_y,pt_chm_z,pt_chm_b_w,pt_lavd_w,
-                        pts_x[crx],pts_y[crx],pts_e[crx],image_height,chm_cellsize,rbins_chm,cbh_w) # calculated points
+                        pts_x[crx],pts_y[crx],pts_e[crx],image_height,chm_cellsize,rbins_chm,cbh_flag) # calculated points
                     
                 end
 

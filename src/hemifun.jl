@@ -523,7 +523,7 @@ end
 function calcCHM_Ptrans!(chm2rad::CHM2RAD,pcd_x::Vector{Float64},pcd_y::Vector{Float64},pcd_z::Vector{Float64},
     pcd_b::Vector{Float64},lavd::Vector{Float64},
     xcoor::Float64,ycoor::Float64,ecoor::Float64,
-    image_height::Float64,cellsize::Float64,rbins::Vector{Float64},cbh::Float64)
+    image_height::Float64,cellsize::Float64,rbins::Vector{Float64},cbh_flag::Bool)
 
     normalise_chmdat!(pcd_x,pcd_y,pcd_z,pcd_b,xcoor,ycoor,ecoor,image_height)
 
@@ -550,7 +550,7 @@ function calcCHM_Ptrans!(chm2rad::CHM2RAD,pcd_x::Vector{Float64},pcd_y::Vector{F
     fill!(sum_lavd_thick,0.0)
     fill!(sum_thick,0.0)
     calcThickness!(chm2rad,rbins,sum_lavd_thick, sum_thick,
-        chm_phi,chm_tht,pcd_z,lavd,bse_phi,bse_tht,pcd_b,cellsize,cbh)
+        chm_phi,chm_tht,pcd_z,lavd,bse_phi,bse_tht,pcd_b,cellsize,cbh_flag)
 
     pt_chm_x, pt_chm_y             = calcPtrans(chm2rad,sum_lavd_thick,cellsize)
     pt_chm_x_thick, pt_chm_y_thick = calcPtrans_dist(chm2rad,sum_thick)
@@ -563,7 +563,7 @@ end
 function calcThickness!(chm2rad::CHM2RAD,rbins::Vector{Float64},sum_lavd_thick::Matrix{Float64},sum_thick::Matrix{Float64},
                         chm_phi::Vector{Float64},chm_tht::Vector{Float64},chm_rad::Vector{Float64},lavd::Vector{Float64},
                         bse_phi::Vector{Float64},bse_tht::Vector{Float64},bse_rad::Vector{Float64},
-                        cellsize::Float64,cbh::Float64)
+                        cellsize::Float64,cbh_flag::Bool)
 
     @unpack phi_bins_long, phi_bins_short, dx1_pbl, dx2_pbl = chm2rad
     @unpack chm_temptht_long, chm_temptht_short, bse_temptht, tdx_chm, tdx_bse = chm2rad
@@ -596,7 +596,7 @@ function calcThickness!(chm2rad::CHM2RAD,rbins::Vector{Float64},sum_lavd_thick::
             chm_temptht_short .= Int.(round.(chm_temptht_long[dx1_pbl:dx2_pbl]))
             chm_temptht_short[chm_temptht_short .== 0] .= 1 # minimum elevation angle is 1
 
-            if cbh .> 0
+            if cbh_flag
                 # get the canopy base line
                 fix_bse = idx_bse[frbins(bse_rad,rbins[rbix],rbins[rbix+1])]
                 if size(fix_bse) > (1,)
