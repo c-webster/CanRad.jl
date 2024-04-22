@@ -20,7 +20,8 @@ function compatability_check!(par_in::Dict)
 
     !haskey(par_in,"branch_spacing") && (par_in["branch_spacing"] = 0.1)
 
-    !haskey(par_in,"cbh") && (par_in["cbh"] = 2)
+    !haskey(par_in,"cbh") && (par_in["cbh"] = 2.0)
+    par_in["cbh"] = Float64(par_in["cbh"])
 
     ### disable tilt option since it is not implemented properly
     (!haskey(par_in,"tilt") || par_in["tilt"]) && (par_in["tilt"] = false)

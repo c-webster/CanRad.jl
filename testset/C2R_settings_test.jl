@@ -19,8 +19,9 @@ function chm2rad_settings(basefolder="empty"::String)
         "forest_type"  => "evergreen", # evergreen, deciduous, mixed
         "tree_species" => "needleleaf", # needleleaf, broadleaf, both
         "forest_peri"  => 100, # radius within which forest is included in SHI calculation
-        "cbh"          => 2, # height of canopy base above ground (can also be input as raster for varied base height)
-
+        "cbh"          => 2.0, # height of canopy base above ground (can also be input as raster for varied base height)
+        "trunks"       => false,
+        
         # calculation settings
         "calc_trans" => true, # calculate time-varying transmissivity
         "calc_swr"   => 1, # 0 = off; 1 = potential swr (atm_trans = 1); 2 = real swr (needs swrf in dat_in)
@@ -61,8 +62,6 @@ function chm2rad_settings(basefolder="empty"::String)
         "lavdf" => basefolder*"/input/test_lavd.asc",
         # dbh
         "dbhf" => basefolder*"/input/test_chm_treeinfo.txt",
-        # chm_base
-        "cbhf" => basefolder*"/input/test_chm_base.asc",
         # swr
         "swrf" => basefolder*"/input/test_swr.txt"
     )

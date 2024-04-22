@@ -265,7 +265,6 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     # create the canopy base height vector based on above settings
     if @isdefined(cbhf)
 
-        println("using cbh raster")
         chm_b = read_griddata_window(cbhf,limits_canopy,true,true)[3] .+ chm_e
 
         if (forest_type == "deciduous") || (forest_type == "mixed")
@@ -308,6 +307,20 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         cbh_flag = false
     end
 
+    limits_trees =  getlimits!(Vector{Float64}(undef,4),pts_x,pts_y,forest_peri)
+
+    # load the dbh
+    if trunks
+        dbh_x, dbh_y, dbh_z, dbh_r, lastc = loaddbh(dbhf,limits_trees)
+        if !isempty(dbh_x)
+            dbh_e = findelev!(copy(dtm_x),copy(dtm_y),copy(dtm_z),dbh_x,dbh_y,limits_trees,10.0,Vector{Float64}(undef,size(dbh_x))            )
+            tsm_x, tsm_y, tsm_z  = calculate_trunks(dbh_x,dbh_y,dbh_z,dbh_r,30,0.1,dbh_e)
+            include_trunks = true
+        else; include_trunks = false; end
+        rbins = collect(0:(forest_peri-0)/5:forest_peri)
+        knum_t = Int.(round.(collect(15:(diff([10,1])/5)[1]:1)))
+    else; include_trunks = false;
+    end
 
     ###############################################################################
     # > Image matrix  preparation
@@ -482,6 +495,29 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
         end
 
+        if include_trunks
+            pt_tsm_x, pt_tsm_y, pt_tsm_z = getsurfdat(copy(tsm_x),copy(tsm_y),copy(tsm_z),pts_x[crx],pts_y[crx],pts_e[crx],Int.(forest_peri))
+            tidx = findall(dist(dbh_x,dbh_y,pts_x[crx],pts_y[crx]) .< 5)
+            if size(tidx,1) > 0
+                hdt  = dist(dbh_x[tidx],dbh_y[tidx],pts_x[crx],pts_y[crx])
+                npt  = fill(NaN,(size(tidx)))
+                hint = fill(NaN,(size(tidx)))
+                        for tixt = 1:1:size(tidx,1)
+                    if hdt[tixt] < 1
+                        npt[tixt] = Int.(150); hint[tixt] = 0.005
+                    else
+                        npt[tixt] = Int.(100); hint[tixt] = 0.01
+                    end
+                end
+                tsm_tmp = calculate_trunks(dbh_x[tidx],dbh_y[tidx],dbh_z[tidx],dbh_r[tidx],npt,hint,dbh_e[tidx])
+                pt_tsm_x, pt_tsm_y, pt_tsm_z = pcd2pol2cart!(append!(pt_tsm_x,tsm_tmp[1]),append!(pt_tsm_y,tsm_tmp[2]),append!(pt_tsm_z,tsm_tmp[3]),
+                                                        pts_x[crx],pts_y[crx],pts_e[crx],"trunks",image_height)
+
+            else
+                pcd2pol2cart!(pt_tsm_x,pt_tsm_y,pt_tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],"trunks",image_height)
+            end
+        end
+
         if progress
             elapsed = time() - start
             if crx != 1; try; rm(joinpath(progdir,progtext1)); catch; end; end
@@ -538,6 +574,14 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                         fillmat!(canrad,kdtree,hcat(pt_chm_x_pts,pt_chm_y_pts),20,mat2ev_s); # include canopy surface points for more definition at the tops of trees
                         fillmat!(canrad,kdtree,hcat(pt_chm_x_thick_s,pt_chm_y_thick_s),15,mat2ev_s); # thick canopy treated as opaque in summer
                     end
+
+                    if include_trunks
+                        for zdx = 1:1:size(rbins,1)-1
+                            tridx = findall(rbins[zdx] .<= pt_tsm_z .< rbins[zdx+1])
+                            fillmat!(canrad,kdtree,hcat(pt_tsm_x[tridx],pt_tsm_y[tridx]),knum_t[zdx],mat2ev_s)
+                        end
+                    end
+                    
                     mat2ev_s[outside_img] .= 1
                     save_images && (images["SHI_summer"][:,:,crx] = mat2ev_s)
 
@@ -553,6 +597,8 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 end
 
             end
+
+
 
         end
 
