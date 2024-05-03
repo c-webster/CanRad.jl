@@ -147,7 +147,7 @@ for x = 1:size(crowns_dict["features"],1) # loop through the crowns
         elseif tree_species == "Scot Pine"
             LA = 0.0091 * (dbh_t^2.363) * (cz[x]^0.106) # scot pine
         elseif tree_species == "Beech"
-            LA = 8.56 + (0.0286*(dbh_t^2.623))
+            LA = 8.56 + (0.0286*(dbh_t^2.623)) # DOI 10.1007/s10342-009-0345-8
         else
             println("tree species not defined")
         end
