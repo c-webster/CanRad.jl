@@ -4,3 +4,6 @@
 .DS_Store
 /Manifest.toml
 /dev/
+/testset/Output_tests_C2R
+/testset/Output_tests_L2R
+/testset/Output_tests_T2R

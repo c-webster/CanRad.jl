@@ -199,7 +199,7 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             @unpack trans_for = solar
             calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
 
-            dataset["Forest_Transmissivity_terrain"][:,crx] = Int8.(round.(vec(aggregate_data(solar,trans_for))).*100);
+            dataset["Forest_Transmissivity_terrain"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))*100));
 
             if calc_swr > 0
                 swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,Vf_p,calc_swr)
