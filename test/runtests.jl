@@ -2,10 +2,10 @@ using DelimitedFiles, NCDatasets, CanRad, Test
 
 println("Packages compiled")
 
+cwd = pwd()
+
+cd(dirname(pathof(CanRad)))
 cd("../testset")
-
-# cd("testset")
-
 datdir = pwd()
 
 ptsf  = "test_pts.txt"
@@ -81,8 +81,9 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
 
 end
 
-cd("..")
+cd(cwd)
 
 for model in ["T2R","C2R","L2R"]
     rm(joinpath(datdir,"Output_tests_"*model),force=true,recursive=true)
 end
+
