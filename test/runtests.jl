@@ -83,7 +83,7 @@ end
 
 cd(cwd)
 
-for model in ["T2R","C2R","L2R"]
-    rm(joinpath(datdir,"Output_tests_"*model),force=true,recursive=true)
-end
+# for model in ["T2R","C2R","L2R"]
+#     rm(joinpath(datdir,"Output_tests_"*model),force=true,recursive=true)
+# end
 

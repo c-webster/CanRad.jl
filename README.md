@@ -53,6 +53,7 @@ Add required packages
 
 Run the test (this will take several minutes)
 ```
+using CanRad
 ]test CanRad
 ```
 
@@ -66,6 +67,7 @@ Edit ~/test/run_CanRad_tests.jl
 
 
 <!-- If *phenology* was enabled in L2R, the output is a .gif for each location.  -->
+
 
 
 
