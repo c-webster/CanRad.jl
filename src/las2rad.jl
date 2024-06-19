@@ -381,7 +381,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     close(dataset)
     save_images && close(images)
 
-    save_images && make_SHIs(outdir)
+    (save_images && make_pngs) && make_SHIs(outdir)
 
     println("done with "*taskID)
 

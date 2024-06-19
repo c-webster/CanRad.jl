@@ -37,6 +37,8 @@ function compatability_check!(par_in::Dict)
 
     !haskey(par_in,"oshd_flag") && (par_in["oshd_flag"] = false)
 
+    (!haskey(par_in,"make_pngs") && par_in["save_images"]) && (par_in["make_pngs"] = true)
+
 
 end
 

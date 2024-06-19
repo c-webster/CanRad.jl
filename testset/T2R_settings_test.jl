@@ -28,6 +28,7 @@ function ter2rad_settings(basefolder="empty"::String)
         # run settings
         "batch"        => false, # running in parallel or single process
         "save_images"  => true, # save the calculated images in a netcdf file
+        "make_pngs"    => true, # create .png files from the SHIs
         "save_horizon" => true, # save the calculated terrain horizon line 
         "progress"     => true  # report individual step progress in /ProgressLastPoint
 

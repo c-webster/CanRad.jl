@@ -39,10 +39,11 @@ function chm2rad_settings(basefolder="empty"::String)
         "image_height" => 0.25, #FLOAT NUMBER  !!!!!!!!
 
         # run settings
-        "batch"       => false, # running in parallel or single process
-        "save_images" => true, # save the calculated images in a netcdf file
-        "save_hlm"    => true, # save the calculated terrain horizon line 
-        "progress"    => true  # report individual step progress in /ProgressLastPoint
+        "batch"        => false, # running in parallel or single process
+        "save_images"  => true, # save the calculated images in a netcdf file
+        "make_pngs"    => true, # create .png files from the SHIs
+        "save_horizon" => true, # save the calculated terrain horizon line 
+        "progress"     => true  # report individual step progress in /ProgressLastPoint
 
     )
 

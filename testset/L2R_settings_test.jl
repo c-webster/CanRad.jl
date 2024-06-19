@@ -39,6 +39,7 @@ function las2rad_settings(basefolder::String)
         # run settings
         "batch"       => false,
         "save_images" => true, # save the calculated images in a netcdf file
+        "make_pngs"   => true, # create .png files from the SHIs
         "progress"    => true # report individual step progress in /ProgressLastPoint
 
     )
