@@ -549,6 +549,8 @@ function make_SHIs(datdir::String)
 
     end
 
+    close(images)
+
 end
 
 function make_SHIs(datdir::String,forest_type::String,season::String,calc_terrain::Bool)
