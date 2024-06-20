@@ -726,7 +726,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     save_images && close(images)
     save_horizon && close(hlm)
 
-    && make_SHIs(outdir,forest_type,season,calc_terrain)
+    (save_images && make_pngs) && make_SHIs(outdir,forest_type,season,calc_terrain)
 
     println("done with "*taskID)
 
