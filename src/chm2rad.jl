@@ -536,7 +536,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         fillmat!(canrad,kdtree,hcat(pt_dtm_x,pt_dtm_y),10,mat2ev);
 
         # occupy matrices
-        if ((special_implementation == "swissrad") || (special_implementation == "oshd")) && (forest_flag == 2)
+        if ((special_implementation == "swissrad") || (special_implementation == "oshd"))# && (forest_flag == 2)
             
             copy!(mat2ev_w,mat2ev)
             copy!(mat2ev_s,mat2ev)
@@ -553,6 +553,10 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
                 mat2ev_w[outside_img] .= 1
                 mat2ev_s[outside_img] .= 1
+
+                save_images && (images["SHI_summer"][:,:,crx] = mat2ev_s)
+                save_images && (images["SHI_winter"][:,:,crx] = mat2ev_w)
+
             end
 
         else

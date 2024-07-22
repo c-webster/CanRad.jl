@@ -122,6 +122,55 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
                             "comments" => " sum of calculated diffuse + direct radiation components"])
             defVar(ds,"swr_direct",Int32,("datetime","Coordinates",),
                         deflatelevel=5,fillvalue = Int32(-9999),
+
+function createfiles_terrain(outdir::String,outstr::String,pts::Matrix{Float64},calc_trans::Bool,calc_swr::Int64,
+    loc_time=nothing,time_zone=nothing)
+
+    outfile  = joinpath(outdir,"Output_"*outstr*".nc")
+
+    ds = NCDataset(outfile,"c",format=:netcdf4_classic)
+
+    defDim(ds,"Coordinates",size(pts,1))
+    defVar(ds,"easting",pts[:,1],("Coordinates",))
+    defVar(ds,"northing",pts[:,2],("Coordinates",))
+
+    defVar(ds,"svf_planar_t",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
+        attrib=[
+            "long_name"=> "sky-view fraction planar",
+            "comments" =>
+            "perspective of a flat planar",])
+
+    defVar(ds,"svf_hemi_t",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
+        attrib=[
+            "long_name"=> "sky-view fraction hemispherical",
+            "comments" =>
+            "perspective of hemipherically shaped surface or plant",])
+
+    if calc_trans
+
+        defDim(ds,"datetime",length(loc_time))
+
+        if time_zone >= 0
+            dt_comment = "time zone UTC+"*string(time_zone)
+        elseif time_zone < 0
+            dt_comment = "time zone UTC-"*string(time_zone)
+        end
+
+        defVar(ds,"datetime",loc_time,("datetime",),attrib=["comments" => dt_comment])
+
+        defVar(ds,"trans_t",Int32,("datetime","Coordinates",),fillvalue = Int8(-1),
+                    deflatelevel=5,                            
+                    attrib=["long_name"=> "forest transmissivity",])
+
+        if calc_swr > 0
+
+            defVar(ds,"swr_total_t",Int32,("datetime","Coordinates",),
+                        deflatelevel=5,fillvalue = Int32(-1),
+                        attrib=[
+                            "units"=>"Watts per metre squared",
+                            "comments" => " sum of calculated diffuse + direct radiation components"])
+            defVar(ds,"swr_direct_t",Int32,("datetime","Coordinates",),
+                        deflatelevel=5,fillvalue = Int32(-1),
                         attrib=["units"=>"Watts per metre squared",])
 
         end
@@ -385,6 +434,229 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 
 	return ds
 
+
+function createfiles_fromSHI(outdir::String,outstr::String,pts::Matrix{Float64},calc_swr::Int64,
+    SHI_summer::Bool,SHI_winter::Bool,SHI_terrain::Bool,SHI_evergreen::Bool,loc_time=nothing,time_zone=nothing)
+
+    outfile  = joinpath(outdir,"Output_"*outstr*".nc")
+
+    ds = NCDataset(outfile,"c",format=:netcdf4_classic)
+
+    defDim(ds,"Coordinates",size(pts,1))
+    defVar(ds,"easting",pts[:,1],("Coordinates",))
+    defVar(ds,"northing",pts[:,2],("Coordinates",))
+
+    defDim(ds,"datetime",length(loc_time))
+
+    if time_zone >= 0
+        dt_comment = "time zone UTC+"*string(time_zone)
+    elseif time_zone < 0
+        dt_comment = "time zone UTC-"*string(time_zone)
+    end
+
+    defVar(ds,"datetime",loc_time,("datetime",),attrib=["comments" => dt_comment])
+
+    if SHI_evergreen
+
+        defVar(ds,"svf_planar_e",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int32(-1),
+            attrib=[
+                "long_name"=> "sky-view fraction planar evergreen forest",
+                "comments" =>
+                "perspective of a flat planar surface
+                calculated for 100% evergreen forest"
+                    ,])
+        defVar(ds,"svf_hemi_e",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int32(-1),
+            attrib=[
+                "long_name"=> "sky-view fraction hemispherical evergreen forest",
+                "comments" =>
+                "perspective of hemipherically shaped surface or plant
+                calculated for 100% evergreen forest",])
+
+        defVar(ds,"for_trans_e",Int32,("datetime","Coordinates",),fillvalue = Int8(-1),
+        deflatelevel=5,
+        attrib=[
+            "long_name"=> "forest transmissivity evergreen forest",
+            "comments" =>
+            "calculated for 100% evergreen forest"
+            ,])
+
+        if calc_swr > 0
+
+            defVar(ds,"swr_total_e",Int32,("datetime","Coordinates",),
+            deflatelevel=5,fillvalue = Int32(-1),
+            attrib=[
+                "long_name" => "total incoming shortwave radiation evergreen forest",    
+                "units"=>"Watts per metre squared", 
+                "comments" =>
+                "calculated for 100% evergreen forest
+                sum of calculated diffuse + direct"
+                ,])
+
+        defVar(ds,"swr_direct_e",Int32,("datetime","Coordinates",),
+            deflatelevel=5,fillvalue = Int32(-1),
+            attrib=[
+                "long_name" => "direct incoming shortwave radiation evergreen forest",    
+                "units"=>"Watts per metre squared",
+                "comments" =>
+                "calculated for 100% evergreen forest"
+                ,])
+
+        end
+
+    end
+
+    if SHI_summer
+
+        defVar(ds,"svf_planar_s",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
+            attrib=[
+                "long_name"=> "sky-view fraction planar summer",
+                "comments" =>
+                "perspective of a flat planar surface
+                calculated for deciduous or mixed forests in summer canopy conditions"
+                ,])
+        defVar(ds,"svf_hemi_s",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
+            attrib=[
+                "long_name"=> "sky-view fraction hemi summer",
+                "comments" =>
+                "perspective of hemipherically shaped surface or plant
+                calculated for deciduous or mixed forests in summer canopy conditions"
+                ,])
+
+        defVar(ds,"for_trans_s",Int32,("datetime","Coordinates",),fillvalue = Int8(-1),
+            deflatelevel=5,
+            attrib=[
+                "long_name"=> "forest transmissivity summer",
+                "comments" =>
+                "calculated for deciduous or mixed forests in summer canopy conditions"
+                ,])
+
+        if calc_swr > 0
+
+            defVar(ds,"swr_total_s",Int32,("datetime","Coordinates",),
+            deflatelevel=5,fillvalue = Int32(-1),
+            attrib=[
+                "long_name" => "total incoming shortwave radiation summer",  
+                "units"=>"Watts per metre squared", 
+                "comments" =>
+                "calculated for deciduous or mixed forests in summer canopy conditions
+                sum of calculated diffuse + direct radiation components"
+                ,])
+
+            defVar(ds,"swr_direct_s",Int32,("datetime","Coordinates",),
+                deflatelevel=5,fillvalue = Int32(-1),
+                attrib=[
+                    "long_name" => "direct incoming shortwave radiation summer",  
+                    "units"=>"Watts per metre squared",
+                    "comments" =>
+                    "calculated for deciduous or mixed forests in summer canopy conditions"
+                    ,])
+    
+        end
+
+    end
+
+    if SHI_winter
+
+        defVar(ds,"svf_planar_w",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
+            attrib=[
+                "long_name"=> "sky-view fraction planar winter",
+                "comments" =>
+                "perspective of a flat planar surface
+                calculated for deciduous or mixed forests in winter canopy conditions"
+                ,])
+
+        defVar(ds,"svf_hemi_w",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
+            attrib=[
+                "long_name"=> "sky-view fraction hemi winter",
+                "comments" =>
+                "perspective of hemipherically shaped surface or plant
+                calculated for deciduous or mixed forests in winter canopy conditions"
+                ,])
+
+        defVar(ds,"for_trans_w",Int32,("datetime","Coordinates",),fillvalue = Int8(-1),
+        deflatelevel=5,
+        attrib=[
+            "long_name"=> "forest transmissivity winter",
+            "comments" =>
+            "calculated for deciduous or mixed forests in winter canopy conditions"
+            ,])
+
+        if calc_swr > 0
+
+            defVar(ds,"swr_total_w",Int32,("datetime","Coordinates",),
+            deflatelevel=5,fillvalue = Int32(-1),
+            attrib=[
+                "long_name" => "total incoming shortwave radiation winter",
+                "units"=>"Watts per metre squared", 
+                "comments" =>
+                "calculated for deciduous or mixed forests in winter canopy conditions
+                sum of calculated diffuse + direct radiation components"
+                ,])
+
+            defVar(ds,"swr_direct_w",Int32,("datetime","Coordinates",),
+                deflatelevel=5,fillvalue = Int32(-1),
+                attrib=[
+                    "long_name" => "direct incoming shortwave radiation winter",    
+                    "units"=>"Watts per metre squared",
+                    "comments" =>
+                    "calculated for deciduous or mixed forests in winter canopy conditions"
+                    ,])
+
+        end
+
+    end
+
+    if SHI_terrain
+
+        defVar(ds,"svf_planar_t",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
+            attrib=[
+                "long_name" => "sky-view fraction planar terrain",
+                "comments" =>
+                "perspective of a flat planar surface
+                calcualated for terrain only"
+                ,])
+        defVar(ds,"svf_hemi_t",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
+            attrib=[
+                "long_name" => "sky-view fraction hemi terrain",
+                "comments" =>
+                "perspective of hemipherically shaped surface or plant
+                calcualated for terrain only"
+                ,])
+
+        defVar(ds,"trans_t",Int8,("datetime","Coordinates",),fillvalue = Int8(-1),
+        deflatelevel=5,
+        attrib=[
+            "long_name" => "transmissivity terrain",
+            "comments"  => "calcualated for terrain only"
+            ,])
+
+        if calc_swr > 0
+
+            defVar(ds,"swr_total_t",Int32,("datetime","Coordinates",),
+                deflatelevel=5,fillvalue = Int32(-1),
+                attrib=[
+                    "long_name" => "total incoming shortwave radiation terrain",    
+                    "units"=>"Watts per metre squared", 
+                    "comments" =>
+                    "calculated for terrain only
+                    sum of calculated diffuse + direct radiation components"
+                    ,])
+
+            defVar(ds,"swr_direct_t",Int32,("datetime","Coordinates",),
+                deflatelevel=5,fillvalue = Int32(-1),
+                attrib=[
+                    "long_name" => "direct incoming shortwave radiation terrain",    
+                    "units"=>"Watts per metre squared",
+                    "comments" =>
+                    "calculated for terrain only"
+                    ,])
+
+        end
+
+    end
+
+	return ds
+
 end
 
 function create_exmat(outdir::String,outstr::String,pts::Matrix{Float64},g_img::Matrix{Int64})
@@ -400,6 +672,22 @@ function create_exmat(outdir::String,outstr::String,pts::Matrix{Float64},g_img::
     defVar(images,"easting",pts[:,1],("Coordinates",),deflatelevel=1)
     defVar(images,"northing",pts[:,2],("Coordinates",),deflatelevel=1)
     defVar(images,"SHI",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
+
+    return images
+
+function create_exmat_terrain(outdir::String,outstr::String,pts::Matrix{Float64},g_img::Matrix{Int64})
+
+    outfile  = joinpath(outdir,"SHIs_"*outstr*".nc")
+
+    images = NCDataset(outfile,"c",format=:netcdf4_classic)
+
+    defDim(images,"img_x",size(g_img,1))
+    defDim(images,"img_y",size(g_img,2))
+    defDim(images,"Coordinates",size(pts,1))
+
+    defVar(images,"easting",pts[:,1],("Coordinates",),deflatelevel=1)
+    defVar(images,"northing",pts[:,2],("Coordinates",),deflatelevel=1)
+    defVar(images,"SHI_terrain",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
 
     return images
 
@@ -756,189 +1044,276 @@ end
 
 function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,ptsx::Vector{Float64},
                             ptsy::Vector{Float64},exdir::String,hlmexdir::String,par_in::Dict{String, Any},
-                            ptdx::Vector{Float64})
+                            ptdx::Vector{Float64},pt_spacing::Int64,fulltilesize::Int64,
+                            shiexdir::String="")
 
-            if (!par_in["special_implementation"] == "swissrad") || (!par_in["special_implementation"] == "oshd")
-                error("collate2tilefile() only works for swissrad implementation of CanRad")
+    if (par_in["special_implementation"] !== "swissrad") && (par_in["special_implementation"] !== "oshd")
+        @warn "collate2tilefile() only written and tested for swissrad and oshd implementation of CanRad"
+    end
+
+    if haskey(par_in,"save_horizon") && par_in["save_horizon"]
+        save_hlm = true
+        !ispath(hlmexdir) && mkpath(hlmexdir)
+    else
+        save_hlm = false
+    end
+
+    if haskey(par_in,"save_images") && par_in["save_images"]
+        move_shis = true
+        !ispath(joinpath(shiexdir,input)) && mkdir(joinpath(shiexdir,input))
+    else
+        move_shis = false
+    end
+
+    numptsvec = pt_spacing * fulltilesize
+    numptsgrid = div(fulltilesize,pt_spacing)
+
+    # combine tile output to one file
+    tiles = readdir(outdir)
+
+    xlim = collect(limits[1]:pt_spacing:limits[2]-pt_spacing)
+    ylim = collect(limits[3]:pt_spacing:limits[4]-pt_spacing)
+
+    # create the Radiation output dataset
+    ds = NCDataset(joinpath(exdir,"Output_"*input*".nc"),"c",format=:netcdf4_classic)
+    defDim(ds,"locX",size(xlim,1)); defDim(ds,"locY",size(ylim,1))
+    defVar(ds,"Easting",Float64.(unique(ptsx)),("locX",)); defVar(ds,"Northing",Float64.(reverse(unique(ptsy))),("locY",))
+    loc_time = NCDataset(joinpath(outdir,tiles[1],"Output_"*tiles[1]*".nc"))["datetime"][:]
+    defDim(ds,"DateTime",size(loc_time,1))
+    time_zone = par_in["time_zone"]
+    if  time_zone >= 0
+        dt_comment = "time zone UTC+"*string(time_zone)
+    elseif time_zone < 0
+        dt_comment = "time zone UTC-"*string(time_zone)*"; timestamp is for beginning of averaged period"
+    end
+    defVar(ds,"datetime",loc_time,("datetime",),attrib=["comments" => dt_comment])
+
+    numptstime = size(loc_time)[1]
+
+    if save_hlm
+        # create the horizon line output dataset
+        hlm = NCDataset(joinpath(hlmexdir,"HLM_"*input*".nc"),"c",format=:netcdf4_classic)
+        phi_bins = NCDataset(joinpath(outdir,tiles[1],"HLM_"*tiles[1]*".nc"))["phi"][:]
+        defDim(hlm,"locX",size(xlim,1)); defDim(hlm,"locY",size(ylim,1))
+        defVar(hlm,"Easting",Float64.(unique(ptsx)),("locX",)); defVar(hlm,"Northing",Float64.(reverse(unique(ptsy))),("locY",))
+        defDim(hlm,"phi",size(phi_bins,1))
+        defVar(hlm,"Horizon_Line_phi",Int16.(phi_bins),("phi",),deflatelevel=1,attrib=["units" =>
+            "degrees clockwise from north"])
+    end
+
+    # create collate flags for terrain, summer and winter
+    if (haskey(par_in,"calc_terrain") && par_in["calc_terrain"]) || (haskey(par_in,"SHI_terrain") && par_in["SHI_terrain"])
+       terrain = true
+    else
+        terrain = false
+    end
+
+    if (haskey(par_in,"season") && ((par_in["season"] == "both") || (par_in["season"] == "summer"))) ||
+         (haskey(par_in,"SHI_summer") && par_in["SHI_summer"])
+       summer = true
+    else
+        summer = false
+    end
+
+    if (haskey(par_in,"season") && ((par_in["season"] == "both") || (par_in["season"] == "winter"))) ||
+        (haskey(par_in,"SHI_winter") && par_in["SHI_winter"])
+       winter = true
+    else
+        winter = false
+    end
+
+    for tx in tiles
+
+        tds = NCDataset(joinpath(outdir,tx,"Output_"*tx*".nc"))
+        save_hlm && (pds = NCDataset(joinpath(outdir,tx,"HLM_"*tx*".nc")))
+
+        if tx == tiles[1]
+
+            global east  = tds["easting"][:]
+            global north = tds["northing"][:]
+
+            terrain && (global svf_p_t = tds["svf_planar_t"][:])
+            terrain && (global svf_h_t = tds["svf_hemi_t"][:])
+            terrain && (global for_tau_t = tds["trans_t"][:,:])
+
+            if sum(ptdx) != (size(ptdx,1) * 2) # check for if the sub-tile is terrain only
+            
+                winter && (global svf_p_w = tds["svf_planar_w"][:])
+                summer && (global svf_p_s = tds["svf_planar_s"][:])
+
+                winter && (global svf_h_w = tds["svf_hemi_w"][:])
+                summer && (global svf_h_s = tds["svf_hemi_s"][:])
+
+                winter && (global for_tau_w = tds["for_trans_w"][:,:])
+                summer && (global for_tau_s = tds["for_trans_s"][:,:])
+
+            else
+
+                winter && (global svf_p_w = fill(-1,size(svf_p_t)))
+                summer && (global svf_p_s = fill(-1,size(svf_p_t)))
+
+                winter && (global svf_h_w = fill(-1,size(svf_p_t)))
+                summer && (global svf_h_s = fill(-1,size(svf_p_t)))
+
+                winter && (global for_tau_w = fill(-1,size(for_tau_t)))
+                summer && (global for_tau_s = fill(-1,size(for_tau_t)))
+
             end
 
-            !ispath(hlmexdir) && mkpath(hlmexdir)
+            save_hlm && (global tht   = pds["tht"][:,:])
 
-            # combine tile output to one file
-            tiles = readdir(outdir)
+        else
 
-            xlim = collect(limits[1]:10:limits[2]-10)
-            ylim = collect(limits[3]:10:limits[4]-10)
+            append!(east,tds["easting"][:])
+            append!(north,tds["northing"][:])
 
-            # create the Radiation output dataset
-            ds = NCDataset(joinpath(exdir,"Output_"*input*".nc"),"c",format=:netcdf4_classic)
-            defDim(ds,"locX",size(xlim,1)); defDim(ds,"locY",size(ylim,1))
-            defVar(ds,"Easting",Float32.(unique(ptsx)),("locX",)); defVar(ds,"Northing",Float32.(reverse(unique(ptsy))),("locY",))
-            loc_time = NCDataset(joinpath(outdir,tiles[1],"Output_"*tiles[1]*".nc"))["datetime"][:]
-            defDim(ds,"DateTime",size(loc_time,1))
-            time_zone = par_in["time_zone"]
-            if  time_zone >= 0
-				dt_comment = "time zone UTC+"*string(time_zone)
-			elseif time_zone < 0
-				dt_comment = "time zone UTC-"*string(time_zone)*"; timestamp is for beginning of averaged period"
-			end
-			defVar(ds,"datetime",loc_time,("datetime",),attrib=["comments" => dt_comment])
+            terrain && (append!(svf_p_t,tds["svf_planar_t"][:]))
+            terrain && (append!(svf_h_t,tds["svf_hemi_t"][:]))
+            terrain && (for_tau_t = hcat(for_tau_t,tds["trans_t"][:,:]))
 
-            # create the horizon line output dataset
-            hlm = NCDataset(joinpath(hlmexdir,"HLM_"*input*".nc"),"c",format=:netcdf4_classic)
-            phi_bins = NCDataset(joinpath(outdir,tiles[1],"HLM_"*tiles[1]*".nc"))["phi"][:]
-            defDim(hlm,"locX",size(xlim,1)); defDim(hlm,"locY",size(ylim,1))
-            defVar(hlm,"Easting",Float32.(unique(ptsx)),("locX",)); defVar(hlm,"Northing",Float32.(reverse(unique(ptsy))),("locY",))
-            defDim(hlm,"phi",size(phi_bins,1))
-            defVar(hlm,"Horizon_Line_phi",Int16.(phi_bins),("phi",),deflatelevel=1,attrib=["units" =>
-                "degrees clockwise from north"])
-            defVar(hlm,"phi_sortdx",Int16.(NCDataset(joinpath(outdir,tiles[1],"HLM_"*tiles[1]*".nc"))["phi_sortdx"][:]),("phi",),deflatelevel=1,
-                attrib=["comments" => "sort index for phi/tht variables for phi values to be sorted 0-360degrees",])
+            if sum(ptdx) != (size(ptdx,1) * 2)
 
-            for tx in tiles
+                winter && (append!(svf_p_w,tds["svf_planar_w"][:]))
+                summer && (append!(svf_p_s,tds["svf_planar_s"][:]))
 
-                tds = NCDataset(joinpath(outdir,tx,"Output_"*tx*".nc"))
-                pds = NCDataset(joinpath(outdir,tx,"HLM_"*tx*".nc"))
+                winter && (append!(svf_h_w,tds["svf_hemi_w"][:]))
+                summer && (append!(svf_h_s,tds["svf_hemi_s"][:]))
 
-                if tx == tiles[1]
+                winter && (for_tau_w = hcat(for_tau_w,tds["for_trans_w"][:,:]))
+                summer && (for_tau_s = hcat(for_tau_s,tds["for_trans_s"][:,:]))
 
-                    global east  = tds["easting"][:]
-                    global north = tds["northing"][:]
+            else
 
-                    global svf_p_w = tds["svf_planar_winter"][:]
-                    global svf_p_s = tds["svf_planar_summer"][:]
-                    global svf_p_t = tds["svf_planar_terrain"][:]
+                dummvf = fill(-1,size(tds["svf_planar_t"][:]))
+                winter && (append!(svf_p_w,dummvf))
+                summer && (append!(svf_p_s,dummvf))
 
-                    global svf_h_w = tds["svf_hemi_winter"][:]
-                    global svf_h_s = tds["svf_hemi_summer"][:]
-                    global svf_h_t = tds["svf_hemi_terrain"][:]
+                winter && (append!(svf_h_w,dummvf))
+                summer && (append!(svf_h_s,dummvf))
 
-                    global for_tau_w = tds["Forest_Transmissivity_winter"][:]
-                    global for_tau_s = tds["Forest_Transmissivity_summer"][:]
-                    global for_tau_t = tds["Forest_Transmissivity_terrain"][:]
-
-                    global tht   = pds["tht"][:]
-
-                else
-
-                    append!(east,tds["easting"][:])
-                    append!(north,tds["northing"][:])
-
-                    append!(svf_p_w,tds["svf_planar_winter"][:])
-                    append!(svf_p_s,tds["svf_planar_summer"][:])
-                    append!(svf_p_t,tds["svf_planar_terrain"][:])
-
-                    append!(svf_h_w,tds["svf_hemi_winter"][:])
-                    append!(svf_h_s,tds["svf_hemi_summer"][:])
-                    append!(svf_h_t,tds["svf_hemi_terrain"][:])
-
-                    for_tau_w = hcat(for_tau_w,tds["Forest_Transmissivity_winter"][:])
-                    for_tau_s = hcat(for_tau_s,tds["Forest_Transmissivity_summer"][:])
-                    for_tau_t = hcat(for_tau_t,tds["Forest_Transmissivity_terrain"][:])
-
-                    tht  = hcat(tht,pds["tht"][:])
-
-                end
-
-                close(tds)
-                close(pds)
+                dummytau = fill(-1,size(tds["trans_t"][:,:]))
+                winter && (for_tau_w = hcat(for_tau_w,dummytau))
+                summer && (for_tau_s = hcat(for_tau_s,dummytau))
 
             end
 
-            B = hcat(east,north)
-            p = sortperm(view.(Ref(B), 1:size(B,1), :));
+            save_hlm && (tht  = hcat(tht,pds["tht"][:,:]))
 
-            locs = (ptdx .> 0)
+        end
 
-            tht_all = fill(-99,360,10000)
-            tht_all[:,locs] .= tht[:,p]
+        close(tds)
+        save_hlm && close(pds)
 
-            tht_newdim = fill(-99,360,100,100)
-            for x in 1:1:size(tht_all,1)
-                tht_newdim[x,:,:] = reverse(reshape(tht_all[x,:],100,100),dims=1)
-            end
+        if move_shis
+            cp(joinpath(outdir,tx,"SHIs_"*tx*".nc"),joinpath(shiexdir,input,"SHIs_"*tx*".nc"),force=true)
+        end
 
-            defVar(hlm,"Horizon_Line_tht",Int16.(tht_newdim),("phi","locY","locX",),deflatelevel=1,attrib=["units" =>
-                        "zenith angle of horizon line"])
-            close(hlm)
+    end
 
-            svf_p_all_w, svf_h_all_w, ft_newdim_w = getnewdims(svf_p_w,svf_h_w,for_tau_w,p,locs)
-            svf_p_all_s, svf_h_all_s, ft_newdim_s = getnewdims(svf_p_s,svf_h_s,for_tau_s,p,locs)
-            svf_p_all_t, svf_h_all_t, ft_newdim_t = getnewdims(svf_p_t,svf_h_t,for_tau_t,p,locs)
+    B = hcat(east,north)
+    p = sortperm(view.(Ref(B), 1:size(B,1), :));
 
-	    defVar(ds,"svf_planar_winter",Int8.(reverse(reshape(svf_p_all_w,100,100),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-99),
+    locs = (ptdx .> 0)
+
+    if save_hlm
+        tht_all = fill(-1,360,numptsvec)
+        tht_all[:,locs] .= tht[:,p]
+
+        tht_newdim = fill(-1,360,numptsgrid,numptsgrid)
+        for x in 1:1:size(tht_all,1)
+            tht_newdim[x,:,:] = reverse(reshape(tht_all[x,:],numptsgrid,numptsgrid),dims=1)
+        end
+
+        defVar(hlm,"Horizon_Line_tht",Int16.(tht_newdim),("phi","locY","locX",),deflatelevel=1,attrib=["units" =>
+                    "zenith angle of horizon line"])
+        close(hlm)
+    end
+
+    if winter 
+        svf_p_all_w, svf_h_all_w, ft_newdim_w = getnewdims(svf_p_w,svf_h_w,for_tau_w,p,locs,numptsvec,numptsgrid,numptstime); end
+
+    if summer
+        svf_p_all_s, svf_h_all_s, ft_newdim_s = getnewdims(svf_p_s,svf_h_s,for_tau_s,p,locs,numptsvec,numptsgrid,numptstime); end
+
+    if terrain
+        svf_p_all_t, svf_h_all_t, ft_newdim_t = getnewdims(svf_p_t,svf_h_t,for_tau_t,p,locs,numptsvec,numptsgrid,numptstime); end
+
+    if winter
+        defVar(ds,"svf_planar_winter",Int8.(reverse(reshape(svf_p_all_w,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
                     attrib=["comments" =>
                     "values are represented as percentage;
                     perspective of a horizontal flat uplooking surface;
                     zenith rings weighted by surface area projected onto a horizontal flat surface;
                     calcualated for winter (leaf-off) canopy conditions",])
-	    defVar(ds,"svf_hemi_winter",Int8.(reverse(reshape(svf_h_all_w,100,100),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-99),
+        defVar(ds,"svf_hemi_winter",Int8.(reverse(reshape(svf_h_all_w,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
                     attrib=["comments" =>
                     "values are represented as percentage;
                     perspective of hemipherically shaped surface or plant;
                     zenith rings weighted by surface area on the hemisphere;
                     calcualated for winter (leaf-off) canopy conditions",])
-
-        defVar(ds,"svf_planar_summer",Int8.(reverse(reshape(svf_p_all_s,100,100),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-99),
-                    attrib=["comments" =>
-                    "values are represented as percentage;
-                    perspective of a horizontal flat uplooking surface;
-                    zenith rings weighted by surface area projected onto a horizontal flat surface;
-                    calcualated for summer (leaf-on) canopy conditions",])
-	    defVar(ds,"svf_hemi_summer",Int8.(reverse(reshape(svf_h_all_s,100,100),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-99),
-                    attrib=["comments" =>
-                    "values are represented as percentage;
-                    perspective of hemipherically shaped surface or plant;
-                    zenith rings weighted by surface area on the hemisphere;
-                    calcualated for summer (leaf-on) canopy conditions",])
-
-        defVar(ds,"svf_planar_terrain",Int8.(reverse(reshape(svf_p_all_t,100,100),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-99),
-                    attrib=["comments" =>
-                    "values are represented as percentage;
-                    perspective of a horizontal flat uplooking surface;
-                    zenith rings weighted by surface area projected onto a horizontal flat surface;
-                    calcualated for terrain only",])
-	    defVar(ds,"svf_hemi_terrain",Int8.(reverse(reshape(svf_h_all_t,100,100),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-99),
-                    attrib=["comments" =>
-                    "values are represented as percentage;
-                    perspective of hemipherically shaped surface or plant;
-                    zenith rings weighted by surface area on the hemisphere;
-                    calcualated for terrain only",])
-
-        defVar(ds,"Forest_Transmissivity_winter",Int8.(ft_newdim_w),("datetime","locY","locX",),fillvalue = Int8(-99),
+        defVar(ds,"Forest_Transmissivity_winter",Int8.(ft_newdim_w),("datetime","locY","locX",),fillvalue = Int8(-1),
                     deflatelevel=5,attrib=["comments" => 
                     "calcualated for winter (leaf-off) canopy conditions",])
-        defVar(ds,"Forest_Transmissivity_summer",Int8.(ft_newdim_s),("datetime","locY","locX",),fillvalue = Int8(-99),
+    end
+
+    if summer
+        defVar(ds,"svf_planar_summer",Int8.(reverse(reshape(svf_p_all_s,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
+                    attrib=["comments" =>
+                    "values are represented as percentage;
+                    perspective of a horizontal flat uplooking surface;
+                    zenith rings weighted by surface area projected onto a horizontal flat surface;
+                    calcualated for summer (leaf-on) canopy conditions",])
+        defVar(ds,"svf_hemi_summer",Int8.(reverse(reshape(svf_h_all_s,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
+                    attrib=["comments" =>
+                    "values are represented as percentage;
+                    perspective of hemipherically shaped surface or plant;
+                    zenith rings weighted by surface area on the hemisphere;
+                    calcualated for summer (leaf-on) canopy conditions",])
+        defVar(ds,"Forest_Transmissivity_summer",Int8.(ft_newdim_s),("datetime","locY","locX",),fillvalue = Int8(-1),
                     deflatelevel=5,attrib=["comments" => 
                     "calcualated for summer (leaf-on) canopy conditions",])
-        defVar(ds,"Forest_Transmissivity_terrain",Int8.(ft_newdim_t),("datetime","locY","locX",),fillvalue = Int8(-99),
+    end
+
+    if terrain
+        defVar(ds,"svf_planar_terrain",Int8.(reverse(reshape(svf_p_all_t,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
+                    attrib=["comments" =>
+                    "values are represented as percentage;
+                    perspective of a horizontal flat uplooking surface;
+                    zenith rings weighted by surface area projected onto a horizontal flat surface;
+                    calcualated for terrain only",])
+        defVar(ds,"svf_hemi_terrain",Int8.(reverse(reshape(svf_h_all_t,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
+                    attrib=["comments" =>
+                    "values are represented as percentage;
+                    perspective of hemipherically shaped surface or plant;
+                    zenith rings weighted by surface area on the hemisphere;
+                    calcualated for terrain only",])
+
+        defVar(ds,"Forest_Transmissivity_terrain",Int8.(ft_newdim_t),("datetime","locY","locX",),fillvalue = Int8(-1),
                     deflatelevel=5,attrib=["comments" => 
                     "calcualated for terrain only",])
+    end
 
-        close(ds)     
-
-
-
+    close(ds)     
 
 end
 
 
-function getnewdims(svf_p,svf_h,for_tau,p,locs)
+function getnewdims(svf_p,svf_h,for_tau,p,locs,numptsvec,numptsgrid,numptstime)
 
-    svf_p[ismissing.(svf_p)] .= -99
-    svf_p_all = fill(-99,10000,1)
+    svf_p[ismissing.(svf_p)] .= -1
+    svf_p_all = fill(-1,numptsvec,1)
     svf_p_all[locs] .= (svf_p[p])
 
-    svf_h[ismissing.(svf_h)] .= -99
-    svf_h_all = fill(-99,10000,1)
+    svf_h[ismissing.(svf_h)] .= -1
+    svf_h_all = fill(-1,numptsvec,1)
     svf_h_all[locs] .= (svf_h[p])
 
-    for_tau[ismissing.(for_tau)] .= -99
-    ft_all = fill(-99,8784,10000)
+    for_tau[ismissing.(for_tau)] .= -1
+    ft_all = fill(-1,numptstime,numptsvec)
     ft_all[:,locs] .= for_tau[:,p]
-    ft_newdim = fill(-99,8784,100,100)
+    ft_newdim = fill(-1,numptstime,numptsgrid,numptsgrid)
     for x in 1:1:size(ft_all,1)
-        ft_newdim[x,:,:] = reverse(reshape(ft_all[x,:],100,100),dims=1)
+        ft_newdim[x,:,:] = reverse(reshape(ft_all[x,:],numptsgrid,numptsgrid),dims=1)
     end
     
     return svf_p_all, svf_h_all, ft_newdim

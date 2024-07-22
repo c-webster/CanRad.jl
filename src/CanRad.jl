@@ -21,6 +21,7 @@ include("solar.jl")
 include("chm2rad.jl")
 include("las2rad.jl")
 include("ter2rad.jl")
+include("shi2rad.jl")
 
 export
     pyinterp,
@@ -34,6 +35,7 @@ export
     chm2rad!,
     LAS2RAD,
     las2rad!,
+    shi2rad!,
     aggregate_data,
     calc_horizon_lines,
     calc_solar_track,
@@ -52,10 +54,12 @@ export
     check_output,
     clipdat,
     clipdat!,
+    collate2tilefile,
     compatability_check!,
     create_exmat,
     create_tiles,
     createfiles,
+    createfiles_fromSHI,
     create_exhlm,
     dist,
     dist3d,
@@ -71,6 +75,7 @@ export
     get_pkg_version,
     getimagecentre,
     getlimits!,
+    getnewdims,
     getPhiTht,
     getsundxs!,
     getsurfdat,

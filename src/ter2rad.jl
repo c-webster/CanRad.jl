@@ -29,14 +29,14 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         loc_time     = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
         loc_time_agg = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
     
-        dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr,loc_time_agg,time_zone)
+        dataset = createfiles_terrain(outdir,outstr,pts,calc_trans,calc_swr,loc_time_agg,time_zone)
         pts_lat, pts_lon = calc_latlon(pts_x,pts_y,coor_system)
         solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = tstep, radius = canrad.radius, time_zone = time_zone)
     else    
-        dataset = createfiles(outdir,outstr,pts,calc_trans,calc_swr)
+        dataset = createfiles_terrain(outdir,outstr,pts,calc_trans,calc_swr)
     end
 
-    save_images && (images = create_exmat(outdir,outstr,pts,canrad.mat2ev))
+    save_images && (images = create_exmat_terrain(outdir,outstr,pts,canrad.mat2ev))
 
     save_horizon && (hlm = create_exhlm(outdir,outstr,pts,ter2rad))
 
@@ -168,13 +168,13 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         # create the image matrix
         mat2ev[outside_img] .= 1;
 
-        save_images && (images["SHI"][:,:,crx] = mat2ev;)
+        save_images && (images["SHI_terrain"][:,:,crx] = mat2ev;)
 
         # calculate svf and transmissivity
         svf_p, svf_h = calc_svf(canrad,mat2ev)
 
-        dataset["svf_planar"][crx] = Int(round(svf_p*100));
-        dataset["svf_hemi"][crx]   = Int(round(svf_h*100));
+        dataset["svf_planar_t"][crx] = Int(round(svf_p*100));
+        dataset["svf_hemi_t"][crx]   = Int(round(svf_h*100));
 
         if calc_trans
 
@@ -183,12 +183,12 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             @unpack trans_for = solar
             calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
 
-            dataset["for_trans"][:,crx] = Int.(round.((vec(aggregate_data(solar,trans_for))).*100));
+            dataset["trans_t"][:,crx] = Int.(round.((vec(aggregate_data(solar,trans_for))).*100));
 
             if calc_swr > 0
                 swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,svf_p,calc_swr)
-                dataset["swr_total"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
-                dataset["swr_direct"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
+                dataset["swr_total_t"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
+                dataset["swr_direct_t"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
             end
         
         end
