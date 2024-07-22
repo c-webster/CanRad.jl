@@ -85,13 +85,13 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
     defVar(ds,"easting",pts[:,1],("Coordinates",))
     defVar(ds,"northing",pts[:,2],("Coordinates",))
 
-    defVar(ds,"svf_planar",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int8(-99),
+    defVar(ds,"svf_planar",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
         attrib=[
             "long_name"=> "sky-view fraction planar",
             "comments" =>
             "perspective of a flat planar",])
 
-    defVar(ds,"svf_hemi",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int8(-99),
+    defVar(ds,"svf_hemi",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
         attrib=[
             "long_name"=> "sky-view fraction hemispherical",
             "comments" =>
@@ -109,19 +109,29 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 
         defVar(ds,"datetime",loc_time,("datetime",),attrib=["comments" => dt_comment])
 
-        defVar(ds,"for_trans",Int32,("datetime","Coordinates",),fillvalue = Int8(-99),
+        defVar(ds,"for_trans",Int32,("datetime","Coordinates",),fillvalue = Int8(-1),
                     deflatelevel=5,                            
                     attrib=["long_name"=> "forest transmissivity",])
 
         if calc_swr > 0
 
             defVar(ds,"swr_total",Int32,("datetime","Coordinates",),
-                        deflatelevel=5,fillvalue = Int32(-9999),
+                        deflatelevel=5,fillvalue = Int32(-1),
                         attrib=[
                             "units"=>"Watts per metre squared",
                             "comments" => " sum of calculated diffuse + direct radiation components"])
             defVar(ds,"swr_direct",Int32,("datetime","Coordinates",),
-                        deflatelevel=5,fillvalue = Int32(-9999),
+                        deflatelevel=5,fillvalue = Int32(-1),
+                        attrib=["units"=>"Watts per metre squared",])
+
+        end
+
+    end
+
+    return ds
+
+end
+
 
 function createfiles_terrain(outdir::String,outstr::String,pts::Matrix{Float64},calc_trans::Bool,calc_swr::Int64,
     loc_time=nothing,time_zone=nothing)
@@ -194,14 +204,14 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 
     if forest_type == "evergreen"
 
-        defVar(ds,"svf_planar_e",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int32(-99),
+        defVar(ds,"svf_planar_e",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int32(-1),
             attrib=[
                 "long_name"=> "sky-view fraction planar evergreen forest",
                 "comments" =>
                 "perspective of a flat planar surface
                 calculated for 100% evergreen forest"
                     ,])
-        defVar(ds,"svf_hemi_e",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int32(-99),
+        defVar(ds,"svf_hemi_e",Int32,("Coordinates",),deflatelevel=5,fillvalue = Int32(-1),
             attrib=[
                 "long_name"=> "sky-view fraction hemispherical evergreen forest",
                 "comments" =>
@@ -212,14 +222,14 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 
         if (season == "summer") || (season == "both")
 
-            defVar(ds,"svf_planar_s",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-99),
+            defVar(ds,"svf_planar_s",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
                 attrib=[
                     "long_name"=> "sky-view fraction planar summer",
                     "comments" =>
                     "perspective of a flat planar surface
                     calculated for deciduous or mixed forests in summer canopy conditions"
                     ,])
-            defVar(ds,"svf_hemi_s",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-99),
+            defVar(ds,"svf_hemi_s",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
                 attrib=[
                     "long_name"=> "sky-view fraction hemi summer",
                     "comments" =>
@@ -231,7 +241,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 
         if (season == "winter") || (season == "both")
 
-            defVar(ds,"svf_planar_w",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-99),
+            defVar(ds,"svf_planar_w",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
                 attrib=[
                     "long_name"=> "sky-view fraction planar winter",
                     "comments" =>
@@ -239,7 +249,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
                     calculated for deciduous or mixed forests in winter canopy conditions"
                     ,])
 
-            defVar(ds,"svf_hemi_w",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-99),
+            defVar(ds,"svf_hemi_w",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
                 attrib=[
                     "long_name"=> "sky-view fraction hemi winter",
                     "comments" =>
@@ -253,14 +263,14 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 
     if calc_terrain
 
-        defVar(ds,"svf_planar_t",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-99),
+        defVar(ds,"svf_planar_t",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
             attrib=[
                 "long_name" => "sky-view fraction planar terrain",
                 "comments" =>
                 "perspective of a flat planar surface
                 calcualated for terrain only"
                 ,])
-        defVar(ds,"svf_hemi_t",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-99),
+        defVar(ds,"svf_hemi_t",Int8,("Coordinates",),deflatelevel=5,fillvalue = Int8(-1),
             attrib=[
                 "long_name" => "sky-view fraction hemi terrain",
                 "comments" =>
@@ -285,7 +295,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 
         if forest_type == "evergreen"
 
-            defVar(ds,"for_trans_e",Int32,("datetime","Coordinates",),fillvalue = Int8(-99),
+            defVar(ds,"for_trans_e",Int32,("datetime","Coordinates",),fillvalue = Int8(-1),
                 deflatelevel=5,
                 attrib=[
                     "long_name"=> "forest transmissivity evergreen forest",
@@ -297,7 +307,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 
             if (season == "summer") || (season == "both")
 
-                defVar(ds,"for_trans_s",Int32,("datetime","Coordinates",),fillvalue = Int8(-99),
+                defVar(ds,"for_trans_s",Int32,("datetime","Coordinates",),fillvalue = Int8(-1),
                     deflatelevel=5,
                     attrib=[
                         "long_name"=> "forest transmissivity summer",
@@ -309,7 +319,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 
             if (season == "winter") || (season == "both")
 
-                        defVar(ds,"for_trans_w",Int32,("datetime","Coordinates",),fillvalue = Int8(-99),
+                        defVar(ds,"for_trans_w",Int32,("datetime","Coordinates",),fillvalue = Int8(-1),
                             deflatelevel=5,
                             attrib=[
                                 "long_name"=> "forest transmissivity winter",
@@ -323,7 +333,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 
         if calc_terrain
 
-            defVar(ds,"trans_t",Int8,("datetime","Coordinates",),fillvalue = Int8(-99),
+            defVar(ds,"trans_t",Int8,("datetime","Coordinates",),fillvalue = Int8(-1),
                 deflatelevel=5,
                 attrib=[
                     "long_name" => "transmissivity terrain",
@@ -337,7 +347,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
             if forest_type == "evergreen"
 
                 defVar(ds,"swr_total_e",Int32,("datetime","Coordinates",),
-                    deflatelevel=5,fillvalue = Int32(-9999),
+                    deflatelevel=5,fillvalue = Int32(-1),
                     attrib=[
                         "long_name" => "total incoming shortwave radiation evergreen forest",    
                         "units"=>"Watts per metre squared", 
@@ -347,7 +357,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
                         ,])
 
                 defVar(ds,"swr_direct_e",Int32,("datetime","Coordinates",),
-                    deflatelevel=5,fillvalue = Int32(-9999),
+                    deflatelevel=5,fillvalue = Int32(-1),
                     attrib=[
                         "long_name" => "direct incoming shortwave radiation evergreen forest",    
                         "units"=>"Watts per metre squared",
@@ -361,7 +371,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
                 if (season == "summer") || (season == "both")
 
                     defVar(ds,"swr_total_s",Int32,("datetime","Coordinates",),
-                        deflatelevel=5,fillvalue = Int32(-9999),
+                        deflatelevel=5,fillvalue = Int32(-1),
                         attrib=[
                             "long_name" => "total incoming shortwave radiation summer",  
                             "units"=>"Watts per metre squared", 
@@ -371,7 +381,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
                             ,])
 
                     defVar(ds,"swr_direct_s",Int32,("datetime","Coordinates",),
-                        deflatelevel=5,fillvalue = Int32(-9999),
+                        deflatelevel=5,fillvalue = Int32(-1),
                         attrib=[
                             "long_name" => "direct incoming shortwave radiation summer",  
                             "units"=>"Watts per metre squared",
@@ -384,7 +394,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
                 if (season == "winter") || (season == "both")
 
                     defVar(ds,"swr_total_w",Int32,("datetime","Coordinates",),
-                        deflatelevel=5,fillvalue = Int32(-9999),
+                        deflatelevel=5,fillvalue = Int32(-1),
                         attrib=[
                             "long_name" => "total incoming shortwave radiation winter",
                             "units"=>"Watts per metre squared", 
@@ -394,7 +404,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
                             ,])
 
                     defVar(ds,"swr_direct_w",Int32,("datetime","Coordinates",),
-                        deflatelevel=5,fillvalue = Int32(-9999),
+                        deflatelevel=5,fillvalue = Int32(-1),
                         attrib=[
                             "long_name" => "direct incoming shortwave radiation winter",    
                             "units"=>"Watts per metre squared",
@@ -408,7 +418,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
             if calc_terrain
 
             defVar(ds,"swr_total_t",Int32,("datetime","Coordinates",),
-                deflatelevel=5,fillvalue = Int32(-9999),
+                deflatelevel=5,fillvalue = Int32(-1),
                 attrib=[
                     "long_name" => "total incoming shortwave radiation terrain",    
                     "units"=>"Watts per metre squared", 
@@ -418,7 +428,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
                     ,])
 
             defVar(ds,"swr_direct_t",Int32,("datetime","Coordinates",),
-                deflatelevel=5,fillvalue = Int32(-9999),
+                deflatelevel=5,fillvalue = Int32(-1),
                 attrib=[
                     "long_name" => "direct incoming shortwave radiation terrain",    
                     "units"=>"Watts per metre squared",
@@ -434,6 +444,7 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},calc_tra
 
 	return ds
 
+end
 
 function createfiles_fromSHI(outdir::String,outstr::String,pts::Matrix{Float64},calc_swr::Int64,
     SHI_summer::Bool,SHI_winter::Bool,SHI_terrain::Bool,SHI_evergreen::Bool,loc_time=nothing,time_zone=nothing)
@@ -674,6 +685,8 @@ function create_exmat(outdir::String,outstr::String,pts::Matrix{Float64},g_img::
     defVar(images,"SHI",Int8,("img_y","img_x","Coordinates",),deflatelevel=1)
 
     return images
+
+end
 
 function create_exmat_terrain(outdir::String,outstr::String,pts::Matrix{Float64},g_img::Matrix{Int64})
 
@@ -1039,7 +1052,6 @@ function load_hlm_oshd(hlmf::String,taskID::String)
     # return pol2cart(pol_phi,pol_tht)
 
 end
-
 
 
 function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,ptsx::Vector{Float64},
