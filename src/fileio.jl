@@ -927,10 +927,10 @@ function getterrainmask(canrad::CANRAD,terf::String,pts_x::Vector{Float64},pts_y
     easting = tm_ds["easting"][:]
     northing = tm_ds["northing"][:]
 
-    SHIs = tm_ds["SHI"][:,:,:]
+    SHIs = tm_ds["SHI_terrain"][:,:,:]
 
     if (size(pts_x,1) .== size(easting,1)) && (sum(abs.(easting .- pts_x)) .== 0.0) && (sum(abs.(northing .- pts_y)) .== 0.0)
-        terrain_mask .= tm_ds["SHI"][:,:,:]
+        terrain_mask .= tm_ds["SHI_terrain"][:,:,:]
     else
         for dx in eachindex(pts_x)
             tmx = (abs.(easting .- pts_x[dx]) .== 0.0) .& (abs.(northing .- pts_y[dx]) .== 0.0)
@@ -988,7 +988,7 @@ function getterrainmask(canrad::CANRAD,terf::String,pts_x::Float64,pts_y::Float6
     easting = tm_ds["easting"][:]
     northing = tm_ds["northing"][:]
 
-    SHIs = tm_ds["SHI"][:,:,:]
+    SHIs = tm_ds["SHI_terrain"][:,:,:]
 
     tmx = (abs.(easting .- pts_x) .== 0.0) .& (abs.(northing .- pts_y) .== 0.0)
     terrain_mask[:,:,dx] = SHIs[:,:,tmx]
