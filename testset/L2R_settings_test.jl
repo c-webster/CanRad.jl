@@ -13,7 +13,7 @@ function las2rad_settings(basefolder::String)
         "horizon_line"        => false, # use pre-calculated horizon line matrix (e.g. for compatibility with topo-downscaled swr data)
 
         # forest/lidar settings
-        "include_points" => "canopy" # "canopy", "ground+canopy", "all"
+        "keep_points"    => "canopy" # "canopy", "ground+canopy", "all"
         "trunks"         => true, # true or false
         "branches"       => true, # true or false
         "branch_spacing" => 0.1, # spacing interval for creating branches if left empty the default is 0.1
