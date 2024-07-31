@@ -48,7 +48,19 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     @unpack limits_canopy = canrad
     limits_canopy = getlimits!(limits_canopy,pts_x,pts_y,forest_peri)
 
-    dsm_x, dsm_y, dsm_z = readlas(dsmf,limits_canopy)
+    #  "canopy", "ground+canopy", "all"
+    if keep_points == "canopy"
+        keep_ground = false
+        keep_all = false
+    elseif keep_points == "ground+canopy"
+        keep_ground = true
+        keep_all = false
+    elseif keep_points == "all"
+        keep_ground = false
+        keep_all = true
+    end
+
+    dsm_x, dsm_y, dsm_z = readlas(dsmf,limits_canopy,keep_ground,keep_all)
 
     ################################################################################
     # > Import and prepare terrain data
@@ -176,7 +188,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         surf_area_h[rix] = 2*pi*(cos(ring_tht[rix]/360*2*pi) - cos(ring_tht[rix+1]/360*2*pi))/2/pi
     end
 
-    @unpack trans_for = solar
+    calc_trans && (@unpack trans_for = solar)
 
     ###############################################################################
     # > SWR calculations
@@ -366,7 +378,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         if progress
             elapsed = time() - start
             if crx != 1; try; rm(joinpath(progdir,progtext3)); catch; end; end
-            global progtext3 = "3. Calculations and export "*cfmt.("%.$(2)f", elapsed)*" seconds"
+            global progtext3 = "3. Calculations and export took "*cfmt.("%.$(2)f", elapsed)*" seconds"
             writedlm(joinpath(progdir,progtext3),NaN)
         end
 

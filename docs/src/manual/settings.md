@@ -49,6 +49,13 @@ use pre-calculated horizon line matrix (e.g. for compatibility with topo-downsca
 
 ## Forest settings [ L2R, C2R ]
 
+**keep_points [ L2R ]**
+*String*
+options:
+"canopy" (default) : only loads lidar points classified as vegetation (classes 3,4,5)
+"ground+canopy" : loads ground and canopy classified points (classes 2-5)
+"all" : loads all points, including those unclassified and those classified as noise
+
 **forest_peri  [ L2R, C2R ]**
 *integer*
 radius within which forest is included (note all model points must be a minimum of this distance from the edge of the forest canopy datasets)

@@ -39,6 +39,8 @@ function compatability_check!(par_in::Dict)
 
     (!haskey(par_in,"make_pngs") && par_in["save_images"]) && (par_in["make_pngs"] = true)
 
+    !haskey(par_in,"keep_points") && (par_in["keep_points"] = "canopy")
+
 
 end
 
