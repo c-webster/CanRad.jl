@@ -1,5 +1,5 @@
 function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict{String, Any},
-    exdir::String,taskID="task")
+    exdir::String,taskID="task",pts_z=-1)
 
     ################################################################################
     # Initialise
@@ -17,6 +17,9 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
     # get model number (1 = canopy, 2 = terrain only)
     size(pts,2) > 2 ? pts_m = pts[:,3] : pts_m = ones(size(pts_x))
+
+    # fill pts_z with image_heigh if not input 
+    (pts_z == -1) && (pts_z = fill(image_height,size(pts_x,1)))
 
     canrad  = CANRAD()
     chm2rad = CHM2RAD()
@@ -394,7 +397,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 # get the high-res local terrain
                 pt_dtm_x, pt_dtm_y, pt_dtm_z = getsurfdat(copy(dtm_x),copy(dtm_y),copy(dtm_z),
                                                 pts_x[crx],pts_y[crx],pts_e[crx],highres_peri);
-                pt_dtm_x, pt_dtm_y = pcd2pol2cart!(ter2rad,pt_dtm_x, pt_dtm_y, pt_dtm_z,pts_x[crx],pts_y[crx],pts_e[crx],"terrain",rbins_dtm,image_height)
+                pt_dtm_x, pt_dtm_y = pcd2pol2cart!(ter2rad,pt_dtm_x, pt_dtm_y, pt_dtm_z,pts_x[crx],pts_y[crx],pts_e[crx],"terrain",rbins_dtm,pts_z[crx])
 
                 save_horizon && copy!(dtm_mintht,ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
         
@@ -403,7 +406,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             if terrain_lowres
                 # get the low-res regional terrain
                 pt_dem_x, pt_dem_y, pt_dem_z = getsurfdat(copy(dem_x),copy(dem_y),copy(dem_z),pts_x[crx],pts_y[crx],pts_e[crx],lowres_peri);
-                pt_dem_x, pt_dem_y = pcd2pol2cart!(ter2rad,pt_dem_x, pt_dem_y, pt_dem_z,pts_x[crx],pts_y[crx],pts_e_dem[crx],"terrain",rbins_dem,image_height);
+                pt_dem_x, pt_dem_y = pcd2pol2cart!(ter2rad,pt_dem_x, pt_dem_y, pt_dem_z,pts_x[crx],pts_y[crx],pts_e_dem[crx],"terrain",rbins_dem,pts_z[crx]);
 
                 if save_horizon
                     if !isempty(dtm_x) && terrain_highres
@@ -433,7 +436,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             pt_bhm_x, pt_bhm_y, pt_bhm_z = getsurfdat(copy(bhm_x),copy(bhm_y),copy(bhm_z),pts_x[crx],pts_y[crx],pts_e[crx],300);
             
             pt_bhm_x, pt_bhm_y =  pcd2pol2cart!(ter2rad,pt_bhm_x,pt_bhm_y,pt_bhm_z,pts_x[crx],pts_y[crx],pts_e[crx],
-                                                "buildings",rbins_bhm,image_height,pts_slp[crx])
+                                                "buildings",rbins_bhm,pts_z[crx],pts_slp[crx])
             if !terrainmask_precalc
                 prepterdat!(append!(pt_dtm_x,pt_bhm_x),append!(pt_dtm_y,pt_bhm_y));
             else
@@ -453,12 +456,12 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
                     # pts from the CHM
                     pt_chm_x_pts, pt_chm_y_pts = pcd2pol2cart!(copy(pt_chm_x),copy(pt_chm_y),copy(pt_chm_z),pts_x[crx],pts_y[crx],
-                        pts_e[crx],image_height,chm_cellsize) 
+                        pts_e[crx],pts_z[crx],chm_cellsize) 
 
                 end
 
                 pt_chm_x, pt_chm_y, pt_chm_x_thick, pt_chm_y_thick = calcCHM_Ptrans!(chm2rad,pt_chm_x,pt_chm_y,pt_chm_z,pt_chm_b,pt_lavd,
-                                pts_x[crx],pts_y[crx],pts_e[crx],image_height,chm_cellsize,rbins_chm,cbh_flag) # calculated points
+                                pts_x[crx],pts_y[crx],pts_e[crx],pts_z[crx],chm_cellsize,rbins_chm,cbh_flag) # calculated points
 
 
             elseif (forest_type == "deciduous") || (forest_type == "mixed")
@@ -469,7 +472,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                         copy(chm_b_s),copy(chm_lavd_summer),pts_x[crx],pts_y[crx],pts_e[crx],forest_peri)
 
                     pt_chm_x_s, pt_chm_y_s, pt_chm_x_thick_s, pt_chm_y_thick_s = calcCHM_Ptrans!(chm2rad,pt_chm_x,pt_chm_y,pt_chm_z,pt_chm_b_s,pt_lavd_s,
-                        pts_x[crx],pts_y[crx],pts_e[crx],image_height,chm_cellsize,rbins_chm,cbh_flag) # calculated points
+                        pts_x[crx],pts_y[crx],pts_e[crx],pts_z[crx],chm_cellsize,rbins_chm,cbh_flag) # calculated points
 
                 end
             
@@ -479,7 +482,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                         copy(chm_b_w),copy(chm_lavd_winter),pts_x[crx],pts_y[crx],pts_e[crx],forest_peri)
 
                     pt_chm_x_w, pt_chm_y_w, _, _ = calcCHM_Ptrans!(chm2rad,pt_chm_x,pt_chm_y,pt_chm_z,pt_chm_b_w,pt_lavd_w,
-                        pts_x[crx],pts_y[crx],pts_e[crx],image_height,chm_cellsize,rbins_chm,cbh_flag) # calculated points
+                        pts_x[crx],pts_y[crx],pts_e[crx],pts_z[crx],chm_cellsize,rbins_chm,cbh_flag) # calculated points
                     
                 end
 
@@ -487,7 +490,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
                     # pts from the CHM
                     pt_chm_x_pts, pt_chm_y_pts = pcd2pol2cart!(copy(pt_chm_x),copy(pt_chm_y),copy(pt_chm_z),pts_x[crx],pts_y[crx],
-                        pts_e[crx],image_height,chm_cellsize) 
+                        pts_e[crx],pts_z[crx],chm_cellsize) 
 
                 end
 
@@ -511,10 +514,10 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 end
                 tsm_tmp = calculate_trunks(dbh_x[tidx],dbh_y[tidx],dbh_z[tidx],dbh_r[tidx],npt,hint,dbh_e[tidx])
                 pt_tsm_x, pt_tsm_y, pt_tsm_z = pcd2pol2cart!(append!(pt_tsm_x,tsm_tmp[1]),append!(pt_tsm_y,tsm_tmp[2]),append!(pt_tsm_z,tsm_tmp[3]),
-                                                        pts_x[crx],pts_y[crx],pts_e[crx],"trunks",image_height)
+                                                        pts_x[crx],pts_y[crx],pts_e[crx],"trunks",pts_z[crx])
 
             else
-                pcd2pol2cart!(pt_tsm_x,pt_tsm_y,pt_tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],"trunks",image_height)
+                pcd2pol2cart!(pt_tsm_x,pt_tsm_y,pt_tsm_z,pts_x[crx],pts_y[crx],pts_e[crx],"trunks",pts_z[crx])
             end
         end
 
