@@ -1077,8 +1077,8 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
         move_shis = false
     end
 
-    numptsvec = pt_spacing * fulltilesize
     numptsgrid = div(fulltilesize,pt_spacing)
+    numptsvec = numptsgrid^2
 
     # combine tile output to one file
     tiles = readdir(outdir)
