@@ -64,7 +64,12 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
     end
 
-    rbins_chm = collect(4*chm_cellsize:sqrt(2).*chm_cellsize:forest_peri)
+    if special_implementation == "oshd-alps"
+        rbins_chm = collect(1:sqrt(2).*chm_cellsize:forest_peri)
+        chm_cellsize *= 0.5
+    else
+        rbins_chm = collect(4*chm_cellsize:sqrt(2).*chm_cellsize:forest_peri)
+    end
 
     ################################################################################
     # > Import prepare terrain data
@@ -99,7 +104,6 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         getlimits!(limits_highres,pts_x,pts_y,highres_peri)
         dtm_x, dtm_y, dtm_z, dtm_cellsize = read_griddata_window(dtmf,limits_highres,true, true)
         rbins_dtm = collect(2*dtm_cellsize:sqrt(2).*dtm_cellsize:highres_peri)
-
         pts_e = findelev!(copy(dtm_x),copy(dtm_y),copy(dtm_z),pts_x,pts_y,limits_highres,10.0,pts_e)
 
     end
@@ -110,7 +114,13 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         @unpack limits_lowres, pts_e_dem = ter2rad
         getlimits!(limits_lowres,pts_x,pts_y,lowres_peri)
         dem_x, dem_y, dem_z, dem_cellsize = read_griddata_window(demf,limits_lowres,true,true)
-        rbins_dem = collect(2*dem_cellsize:sqrt(2).*dem_cellsize:lowres_peri)
+        
+        if terrain_highres
+            rbins_dem = collect(2*dem_cellsize:sqrt(2).*dem_cellsize:lowres_peri)
+        else # include lowres terrain under pts if not using highres terrain
+            rbins_dem = collect(dem_cellsize:sqrt(2).*dem_cellsize:lowres_peri)
+        end
+
         findelev!(copy(dem_x),copy(dem_y),copy(dem_z),pts_x,pts_y,limits_lowres,dem_cellsize*3,pts_e_dem)
 
     end
@@ -119,13 +129,12 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     if terrain_highres
         chm_e     = findelev!(copy(dtm_x),copy(dtm_y),copy(dtm_z),chm_x,chm_y,limits_highres,10,Vector{Float64}(undef,size(chm_x)))
     elseif terrain_lowres # use the lower resolution dataset if a higres isn't available
-        chm_e     = findelev!(copy(dem_x),copy(dem_y),copy(dem_z),chm_x,chm_y,limits_highres,dem_cellsize*3,Vector{Float64}(undef,size(chm_x)))
+        chm_e     = findelev!(copy(dem_x),copy(dem_y),copy(dem_z),chm_x,chm_y,limits_lowres,dem_cellsize*3,Vector{Float64}(undef,size(chm_x)))
+        pts_e     = copy(pts_e_dem)
     else # if there's no terrain input, just assume the ground is flat
         pts_e     = zeros(size(pts_x))
         chm_e     = zeros(size(chm_x))
     end
-
-    chm_z .+= chm_e # normalised to absolute elevation (chm point are now dsm points)
 
     # Calculate slope and aspect from dtm data
     if tilt # currently disabled in Preparatory_Functions.jl
@@ -243,12 +252,30 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
         end
 
+    elseif special_implementation == "oshd-alps"
+
+        # load the forest type data
+        for_typ = read_griddata_window(ftdf,limits_canopy,true,true)[3] 
+
+        # get lavd for for_typ = 1 (needleleaf)
+        cd_m = 6.98 .+(0.0612 .* chm_z)
+        dbh_t = (0.974 .* (chm_z .* cd_m) .^ 0.748)
+        chm_lavd_winter = (exp.((-8.31).+(2.61.*(log.(dbh_t.*10)))+(-0.07.*chm_z))) ./  (0.8 .* pi .* ((cd_m./2).^2) .* (chm_z.*0.8))
+        chm_lavd_winter[chm_z .< 1] .= 0
+
+        chm_b_w = fill(0.0,size(chm_z))
+    
+        # replace where for_typ == 2 with a low value for leaf-off trees
+        chm_lavd_winter[for_typ .== 1] .= 0.05
+
     else
 
         cbh_w = copy(cbh)
         cbh_s = copy(cbh)
 
     end
+
+    chm_z .+= chm_e # normalised to absolute elevation (chm point are now dsm points)
 
     if @isdefined(lavdf)
 
@@ -281,6 +308,10 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             end
         
         end
+
+    elseif @isdefined(chm_b_w) && (special_implementation == "oshd-alps")
+
+        chm_b_w .+= chm_e # canopy base height already defined above
 
     else
 
@@ -409,7 +440,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 pt_dem_x, pt_dem_y = pcd2pol2cart!(ter2rad,pt_dem_x, pt_dem_y, pt_dem_z,pts_x[crx],pts_y[crx],pts_e_dem[crx],"terrain",rbins_dem,pts_z[crx]);
 
                 if save_horizon
-                    if !isempty(dtm_x) && terrain_highres
+                    if terrain_highres && !isempty(dtm_x)
                         copy!(dem_mintht,ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
                         hlm["tht"][:,crx] = Int8.(round.(minimum(hcat(dtm_mintht,dem_mintht),dims=2)))
                     else
@@ -481,7 +512,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                     pt_chm_x, pt_chm_y, pt_chm_z, pt_chm_b_w, pt_lavd_w = getsurfdat_chm(copy(chm_x),copy(chm_y),copy(chm_z),
                         copy(chm_b_w),copy(chm_lavd_winter),pts_x[crx],pts_y[crx],pts_e[crx],forest_peri)
 
-                    pt_chm_x_w, pt_chm_y_w, _, _ = calcCHM_Ptrans!(chm2rad,pt_chm_x,pt_chm_y,pt_chm_z,pt_chm_b_w,pt_lavd_w,
+                    pt_chm_x_w, pt_chm_y_w, pt_chm_x_thick_w, pt_chm_y_thick_w = calcCHM_Ptrans!(chm2rad,pt_chm_x,pt_chm_y,pt_chm_z,pt_chm_b_w,pt_lavd_w,
                         pts_x[crx],pts_y[crx],pts_e[crx],pts_z[crx],chm_cellsize,rbins_chm,cbh_flag) # calculated points
                     
                 end
@@ -560,6 +591,17 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 save_images && (images["SHI_summer"][:,:,crx] = mat2ev_s)
                 save_images && (images["SHI_winter"][:,:,crx] = mat2ev_w)
 
+            end
+
+        elseif (special_implementation == "oshd-alps")
+
+            copy!(mat2ev_w,mat2ev)
+
+            if pts_m[crx] .== 1
+                fillmat!(canrad,kdtree,hcat(pt_chm_x_w,pt_chm_y_w),30,mat2ev_w)
+                fillmat!(canrad,kdtree,hcat(pt_chm_x_thick_w,pt_chm_y_thick_w),15,mat2ev_w) # distant canopy is opaque and treated with terrain
+                mat2ev_w[outside_img] .= 1
+                save_images && (images["SHI_winter"][:,:,crx] = mat2ev_w)
             end
 
         else

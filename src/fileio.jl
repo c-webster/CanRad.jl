@@ -869,7 +869,7 @@ function make_SHIs(datdir::String,forest_type::String,season::String,calc_terrai
     if !ispath(odir); mkpath(odir); end
 
     if forest_type == "evergreen"
-        odir_e = joinpath(odir,"terrain")
+        odir_e = joinpath(odir,"evergreen")
         !ispath(odir_e) && mkpath(odir_e)
     elseif (forest_type == "deciduous") || (forest_type == "mixed")
         if (season == "summer") || (season == "both")
@@ -892,7 +892,7 @@ function make_SHIs(datdir::String,forest_type::String,season::String,calc_terrai
     for ix in eachindex(coords_x)
 
         if forest_type == "evergreen"
-            outf = joinpath(odir,"SHI_"*cfmt.(fstr,coords_x[ix])*"_"*cfmt.(fstr,coords_y[ix])*"_evergreen.png")
+            outf = joinpath(odir_e,"SHI_"*cfmt.(fstr,coords_x[ix])*"_"*cfmt.(fstr,coords_y[ix])*"_evergreen.png")
             save(outf,colorview(Gray,float.(images["SHI_evergreen"][:,:,ix])))
 
         elseif (forest_type == "deciduous") || (forest_type == "mixed")
@@ -1055,11 +1055,11 @@ end
 
 
 function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,ptsx::Vector{Float64},
-                            ptsy::Vector{Float64},exdir::String,hlmexdir::String,par_in::Dict{String, Any},
-                            ptdx::Vector{Float64},pt_spacing::Int64,fulltilesize::Int64,
+                            ptsy::Vector{Float64},exdir::String,par_in::Dict{String, Any},
+                            ptdx::Vector{Float64},pt_spacing::Int64,fulltilesize::Int64,hlmexdir::String="",
                             shiexdir::String="")
 
-    if (par_in["special_implementation"] !== "swissrad") && (par_in["special_implementation"] !== "oshd")
+    if (par_in["special_implementation"] !== "swissrad") && (par_in["special_implementation"] !== "oshd") && (par_in["special_implementation"] !== "oshd-alps")
         @warn "collate2tilefile() only written and tested for swissrad and oshd implementation of CanRad"
     end
 
