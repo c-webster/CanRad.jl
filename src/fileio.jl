@@ -1056,7 +1056,7 @@ end
 
 function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,ptsx::Vector{Float64},
                             ptsy::Vector{Float64},exdir::String,par_in::Dict{String, Any},
-                            ptdx::Vector{Float64},pt_spacing::Int64,fulltilesize::Int64,hlmexdir::String="",
+                            ptdx::Vector{Float64},pt_spacing::Int64,fulltilesize::Int64,sub_tilesize::Int64,hlmexdir::String="",
                             shiexdir::String="")
 
     if (par_in["special_implementation"] !== "swissrad") && (par_in["special_implementation"] !== "oshd") && (par_in["special_implementation"] !== "oshd-alps")
@@ -1072,7 +1072,7 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
 
     if haskey(par_in,"save_images") && par_in["save_images"]
         move_shis = true
-        !ispath(joinpath(shiexdir,input)) && mkdir(joinpath(shiexdir,input))
+        !ispath(joinpath(shiexdir,input)) && mkpath(joinpath(shiexdir,input))
     else
         move_shis = false
     end
@@ -1081,16 +1081,17 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
     numptsvec = numptsgrid^2
 
     # combine tile output to one file
-    tiles = readdir(outdir)
+    tiles = filter(!startswith("."), readdir(outdir)) # avoids pesky .DS_Store files when using MacOS
 
     xlim = collect(limits[1]:pt_spacing:limits[2]-pt_spacing)
     ylim = collect(limits[3]:pt_spacing:limits[4]-pt_spacing)
 
     # create the Radiation output dataset
+    loc_time = NCDataset(joinpath(outdir,tiles[1],"Output_"*tiles[1]*".nc"))["datetime"][:]
+
     ds = NCDataset(joinpath(exdir,"Output_"*input*".nc"),"c",format=:netcdf4_classic)
     defDim(ds,"locX",size(xlim,1)); defDim(ds,"locY",size(ylim,1))
     defVar(ds,"Easting",Float64.(unique(ptsx)),("locX",)); defVar(ds,"Northing",Float64.(reverse(unique(ptsy))),("locY",))
-    loc_time = NCDataset(joinpath(outdir,tiles[1],"Output_"*tiles[1]*".nc"))["datetime"][:]
     defDim(ds,"DateTime",size(loc_time,1))
     time_zone = par_in["time_zone"]
     if  time_zone >= 0
@@ -1116,6 +1117,9 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
     # create collate flags for terrain, summer and winter
     if (haskey(par_in,"calc_terrain") && par_in["calc_terrain"]) || (haskey(par_in,"SHI_terrain") && par_in["SHI_terrain"])
        terrain = true
+       svf_p_t = Float64[]
+       svf_h_t = Float64[]
+       for_tau_t = Float64[]
     else
         terrain = false
     end
@@ -1123,6 +1127,9 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
     if (haskey(par_in,"season") && ((par_in["season"] == "both") || (par_in["season"] == "summer"))) ||
          (haskey(par_in,"SHI_summer") && par_in["SHI_summer"])
        summer = true
+       svf_p_s = Float64[]
+       svf_h_s = Float64[]
+       for_tau_s = Float64[]
     else
         summer = false
     end
@@ -1130,87 +1137,97 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
     if (haskey(par_in,"season") && ((par_in["season"] == "both") || (par_in["season"] == "winter"))) ||
         (haskey(par_in,"SHI_winter") && par_in["SHI_winter"])
        winter = true
+       svf_p_w = Float64[]
+       svf_h_w = Float64[]
+       for_tau_w = Float64[]
     else
         winter = false
     end
+
+    pts_all = hcat(ptsx[ptdx.>0],ptsy[ptdx.>0],ptdx[ptdx.>0])
+
+    limx = Int.((floor(limits[1]/sub_tilesize))*sub_tilesize):sub_tilesize:(Int.(floor((limits[2]/sub_tilesize))*sub_tilesize))
+    limy = (Int.((floor(limits[3]/sub_tilesize))*sub_tilesize):sub_tilesize:(Int.(floor(((limits[4])/sub_tilesize))*sub_tilesize)))
+
+    # initilise other variables
+    east = Float64[]
+    north = Float64[]
+    save_hlm && (tht = Float64[])
 
     for tx in tiles
 
         tds = NCDataset(joinpath(outdir,tx,"Output_"*tx*".nc"))
         save_hlm && (pds = NCDataset(joinpath(outdir,tx,"HLM_"*tx*".nc")))
 
-        if tx == tiles[1]
+        xdx = findall(parse(Int,(split(tx,"_")[1]))[1] .== limx)[1]
+        ydx = findall(parse(Int,(split(tx,"_")[2]))[1] .== limy)[1]
 
-            global east  = tds["easting"][:]
-            global north = tds["northing"][:]
+        idx = (limx[xdx] .<= pts_all[:,1] .< limx[xdx+1]) .&
+                (limy[ydx] .<= pts_all[:,2] .< limy[ydx+1])
 
-            terrain && (global svf_p_t = tds["svf_planar_t"][:])
-            terrain && (global svf_h_t = tds["svf_hemi_t"][:])
-            terrain && (global for_tau_t = tds["trans_t"][:,:])
+        pts = pts_all[idx,:]
 
-            if sum(ptdx) != (size(ptdx,1) * 2) # check for if the sub-tile is terrain only
-            
-                winter && (global svf_p_w = tds["svf_planar_w"][:])
-                summer && (global svf_p_s = tds["svf_planar_s"][:])
+        append!(east, tds["easting"][:])
+        append!(north, tds["northing"][:])
 
-                winter && (global svf_h_w = tds["svf_hemi_w"][:])
-                summer && (global svf_h_s = tds["svf_hemi_s"][:])
-
-                winter && (global for_tau_w = tds["for_trans_w"][:,:])
-                summer && (global for_tau_s = tds["for_trans_s"][:,:])
-
+        if terrain
+            (append!(svf_p_t,tds["svf_planar_t"][:]))
+            (append!(svf_h_t,tds["svf_hemi_t"][:]))
+            if isempty(for_tau_t)
+                for_tau_t = tds["trans_t"][:,:]
             else
+                for_tau_t = hcat(for_tau_t, tds["trans_t"][:,:])
+            end
+        end
 
-                winter && (global svf_p_w = fill(-1,size(svf_p_t)))
-                summer && (global svf_p_s = fill(-1,size(svf_p_t)))
+        if !(sum(pts[:,3]) == (size(pts,1) * 2)) # checks whether this sub-tile was calculated with ter2rad
 
-                winter && (global svf_h_w = fill(-1,size(svf_p_t)))
-                summer && (global svf_h_s = fill(-1,size(svf_p_t)))
+            winter && (append!(svf_p_w,tds["svf_planar_w"][:]))
+            summer && (append!(svf_p_s,tds["svf_planar_s"][:]))
 
-                winter && (global for_tau_w = fill(-1,size(for_tau_t)))
-                summer && (global for_tau_s = fill(-1,size(for_tau_t)))
+            winter && (append!(svf_h_w,tds["svf_hemi_w"][:]))
+            summer && (append!(svf_h_s,tds["svf_hemi_s"][:]))
 
+            if winter && isempty(for_tau_w)
+                for_tau_w = tds["for_trans_w"][:,:]
+            else
+                for_tau_w = hcat(for_tau_w, tds["for_trans_w"][:,:])
             end
 
-            save_hlm && (global tht   = pds["tht"][:,:])
-
-        else
-
-            append!(east,tds["easting"][:])
-            append!(north,tds["northing"][:])
-
-            terrain && (append!(svf_p_t,tds["svf_planar_t"][:]))
-            terrain && (append!(svf_h_t,tds["svf_hemi_t"][:]))
-            terrain && (for_tau_t = hcat(for_tau_t,tds["trans_t"][:,:]))
-
-            if sum(ptdx) != (size(ptdx,1) * 2)
-
-                winter && (append!(svf_p_w,tds["svf_planar_w"][:]))
-                summer && (append!(svf_p_s,tds["svf_planar_s"][:]))
-
-                winter && (append!(svf_h_w,tds["svf_hemi_w"][:]))
-                summer && (append!(svf_h_s,tds["svf_hemi_s"][:]))
-
-                winter && (for_tau_w = hcat(for_tau_w,tds["for_trans_w"][:,:]))
-                summer && (for_tau_s = hcat(for_tau_s,tds["for_trans_s"][:,:]))
-
+            if summer && isempty(for_tau_s)
+                for_tau_s = tds["for_trans_s"][:,:]
             else
-
-                dummvf = fill(-1,size(tds["svf_planar_t"][:]))
-                winter && (append!(svf_p_w,dummvf))
-                summer && (append!(svf_p_s,dummvf))
-
-                winter && (append!(svf_h_w,dummvf))
-                summer && (append!(svf_h_s,dummvf))
-
-                dummytau = fill(-1,size(tds["trans_t"][:,:]))
-                winter && (for_tau_w = hcat(for_tau_w,dummytau))
-                summer && (for_tau_s = hcat(for_tau_s,dummytau))
-
+                for_tau_s = hcat(for_tau_s, tds["for_trans_s"][:,:])
             end
 
-            save_hlm && (tht  = hcat(tht,pds["tht"][:,:]))
+        else # if subtile is terrain only (calculated with ter2rad), fill forest variables with nodata
 
+            dummvf = fill(-1,size(tds["svf_planar_t"][:]))
+            winter && (append!(svf_p_w,dummvf))
+            summer && (append!(svf_p_s,dummvf))
+
+            winter && (append!(svf_h_w,dummvf))
+            summer && (append!(svf_h_s,dummvf))
+
+            dummytau = fill(-1,size(tds["trans_t"][:,:]))
+            if winter && isempty(for_tau_w)
+                for_tau_w = tds["trans_w"][:,:]
+            elseif winter
+                for_tau_w = hcat(for_tau_w, dummytau)
+            end
+
+            if summer && isempty(for_tau_s)
+                for_tau_s = tds["trans_s"][:,:]
+            elseif summer
+                for_tau_s = hcat(for_tau_s, dummytau)
+            end
+
+        end
+
+        if save_hlm && isempty(tht)
+            tht = pds["tht"][:,:]
+        elseif save_hlm
+            tht = hcat(tht,pds["tht"][:,:])
         end
 
         close(tds)
