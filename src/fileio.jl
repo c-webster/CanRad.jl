@@ -1081,13 +1081,13 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
     numptsvec = numptsgrid^2
 
     # combine tile output to one file
-    tiles = filter(!startswith("."), readdir(outdir)) # avoids pesky .DS_Store files when using MacOS
+    subtiles = filter(!startswith("."), readdir(outdir)) # avoids pesky .DS_Store files when using MacOS
 
     xlim = collect(limits[1]:pt_spacing:limits[2]-pt_spacing)
     ylim = collect(limits[3]:pt_spacing:limits[4]-pt_spacing)
 
     # create the Radiation output dataset
-    loc_time = NCDataset(joinpath(outdir,tiles[1],"Output_"*tiles[1]*".nc"))["datetime"][:]
+    loc_time = NCDataset(joinpath(outdir,subtiles[1],"Output_"*subtiles[1]*".nc"))["datetime"][:]
 
     ds = NCDataset(joinpath(exdir,"Output_"*input*".nc"),"c",format=:netcdf4_classic)
     defDim(ds,"locX",size(xlim,1)); defDim(ds,"locY",size(ylim,1))
@@ -1106,7 +1106,7 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
     if save_hlm
         # create the horizon line output dataset
         hlm = NCDataset(joinpath(hlmexdir,"HLM_"*input*".nc"),"c",format=:netcdf4_classic)
-        phi_bins = NCDataset(joinpath(outdir,tiles[1],"HLM_"*tiles[1]*".nc"))["phi"][:]
+        phi_bins = NCDataset(joinpath(outdir,subtiles[1],"HLM_"*subtiles[1]*".nc"))["phi"][:]
         defDim(hlm,"locX",size(xlim,1)); defDim(hlm,"locY",size(ylim,1))
         defVar(hlm,"Easting",Float64.(unique(ptsx)),("locX",)); defVar(hlm,"Northing",Float64.(reverse(unique(ptsy))),("locY",))
         defDim(hlm,"phi",size(phi_bins,1))
@@ -1154,7 +1154,7 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
     north = Float64[]
     save_hlm && (tht = Float64[])
 
-    for tx in tiles
+    for tx in subtiles
 
         tds = NCDataset(joinpath(outdir,tx,"Output_"*tx*".nc"))
         save_hlm && (pds = NCDataset(joinpath(outdir,tx,"HLM_"*tx*".nc")))
