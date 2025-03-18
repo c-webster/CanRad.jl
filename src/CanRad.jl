@@ -3,7 +3,7 @@ module CanRad
 using DelimitedFiles, DataStructures, LasIO, LazIO,
     Statistics, Dates, Interpolations, Images,
     DataFrames, Format, Distributed, Distributions,
-    SpatialFileIO, NCDatasets, Chain, Pkg, MarketTechnicals,
+    SpatialFileIO, NCDatasets, Chain, Pkg, Proj, MarketTechnicals,
     Parameters, Impute
 
 using Conda, PyCall
@@ -41,7 +41,6 @@ export
     calc_solar_track,
     calc_transmissivity!,
     calcCHM_Ptrans!,
-    calc_latlon,
     calcmintht!,
     calcPtrans,
     calcPtrans_dist,
@@ -74,6 +73,7 @@ export
     frbins,
     get_pkg_version,
     getimagecentre,
+    get_latlon,
     getlimits!,
     getnewdims,
     getPhiTht,

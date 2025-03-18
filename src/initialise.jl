@@ -43,6 +43,15 @@ function compatability_check!(par_in::Dict)
 
     !haskey(par_in,"keep_points") && (par_in["keep_points"] = "canopy")
 
+    if haskey(par_in,"coor_system")
+        (par_in["coor_system"] == "CH1903+") && (par_in["epsg_code"] = 2056)
+        (par_in["coor_system"] == "CH1903") && (par_in["epsg_code"] = 21781)
+
+        if startswith(par_in["coor_system"], "UTM")
+            @error "UTM code in coor_system setting. Change input to use epsg_code."
+        end
+
+    end
 
 end
 

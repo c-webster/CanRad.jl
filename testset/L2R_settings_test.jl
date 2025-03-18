@@ -13,7 +13,7 @@ function las2rad_settings(basefolder::String)
         "horizon_line"        => false, # use pre-calculated horizon line matrix (e.g. for compatibility with topo-downscaled swr data)
 
         # forest/lidar settings
-        "keep_points"    => "canopy" # "canopy", "ground+canopy", "all"
+        "keep_points"    => "canopy", # "canopy", "ground+canopy", "all"
         "trunks"         => true, # true or false
         "branches"       => true, # true or false
         "branch_spacing" => 0.1, # spacing interval for creating branches if left empty the default is 0.1
@@ -31,11 +31,11 @@ function las2rad_settings(basefolder::String)
 
         # location settings
         "time_zone"   => 1, # relative to UTC (e.g CET = UTC+1)
-        "coor_system" => "CH1903", # possible options "CH1903", "CH1903+" or e.g. "UTM 32 N" for UTM systems (spaces required)
+        "epsg_code" => "21781", # possible options "CH1903", "CH1903+" or e.g. "UTM 32 N" for UTM systems (spaces required)
 
         # image settings
         "image_height" => 0.25, #FLOAT NUMBER  !!!!!!!!
-        "point_size"  => [30.0,10.0], # how big to make the points in the output image in pixels (image is 1000x1000) this needs to be calibrated for point cloud density
+        "point_size"   => [30.0,10.0], # how big to make the points in the output image in pixels (image is 1000x1000) this needs to be calibrated for point cloud density
 
         # run settings
         "batch"       => false,

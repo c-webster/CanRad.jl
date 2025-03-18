@@ -80,87 +80,15 @@ function aggregate_data(solar::SOLAR,dat::Vector{Float64})
 end
 
 
-function utm2deg(loc_x::Float64,loc_y::Float64,zone::Float64,hemi::SubString{String})
-    # Credit: based on utm2lonlat found on Matlab file exchange; accessed on 2018/08/25
-    # Copyright (c) 2013, Erwin N. All rights reserved.
-    sa    = 6378137.000000
-    sb    = 6356752.314245
-    e2sq = ((((sa .^ 2 ) - (sb .^ 2 )).^ 0.5) ./ sb).^2
-    c     = ( sa .^ 2 ) ./ sb;
+function get_latlon(loc_x::Float64,loc_y::Float64,epsg_code::Number)
 
-    if hemi == "N"
-        X    = loc_x - 500000
-        Y    = loc_y
-    elseif hemi == "S"
-        X    = loc_x - 500000
-        Y    = loc_y - 10000000
-    end
+    source_epsg = epsg_code
+    target_epsg = 4326
 
-    S      = ( ( zone .* 6 ) - 183 )
-    lat    =  Y ./ ( 6366197.724 .* 0.9996 )
-    v      = ( c ./ ( ( 1 + ( e2sq .* ( cos(lat) ) .^ 2 ) ) ) .^ 0.5 ) .* 0.9996
-    a      = X ./ v
-    a1     = sin( 2 .* lat )
-    a2     = a1 .* ( cos(lat) ) .^ 2
-    j2     = lat + ( a1 ./ 2 )
-    j4     = ( ( 3 .* j2 ) + a2 ) ./ 4
-    j6     = ( ( 5 .* j4 ) + ( a2 .* ( cos(lat) ) .^ 2) ) ./ 3
-    alpha  = ( 3 ./ 4 ) .* e2sq
-    beta   = ( 5 ./ 3 ) .* alpha .^ 2
-    gamma  = ( 35 ./ 27 ) .* alpha .^ 3
-    Bm     = 0.9996 .* c .* ( lat - alpha .* j2 + beta .* j4 - gamma .* j6 )
-    b      = ( Y - Bm ) ./ v
-    Epsi   = ( ( e2sq .* a.^2 ) ./ 2 ) .* ( cos(lat) ).^ 2
-    Eps    = a .* ( 1 - ( Epsi ./ 3 ) )
-    nab    = ( b .* ( 1 - Epsi ) ) + lat
-    senoheps = ( exp(Eps) - exp(-Eps) ) ./ 2
-    Delt   = atan(senoheps ./ (cos(nab) ) )
-    TaO    = atan(cos(Delt) .* tan(nab))
-    longitude = (Delt .* (180/pi) ) + S
+    trans = Proj.Transformation("EPSG:$source_epsg", "EPSG:$target_epsg"; always_xy=true)
 
-    latitude = ( lat + ( 1 + e2sq .* (cos(lat).^2) - ( 3/2 )
-      .* e2sq .* sin(lat) .* cos(lat) .* ( TaO - lat ) )
-      .* ( TaO - lat ) ) .* (180/pi)
-
-    return latitude, longitude
-end
-
-function calc_latlon(loc_x::Float64,loc_y::Float64,coor_system::String)
-
-    if split(coor_system)[1] == "CH1903"
-        xd  = (loc_x - 600000)/1000000
-        yd  = (loc_y - 200000)/1000000
-        lon = (2.6779094 + 4.728982 .* xd + 0.791484 .* xd .* yd + 0.1306 .* xd .* yd.^2 - 0.0436 .* xd.^3) .* 100 ./ 36
-        lat = (16.9023892 + 3.238272 .* yd - 0.270978 .* xd.^2 - 0.002528 .* yd.^2 - 0.0447 .* xd.^2 .* yd - 0.0140 .* yd.^3) .* 100 ./ 36
-    elseif split(coor_system)[1] == "CH1903+"
-        xd  = (loc_x - 2600000)/1000000
-        yd  = (loc_y - 1200000)/1000000
-        lon = (2.6779094 + 4.728982 .* xd + 0.791484 .* xd .* yd + 0.1306 .* xd .* yd.^2 - 0.0436 .* xd.^3) .* 100 ./ 36
-        lat = (16.9023892 + 3.238272 .* yd - 0.270978 .* xd.^2 - 0.002528 .* yd.^2 - 0.0447 .* xd.^2 .* yd - 0.0140 .* yd.^3) .* 100 ./ 36
-    elseif split(coor_system)[1] == "UTM"
-        lat,lon  = utm2deg(loc_x,loc_y,parse(Float64,split(coor_system)[2]),split(coor_system)[3])
-    end
-
-    return lat, lon
-
-end
-
-function calc_latlon(loc_x::Vector{Float64},loc_y::Vector{Float64},coor_system::String)
-
-    if split(coor_system)[1] == "CH1903"
-        xd  = (loc_x .- 600000)/1000000
-        yd  = (loc_y .- 200000)/1000000
-        lon = (2.6779094 .+ 4.728982 .* xd .+ 0.791484 .* xd .* yd .+ 0.1306 .* xd .* yd.^2 - 0.0436 .* xd.^3) .* 100 ./ 36
-        lat = (16.9023892 .+ 3.238272 .* yd .- 0.270978 .* xd.^2 .- 0.002528 .* yd.^2 .- 0.0447 .* xd.^2 .* yd .- 0.0140 .* yd.^3) .* 100 ./ 36
-    elseif split(coor_system)[1] == "CH1903+"
-        xd  = (loc_x .- 2600000)/1000000
-        yd  = (loc_y .- 1200000)/1000000
-        lon = (2.6779094 .+ 4.728982 .* xd .+ 0.791484 .* xd .* yd .+ 0.1306 .* xd .* yd.^2 - 0.0436 .* xd.^3) .* 100 ./ 36
-        lat = (16.9023892 .+ 3.238272 .* yd .- 0.270978 .* xd.^2 .- 0.002528 .* yd.^2 .- 0.0447 .* xd.^2 .* yd .- 0.0140 .* yd.^3) .* 100 ./ 36
-    elseif split(coor_system)[1] == "UTM"
-        out  = reshape(reinterpret(Float64, utm2deg.(loc_x,loc_y,parse(Float64,split(coor_system)[2]),split(coor_system)[3])), (2,:))'
-        lat, lon =[out[:,x] for x in 1:size(out,2)]
-    end
+    # Transform the coordinates using broadcasting
+    lon, lat = trans.(loc_x, loc_y)
 
     return lat, lon
 

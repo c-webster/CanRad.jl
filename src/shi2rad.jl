@@ -31,7 +31,7 @@ function shi2rad!(shif::String,par_in_shi::Dict{String, Any},
 
     dataset = createfiles_fromSHI(outdir,outstr,hcat(pts_x,pts_y),calc_swr,
                                         SHI_summer,SHI_winter,SHI_terrain,SHI_evergreen,loc_time_agg,time_zone)
-    pts_lat, pts_lon = calc_latlon(pts_x,pts_y,coor_system)
+    pts_lat, pts_lon = get_latlon(pts_x,pts_y,epsg_code)
     solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = tstep, radius = canrad.radius, time_zone = time_zone)
 
     @unpack radius, g_rad = canrad

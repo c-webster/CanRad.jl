@@ -33,7 +33,7 @@ function chm2rad_settings(basefolder="empty"::String)
 
         # location settings
         "time_zone"   => 1, # relative to UTC (e.g CET = UTC+1)
-        "coor_system" => "CH1903", # possible options "CH1903", "CH1903+" or e.g. "UTM 32 N" for UTM systems (spaces required)
+        "epsg_code" => "21781", # possible options "CH1903", "CH1903+" or e.g. "UTM 32 N" for UTM systems (spaces required)
 
         # image settings
         "image_height" => 0.25, #FLOAT NUMBER  !!!!!!!!

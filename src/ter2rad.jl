@@ -30,7 +30,7 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         loc_time_agg = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
     
         dataset = createfiles_terrain(outdir,outstr,pts,calc_trans,calc_swr,loc_time_agg,time_zone)
-        pts_lat, pts_lon = calc_latlon(pts_x,pts_y,coor_system)
+        pts_lat, pts_lon = get_latlon(pts_x,pts_y,epsg_code)
         solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = tstep, radius = canrad.radius, time_zone = time_zone)
     else    
         dataset = createfiles_terrain(outdir,outstr,pts,calc_trans,calc_swr)
