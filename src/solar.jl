@@ -79,8 +79,7 @@ function aggregate_data(solar::SOLAR,dat::Vector{Float64})
 
 end
 
-
-function get_latlon(loc_x::Float64,loc_y::Float64,epsg_code::Number)
+function get_latlon(loc_x,loc_y,epsg_code::Int64)
 
     source_epsg = epsg_code
     target_epsg = 4326
@@ -88,9 +87,9 @@ function get_latlon(loc_x::Float64,loc_y::Float64,epsg_code::Number)
     trans = Proj.Transformation("EPSG:$source_epsg", "EPSG:$target_epsg"; always_xy=true)
 
     # Transform the coordinates using broadcasting
-    lon, lat = trans.(loc_x, loc_y)
+    transformed_coordinates = trans.(loc_x, loc_y)
 
-    return lat, lon
+    return map(x -> x[2], transformed_coordinates), map(x -> x[1], transformed_coordinates)
 
 end
 

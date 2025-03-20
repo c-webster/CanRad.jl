@@ -20,7 +20,7 @@ function ter2rad_settings(basefolder="empty"::String)
 
         # location settings
         "time_zone"   => 1, # relative to UTC (e.g CET = UTC+1)
-        "epsg_code" => "21781", # possible options "CH1903", "CH1903+" or e.g. "UTM 32 N" for UTM systems (spaces required)
+        "epsg_code" => 21781, # epsg code of dataset (as integer) 
 
         # image settings
         "image_height" => 2.0, #FLOAT NUMBER  !!!!!!!!
