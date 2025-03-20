@@ -257,7 +257,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         # load the forest type data
         for_typ = read_griddata_window(ftdf,limits_canopy,true,true)[3] 
 
-        # get lavd for for_typ = 1 (needleleaf)
+        # get winter lavd everywhere
         cd_m = 6.98 .+(0.0612 .* chm_z)
         dbh_t = (0.974 .* (chm_z .* cd_m) .^ 0.748)
         chm_lavd_winter = (exp.((-8.31).+(2.61.*(log.(dbh_t.*10)))+(-0.07.*chm_z))) ./  (0.8 .* pi .* ((cd_m./2).^2) .* (chm_z.*0.8))
@@ -265,7 +265,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
         chm_b_w = fill(0.0,size(chm_z))
     
-        # replace where for_typ == 2 with a low value for leaf-off trees
+        # now replace where for_typ == 2 with a low value for leaf-off trees
         chm_lavd_winter[for_typ .== 1] .= 0.05
 
     else

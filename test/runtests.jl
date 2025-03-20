@@ -31,7 +31,7 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
             ter2rad!(pts,dat_in,par_in,exdir,"T2R test")
 
             ncds = Dataset(joinpath(exdir,"Output_testset.nc"))
-            tst_dd = ncds["svf_planar"][:].*0.01
+            tst_dd = ncds["svf_planar_t"][:].*0.01
             close(ncds)
 
             @test 14.2 < sum(tst_dd) < 14.3 # vf of images is 0.95
