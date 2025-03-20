@@ -59,6 +59,10 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         # This fix is intended for the swissalti3d data which is clipped to the swiss border. 
         end
 
+    else
+
+        dtm_x = [] # define an empty variable to run with terrain_highres only (fix in the future to something less blunt)
+
     end
 
     if terrain_lowres
