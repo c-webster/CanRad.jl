@@ -217,6 +217,4 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
     (save_images && make_pngs) && make_SHIs(outdir,"none","none",true)
 
-    println("done with "*taskID)
-
 end
