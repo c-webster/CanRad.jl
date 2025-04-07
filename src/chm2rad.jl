@@ -65,6 +65,8 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     end
 
     if special_implementation == "oshd-alps"
+        # force a resolution change from 10 to 2m 
+        chm_x, chm_y, chm_z, chm_cellsize = change_res(chm_x,chm_y,chm_z)
         rbins_chm = collect(1:sqrt(2).*chm_cellsize:forest_peri)
         chm_cellsize *= 0.5
     else
@@ -255,7 +257,9 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     elseif special_implementation == "oshd-alps"
 
         # load the forest type data
-        for_typ = read_griddata_window(ftdf,limits_canopy,true,true)[3] 
+        ft_x, ft_y, for_typ = read_griddata_window(ftdf,limits_canopy,true,true)
+        for_typ = change_res(ft_x,ft_y,for_typ)[3]
+        println("changed")
 
         # get winter lavd everywhere
         cd_m = 6.98 .+(0.0612 .* chm_z)

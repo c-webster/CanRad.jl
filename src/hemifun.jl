@@ -53,6 +53,18 @@ function getlimits!(limits,pts_x,pts_y,peri)
 
 end
 
+function change_res(org_x,org_y,org_z)
+
+    limits_chm = getlimits!(Vector{Float64}(undef,4),org_x,org_y,5)
+
+    x_new = vec((limits_chm[1]:2:limits_chm[2]-1)'  .* ones(Int(limits_chm[4]-limits_chm[3])))
+    y_new = vec(ones(Int(limits_chm[2]-limits_chm[1]))' .* (limits_chm[3]:2:limits_chm[4]-1))
+
+    z_new = findelev(copy(org_x),copy(org_y),copy(org_z),x_new,y_new,10.0,"nearest")
+
+    return x_new, y_new, z_new, 2
+
+end
 
 function trunkpoints(x1::Float64,y1::Float64,h::Float64,r::Float64,bh::Float64,npt::Any,hint::Any,e::Float64)
 

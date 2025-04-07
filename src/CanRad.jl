@@ -50,6 +50,7 @@ export
     calculateSWR,
     calc_svf,
     cart2sph!,
+    change_res,
     check_output,
     clipdat,
     clipdat!,
