@@ -259,7 +259,6 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         # load the forest type data
         ft_x, ft_y, for_typ = read_griddata_window(ftdf,limits_canopy,true,true)
         for_typ = change_res(ft_x,ft_y,for_typ)[3]
-        println("changed")
 
         # get winter lavd everywhere
         cd_m = 6.98 .+(0.0612 .* chm_z)
