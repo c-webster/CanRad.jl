@@ -1190,13 +1190,13 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
 
             if winter && isempty(for_tau_w)
                 for_tau_w = tds["for_trans_w"][:,:]
-            else
+            elseif winter
                 for_tau_w = hcat(for_tau_w, tds["for_trans_w"][:,:])
             end
 
             if summer && isempty(for_tau_s)
                 for_tau_s = tds["for_trans_s"][:,:]
-            else
+            elseif summer
                 for_tau_s = hcat(for_tau_s, tds["for_trans_s"][:,:])
             end
 
