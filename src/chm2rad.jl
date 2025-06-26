@@ -73,6 +73,10 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         rbins_chm = collect(4*chm_cellsize:sqrt(2).*chm_cellsize:forest_peri)
     end
 
+    if special_implementation == "aso-sites"
+        chm_z .= ifelse.(chm_z .< 0 .|| isinf.(chm_z), 0.0, chm_z)
+    end
+
     ################################################################################
     # > Import prepare terrain data
 
@@ -271,6 +275,32 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         # now replace where for_typ == 2 with a low value for leaf-off trees
         chm_lavd_winter[for_typ .== 1] .= 0.05
 
+    elseif special_implementation == "aso-sites"
+
+        # load the tree species info
+        limits_tile = getlimits!(Vector{Float64}(undef,4),mean(pts_x),mean(pts_y),1.0)
+        for_typ = Int(median(read_griddata_window(ftdf,limits_tile,true,true)[3]))
+
+        if for_typ == 1 # mixed conifer
+            # ... in the absence of more specific information, going with douglas fir
+            # !!! currently using values for norway spruce
+            cd_m = 6.98 .+(0.0612 .* chm_z)
+            dbh_t = (0.974 .* (chm_z .* cd_m) .^ 0.748)
+            chm_lavd = (exp.((-8.31).+(2.61.*(log.(dbh_t.*10)))+(-0.07.*chm_z))) ./  (0.8 .* pi .* ((cd_m./2).^2) .* (chm_z.*0.8))
+            chm_b_w = fill(0.8,size(chm_z)) .* chm_z
+        elseif for_typ == 2 # lodgepole pine
+            # !!! currently using values for norway spruce
+            cd_m = 6.98 .+(0.0612 .* chm_z)
+            dbh_t = (0.974 .* (chm_z .* cd_m) .^ 0.748)
+            chm_lavd = (exp.((-8.31).+(2.61.*(log.(dbh_t.*10)))+(-0.07.*chm_z))) ./  (0.8 .* pi .* ((cd_m./2).^2) .* (chm_z.*0.8))
+            chm_b_w = fill(0.6,size(chm_z)) .* chm_z
+        else
+            error("invalid forest type for special_implementation aso-sites")
+        end
+
+        # align values with chm
+        chm_lavd[chm_z .< 1] .= 0
+        
     else
 
         cbh_w = copy(cbh)
