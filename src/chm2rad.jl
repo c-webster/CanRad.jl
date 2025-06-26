@@ -408,7 +408,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         surf_area_h[rix] = 2*pi*(cos(ring_tht[rix]/360*2*pi) - cos(ring_tht[rix+1]/360*2*pi))/2/pi
     end
 
-    @unpack trans_for = solar
+    calc_trans && (@unpack trans_for = solar)
 
     if forest_type == "evergreen"
         mat2ev_e = copy(mat2ev)
