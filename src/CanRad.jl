@@ -8,6 +8,8 @@ using DelimitedFiles, DataStructures, LasIO, LazIO,
 
 using Conda, PyCall
 
+import Random
+
 function __init__()
     @eval global pyinterp  = pyimport("scipy.interpolate")
     @eval global scipyspat = pyimport("scipy.spatial")

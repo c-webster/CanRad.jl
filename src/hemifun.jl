@@ -191,6 +191,8 @@ function make_branches(ltc_x::Vector{Float64},ltc_y::Vector{Float64},ltc_z::Vect
         end
     end
 
+    # make results reproducible
+    Random.seed!("canrad");
     # make the points a bit more random
     bsm_x .+= rand(Uniform(-branch_spacing,branch_spacing),size(bsm_x,1))
     bsm_y .+= rand(Uniform(-branch_spacing,branch_spacing),size(bsm_x,1))
@@ -649,6 +651,8 @@ function calcPtrans(chm2rad::CHM2RAD,sum_lavd_thick::Matrix{Float64},cellsize::F
 
     Ptrans .= exp.(-0.5 * sum_lavd_thick)
 
+    # make results reproducible
+    Random.seed!("canrad");
     # solve pt based on average pt and random distribution
     rand_Ptrans = rand(Uniform(0,1),size(Ptrans))
 
@@ -688,6 +692,8 @@ function getPhiTht(chm2rad::CHM2RAD,Ptrans::Matrix{Float64})
 
     @unpack phi_bins_short = chm2rad
     
+    # make results reproducible
+    Random.seed!("canrad");
     phi = repeat(phi_bins_short,90) 
     phi .+= rand(Uniform(-pi/360,pi/360),size(phi))
 
