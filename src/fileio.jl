@@ -30,6 +30,8 @@ function loadltc_laz(fname::String,limits::Vector{Float64},
     dbh_x::Vector{Float64},dbh_y::Vector{Float64},
     lastc::Vector{Float64},season::String=nothing)
 
+    # make results reproducible
+    Random.seed!("canrad");
     # calculate random branch angle for each tree
     ang = rand(Uniform(60,100),size(lastc,1)) # Norway Spruce
 
