@@ -29,32 +29,33 @@ CanRad requires [SpatialFileIO.jl](https://github.com/c-webster/SpatialFileIO.jl
 
 `SpatialFileIO` can be added by
 ```
-]add https://github.com/c-webster/SpatialFileIO.jl
+using Pkg
+Pkg.add(url="https://github.com/c-webster/SpatialFileIO.jl")
 ```
 
 `scipy` can be added by
 ```
-]add Conda
+Pkg.add("Conda")
 using Conda
 Conda.add("scipy")
 ```
 
 Then add `CanRad`
 ```
-]add https://github.com/c-webster/CanRad.jl
+Pkg.add(url="https://github.com/c-webster/CanRad.jl")
 ```
 
 ## Tests
 
 Add required packages
 ```
-]add DelimitedFiles, NCDatasets
+Pkg.add(["DelimitedFiles", "NCDatasets"])
 ```
 
 Run the test (this will take several minutes)
 ```
 using CanRad
-]test CanRad
+Pkg.test("CanRad")
 ```
 
 ## Usage

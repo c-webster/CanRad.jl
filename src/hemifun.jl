@@ -192,9 +192,9 @@ function make_branches(ltc_x::Vector{Float64},ltc_y::Vector{Float64},ltc_z::Vect
     end
 
     # make the points a bit more random
-    bsm_x .+= rand(Uniform(-branch_spacing,branch_spacing),size(bsm_x,1))
-    bsm_y .+= rand(Uniform(-branch_spacing,branch_spacing),size(bsm_x,1))
-    bsm_z .+= rand(Uniform(-branch_spacing,branch_spacing),size(bsm_x,1))
+    bsm_x .+= rand(Uniform(-spacing,spacing),size(bsm_x,1))
+    bsm_y .+= rand(Uniform(-spacing,spacing),size(bsm_x,1))
+    bsm_z .+= rand(Uniform(-spacing,spacing),size(bsm_x,1))
 
     return bsm_x, bsm_y, bsm_z, Bool.(bsm_cls)
 

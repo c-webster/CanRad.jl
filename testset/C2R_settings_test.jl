@@ -15,9 +15,9 @@ function chm2rad_settings(basefolder="empty"::String)
         "hlm_precalc"         => false, # use pre-calculated horizon line matrix (e.g. for compatibility with topo-downscaled swr data)
 
         # forest settings
-        "season"       => "both", # summer, winter, both
+        "phenology"    => "none", # leafon, leafoff, both
         "forest_type"  => "evergreen", # evergreen, deciduous, mixed
-        "tree_species" => "needleleaf", # needleleaf, broadleaf, both
+        "leaf_type"    => "needleleaf", # needleleaf, broadleaf, both
         "forest_peri"  => 100, # radius within which forest is included in SHI calculation
         "cbh"          => 2.0, # height of canopy base above ground (can also be input as raster for varied base height)
         "trunks"       => false,
@@ -32,7 +32,7 @@ function chm2rad_settings(basefolder="empty"::String)
         "tstep" => 2, # in minutes
 
         # location settings
-        "time_zone"   => 1, # relative to UTC (e.g CET = UTC+1)
+        "time_zone" => 1, # relative to UTC (e.g CET = UTC+1)
         "epsg_code" => 21781, # epsg code of dataset (as integer)
 
         # image settings
@@ -52,11 +52,11 @@ function chm2rad_settings(basefolder="empty"::String)
         # chm
         "chmf" => basefolder*"/input/test_chm.tif",
         # dtm -> high res terrain
-        "dtmf" => basefolder*"/input/test_dtm.tif",
-        # dem -> coarse res terrain
-        "demf" => basefolder*"/input/dem_50m.tif",
+        "hrdtmf" => basefolder*"/input/test_dtm.tif",
+        # dem -> low res terrain
+        "lrdtmf" => basefolder*"/input/dem_50m.tif",
         # terrain mask (if terrain_precalc = true)
-        "terf" => basefolder*"/Output_tests_T2R/SHIs_testset.nc",
+        "termf" => basefolder*"/Output_tests_T2R/SHIs_testset.nc",
         # horizon line file
         "hlmf" => basefolder*"/Output_tests_T2R/HLM_testset.nc",
         # lavdf

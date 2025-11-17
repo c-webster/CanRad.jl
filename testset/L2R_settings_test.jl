@@ -8,7 +8,7 @@ function las2rad_settings(basefolder::String)
         "terrain_lowres"      => true, # !MUST BE TRUE! include low resolution regional terrain (> 25 m)
         "lowres_peri"         => 10000, # radius around points to include lowres terrain
         "terrainmask_precalc" => true, # if the terrain mask has been pre-calculated by CanRad-T2R
-        "calc_terrain"        => true, # calculate variables for terrain-only as well as forest
+        "calc_terrain"        => false, # calculate variables for terrain-only as well as forest
         "buildings"           => false, # include buildings as opague features (requires a building height model, bhmf, like the chm)
         "horizon_line"        => false, # use pre-calculated horizon line matrix (e.g. for compatibility with topo-downscaled swr data)
 
@@ -17,7 +17,7 @@ function las2rad_settings(basefolder::String)
         "trunks"         => true, # true or false
         "branches"       => true, # true or false
         "branch_spacing" => 0.1, # spacing interval for creating branches if left empty the default is 0.1
-        "season"         => "winter", # "winter" or "nothing" see docs for more information about this feature
+        "phenology"      => "none", # "leafoff" or "none" see docs for more information about this feature
         "forest_peri"    => 100, # radius around points to include in image
 
         # calculation settings
@@ -50,11 +50,11 @@ function las2rad_settings(basefolder::String)
     # chm
     "dsmf" => basefolder*"/input/test.laz",
     # dtm
-    "dtmf" => basefolder*"/input/test_dtm.tif",
+    "hrdtmf" => basefolder*"/input/test_dtm.tif",
     # dem
-    "demf" => basefolder*"/input/dem_50m.tif",
+    "lrdtmf" => basefolder*"/input/dem_50m.tif",
     # terrain mask (if terrain_precalc = true)
-    "terf" => basefolder*"/Output_tests_T2R/SHIs_testset.nc",
+    "termf" => basefolder*"/Output_tests_T2R/SHIs_testset.nc",
     # horizon line file
     "hlmf" => basefolder*"/Output_tests_T2R/HLM_testset.nc",
     # dbh

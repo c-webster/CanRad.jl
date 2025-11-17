@@ -14,7 +14,7 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
 
 @testset "all_models" begin
 
-    for model in ["T2R","C2R","L2R"]
+    for model in ["T2R","C2R","L2R","S2R"]
 
         setf       = joinpath(datdir,model*"_settings_test.jl")
 
@@ -31,50 +31,52 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
             ter2rad!(pts,dat_in,par_in,exdir,"T2R test")
 
             ncds = Dataset(joinpath(exdir,"Output_testset.nc"))
-            tst_dd = ncds["svf_planar_t"][:].*0.01
+            tst_dd = ncds["svf_planar_terrain"][:].*0.01
             close(ncds)
 
             @test 14.2 < sum(tst_dd) < 14.3 # vf of images is 0.95
 
-        else
+        elseif model == "C2R"
 
-            if model == "C2R"
+            dat_in, par_in = chm2rad_settings(datdir)
+            println("Testing C2R ...")
+            chm2rad!(pts,dat_in,par_in,exdir,"C2R test")
 
-                dat_in, par_in = chm2rad_settings(datdir)
-                println("Testing C2R ...")
-                chm2rad!(pts,dat_in,par_in,exdir,"C2R test")
+            ncds = Dataset(joinpath(exdir,"Output_testset.nc"))
+            tst_dd = ncds["svf_planar_evergreen"][:].*0.01
+            close(ncds)
 
-                ncds = Dataset(joinpath(exdir,"Output_testset.nc"))
-                tst_dd = ncds["svf_planar_e"][:].*0.01
-                close(ncds)
+            # test rmse is <0.05
+            @test sum(sqrt.((tst_dd .- bmk_dd).^2))/size(pts,1) < 0.05
 
-                # test rmse is <0.05
-                @test sum(sqrt.((tst_dd .- bmk_dd).^2))/size(pts,1) < 0.05
+        elseif model == "L2R"
 
-            elseif model == "L2R"
+            dat_in, par_in = las2rad_settings(datdir)
 
-    
-                dat_in, par_in = las2rad_settings(datdir)
-
-                if (Sys.free_memory()/2^20) < 12000
-                    @warn "not enough available RAM to test L2R . . .  skipping test "
-                    continue
-                end
-
-                println("Testing L2R ...")
-                las2rad!(pts,dat_in,par_in,exdir,"L2R test")
-
-                ncds = Dataset(joinpath(exdir,"Output_testset.nc"))
-                tst_dd = ncds["svf_planar"][:].*0.01
-                close(ncds)
-
-                # test rmse is <0.05
-                @test sum(sqrt.((tst_dd .- bmk_dd).^2))/size(pts,1) < 0.05
-
-                
+            GC.gc()
+            if (Sys.free_memory()/2^20) < 12000
+                @warn "not enough available RAM to test L2R . . .  skipping test "
+                continue
             end
 
+            println("Testing L2R ...")
+            las2rad!(pts,dat_in,par_in,exdir,"L2R test")
 
+            ncds = Dataset(joinpath(exdir,"Output_testset.nc"))
+            tst_dd = ncds["svf_planar_evergreen"][:].*0.01
+            close(ncds)
+
+            # test rmse is <0.05
+            @test sum(sqrt.((tst_dd .- bmk_dd).^2))/size(pts,1) < 0.05
+
+        elseif model == "S2R"
+
+            par_in = shi2rad_settings()
+            shif = joinpath(datdir,"Output_tests_C2R","SHIs_testset.nc")
+            shi2rad!(shif::String,par_in,exdir)
+            @test isfile(joinpath(exdir,"Output_testset.nc"))
+
+                
         end
 
     end

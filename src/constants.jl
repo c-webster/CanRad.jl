@@ -127,7 +127,7 @@ end
     pts_e::Vector{Float64} = zeros(pts_sz)
 
     limits_lowres::Vector{Float64} = zeros(4)
-    pts_e_dem::Vector{Float64} = zeros(pts_sz)
+    pts_e_lrdtm::Vector{Float64} = zeros(pts_sz)
 
     # terrain horizon line parameters
     phi_bins::Vector{Float64} = collect(-2*pi:pi/180:2*pi)[1:end-1]
@@ -187,3 +187,115 @@ end
     # eventually default parameters for the trunks instead of pre-allo trunks
 end
 
+@with_kw struct FILEIO
+
+    percent_desc = "values are represented as percentage (0-100)"
+
+    svf_planar_desc::String = "perspective of a horizontal flat uplooking surface"
+    svf_planar_calc::String = "zenith rings weighted by surface area projected onto a horizontal flat surface"
+    svf_hemi_desc::String   = "perspective of hemipherically shaped surface or plant"
+    svf_hemi_calc::String   = "zenith rings weighted by surface area on the hemisphere"
+
+    time_zone::Int64
+    dt_desc::String = "UTC" * (time_zone == 0 ? "" : (time_zone > 0 ? "+" : "") * string(time_zone))
+
+    # environment description
+    terrain_desc::String   = "calculated for terrain only (no canopy)"
+    leafon_desc::String    = "leaf on phenological conditions"
+    leafoff_desc::String   = "leaf off phenological conditions"
+    mixed_desc::String     = "calculated for deciduous forest or mixed forests"
+    evergreen_desc::String = "calculated for 100% evergreen forest"
+
+    swr_tot_desc::String = "sum of calculated diffuse + direct radiation components"
+
+    calc_swr::Int64
+    swr_tot_calc::String = "using tvt, svf_planar"
+    swr_dir_calc::String = "using tvt"
+
+    swr_calc = if calc_swr == 1
+        "maximum potential shortwave radiation with atm_trans = 1"
+    elseif calc_swr == 2
+        "measured shortwave radiation supplied as user input"
+    else
+        ""
+    end
+
+end
+
+@with_kw struct FILEPATHS
+
+    # terrain
+    hrdtmf::String = ""
+    lrdtmf::String = ""
+    termf::String = ""
+    hlmf::String = ""
+
+    # canopy
+    chmf::String = ""
+    lavdf::String = ""
+    cbhf::String = ""
+    dbhf::String = ""
+    lasf::String = ""
+    ltcf::String = ""
+
+    # meteorological 
+    swrf::String = ""
+
+end
+
+
+@with_kw struct SETTINGS
+
+    # Terrain settings
+    terrain_highres::Bool     = false
+    highres_peri::Int64       = 300
+    terrain_lowres::Bool      = true
+    lowres_peri::Int64        = 25000
+    terrainmask_precalc::Bool = false
+    calc_terrain::Bool        = false
+    buildings::Bool           = false
+    hlm_precalc::Bool          = false
+    oshd_flag::Bool           = false
+
+    # Forest settings
+    keep_points::String     = "canopy"
+    forest_peri::Int64      = 100
+    forest_type::String     = "evergreen"
+    phenology::String       = "none"
+    leaf_type::String       = "needleleaf"
+    trunks::Bool            = false
+    trunks_peri::Int64      = forest_peri
+    branches::Bool          = false
+    branch_spacing::Float64 = 0.1
+    cbh::Float64            = 2.0
+
+    # Calculation settings
+    calc_trans::Bool = false
+    calc_swr::Int64  = 0
+
+    # Time settings
+    t1::String     = "22.06.2020 00:00:00"
+    t2::String     = "22.06.2020 23:00:00"
+    tstep::Integer = 60
+
+    # Location settings
+    time_zone::Int64 = -99
+    epsg_code::Int64 = -99
+
+    # Image settings
+    image_height::Float64 = 0.5
+    point_size::Vector{Float64} = [30.0,10.0]
+    tilt::Bool = false
+
+    # Run settings
+    batch::Bool        = false
+    save_images::Bool  = false
+    make_pngs::Bool    = false
+    save_horizon::Bool = false
+    step_progress::Bool     = false
+
+    # Special implementation
+    special_implementation::String = "none"
+
+
+end

@@ -28,17 +28,15 @@ wrkdir = "../setup/example"
 shp2json = "../setup/shp2json.py"
 lastoolspath = "../software/LAStools/bin" # not provided
 
-model = "L2R" # can be L2R (for trunks or branches) or C2R (for crown-specific leaf area volume density)
+model = "L2R" # can be L2R (for trunks or branches) or C2R (for crown-specific leaf area volume density and trunks)
 
 pycrownscript = "example.py"
 
-forest_type = "TCG" # for dbh calculations using relationships from Jucker et al. 2017 (https://doi.org/10.1111/gcb.13388)
+forest_type = "TCG"
+# for dbh calculations using relationships from Jucker et al. 2017 (https://doi.org/10.1111/gcb.13388)
 # TCG = temperate coniferous gymnosperm (Palearctic) / e.g. Spruce Switzerland
 # BG  = boreal gymnosperm (Palearctic) / e.g. Finland Pine
 # TMG = temperate mixed gymnosperm (Palearctic) / e.g. Beech
-
-model = "C2R"
-# turns on calculation of trunks or lavd etc.
 
 tree_species   = "Spruce" # for calculation of leaf area for C2R
 # "Spruce", "Beech", "Scot Pine"

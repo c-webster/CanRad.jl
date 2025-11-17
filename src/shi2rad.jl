@@ -5,15 +5,16 @@
 
 """
 
-function shi2rad!(shif::String,par_in_shi::Dict{String, Any},
-    exdir_shi::String,taskID="task",pts_m=nothing)
+function shi2rad!(shif::String,par_in::Dict{String, Any},
+    exdir::String,taskID="task",pts_m=nothing)
 
-    eval(extract(par_in_shi))
+    # eval(extract(par_in_shi))
+    update_deprecated_settings!(par_in)
 
-    canrad  = CANRAD()
+    st = SETTINGS(; (Symbol.(keys(par_in)) .=> values(par_in))... )
 
-    # get model number (1 = canopy, 2 = terrain only)
-    pts_m == nothing && (pts_m = ones(size(pts_x)))
+    canrad = CANRAD()
+    fileio = FILEIO(time_zone=st.time_zone,calc_swr=st.calc_swr)
 
     # load the shis and get pts from the file
     shi_ds = NCDataset(shif,"r")
@@ -21,18 +22,20 @@ function shi2rad!(shif::String,par_in_shi::Dict{String, Any},
     pts_x = shi_ds["easting"][:]
     pts_y = shi_ds["northing"][:]
 
-    outdir, outstr  = organise_outf(taskID,exdir_shi,batch)
+    # get model number (1 = canopy, 2 = terrain only)
+    pts_m == nothing && (pts_m = ones(size(pts_x)))
+
+    outdir, outstr  = organise_outf(taskID,exdir,st.batch)
     global outtext = "Processing "*cfmt.("%.$(0)f", 0)*"% ... "*string(0)*" of "*string(size(pts_x,1))*".txt"
     writedlm(joinpath(outdir,outtext),NaN)
 
     # get time/date info
-    loc_time     = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
-    loc_time_agg = collect(Dates.DateTime(t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(tstep):Dates.DateTime(t2,"dd.mm.yyyy HH:MM:SS"))
+    loc_time     = collect(Dates.DateTime(st.t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(2):Dates.DateTime(st.t2,"dd.mm.yyyy HH:MM:SS"))
+    loc_time_agg = collect(Dates.DateTime(st.t1,"dd.mm.yyyy HH:MM:SS"):Dates.Minute(st.tstep):Dates.DateTime(st.t2,"dd.mm.yyyy HH:MM:SS"))
 
-    dataset = createfiles_fromSHI(outdir,outstr,hcat(pts_x,pts_y),calc_swr,
-                                        SHI_summer,SHI_winter,SHI_terrain,SHI_evergreen,loc_time_agg,time_zone)
-    pts_lat, pts_lon = get_latlon(pts_x,pts_y,epsg_code)
-    solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = tstep, radius = canrad.radius, time_zone = time_zone)
+    dataset = createfiles(outdir,outstr,hcat(pts_x,pts_y),st,fileio,loc_time_agg)
+    pts_lat, pts_lon = get_latlon(pts_x,pts_y,st.epsg_code)
+    solar = SOLAR(loc_time = loc_time, loc_time_agg = loc_time_agg, tstep = st.tstep, radius = canrad.radius, time_zone = st.time_zone)
 
     @unpack radius, g_rad = canrad
     g_rad[g_rad .> radius] .= NaN
@@ -46,85 +49,85 @@ function shi2rad!(shif::String,par_in_shi::Dict{String, Any},
 
     @simd for crx = 1:size(pts_x,1)
 
-        sol_tht, sol_phi, sol_sinelev  = calc_solar_track(solar,pts_lat[crx],pts_lon[crx],time_zone)
+        sol_tht, sol_phi, sol_sinelev  = calc_solar_track(solar,pts_lat[crx],pts_lon[crx],st.time_zone)
         @unpack trans_for = solar
 
-        if SHI_summer && (pts_m[crx] .== 1)
+        if (st.phenology in ("leafon","both")) && (pts_m[crx] .== 1)
 
-            mat2ev = Int64.(shi_ds["SHI_summer"][:,:,crx])
+            mat2ev = Int64.(shi_ds["SHI_leafon"][:,:,crx])
 
             svf_p, svf_h = calc_svf(canrad,mat2ev)
-            dataset["svf_planar_s"][crx] = Int8(round(svf_p*100))
-            dataset["svf_hemi_s"][crx]   = Int8(round(svf_h*100))
+            dataset["svf_planar_leafon"][crx] = Int8(round(svf_p*100))
+            dataset["svf_hemi_leafon"][crx]   = Int8(round(svf_h*100))
 
             fill!(trans_for,0)
             calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
-            dataset["for_trans_s"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))*100))
+            dataset["tvt_leafon"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))*100))
 
-            if calc_swr > 0
-                swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,svf_p,calc_swr)
-                dataset["swr_total_s"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
-                dataset["swr_direct_s"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
+            if st.calc_swr > 0
+                swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,svf_p,st.calc_swr)
+                dataset["swr_total_leafon"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
+                dataset["swr_direct_leafon"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
             end
 
         end
 
-        if SHI_winter && (pts_m[crx] .== 1)
+        if (st.phenology in ("leafoff","both"))  && (pts_m[crx] .== 1)
 
-            mat2ev = Int64.(shi_ds["SHI_winter"][:,:,crx])
+            mat2ev = Int64.(shi_ds["SHI_leafoff"][:,:,crx])
 
             svf_p, svf_h = calc_svf(canrad,mat2ev)
-            dataset["svf_planar_w"][crx] = Int8(round(svf_p*100))
-            dataset["svf_hemi_w"][crx]   = Int8(round(svf_h*100))
+            dataset["svf_planar_leafoff"][crx] = Int8(round(svf_p*100))
+            dataset["svf_hemi_leafoff"][crx]   = Int8(round(svf_h*100))
 
             fill!(trans_for,0)
             calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
-            dataset["for_trans_w"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))*100))
+            dataset["tvt_leafoff"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))*100))
 
-            if calc_swr > 0
-                swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,svf_p,calc_swr)
-                dataset["swr_total_w"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
-                dataset["swr_direct_w"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
+            if st.calc_swr > 0
+                swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,svf_p,st.calc_swr)
+                dataset["swr_total_leafoff"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
+                dataset["swr_direct_leafoff"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
             end
 
         end
 
-        if SHI_terrain
+        if st.calc_terrain
 
             mat2ev = Int64.(shi_ds["SHI_terrain"][:,:,crx])
 
             svf_p, svf_h = calc_svf(canrad,mat2ev)
-            dataset["svf_planar_t"][crx] = Int8(round(svf_p*100))
-            dataset["svf_hemi_t"][crx]   = Int8(round(svf_h*100))
+            dataset["svf_planar_terrain"][crx] = Int8(round(svf_p*100))
+            dataset["svf_hemi_terrain"][crx]   = Int8(round(svf_h*100))
 
             fill!(trans_for,0)
             calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
-            dataset["trans_t"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))*100))
+            dataset["tvt_terrain"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))*100))
 
-            if calc_swr > 0
-                swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,svf_p,calc_swr)
-                dataset["swr_total_t"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
-                dataset["swr_direct_t"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
+            if st.calc_swr > 0
+                swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,svf_p,st.calc_swr)
+                dataset["swr_total_terrain"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
+                dataset["swr_direct_terrain"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
             end
 
         end
 
-        if SHI_evergreen && (pts_m[crx] .== 1)
+        if (st.forest_type == "evergreen") && (pts_m[crx] .== 1)
 
             mat2ev = Int64.(shi_ds["SHI_evergreen"][:,:,crx])
 
             svf_p, svf_h = calc_svf(canrad,mat2ev)
-            dataset["svf_planar_e"][crx] = Int8(round(svf_p*100))
-            dataset["svf_hemi_e"][crx]   = Int8(round(svf_h*100))
+            dataset["svf_planar_evergreen"][crx] = Int8(round(svf_p*100))
+            dataset["svf_hemi_evergreen"][crx]   = Int8(round(svf_h*100))
 
             fill!(trans_for,0)
             calc_transmissivity!(canrad,solar,trans_for,float(mat2ev),sol_phi,sol_tht)
-            dataset["for_trans_e"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))*100))
+            dataset["tvt_evergreen"][:,crx] = Int8.(round.((vec(aggregate_data(solar,trans_for)))*100))
 
-            if calc_swr > 0
-                swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,svf_p,calc_swr)
-                dataset["swr_total_e"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
-                dataset["swr_direct_e"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
+            if st.calc_swr > 0
+                swrtot, swrdir = calculateSWR(radiation,trans_for,sol_sinelev,svf_p,st.calc_swr)
+                dataset["swr_total_evergreen"][:,crx]  = Int.(round.(vec(aggregate_data(solar,swrtot))))
+                dataset["swr_direct_evergreen"][:,crx] = Int.(round.(vec(aggregate_data(solar,swrdir))))
             end
 
         end
