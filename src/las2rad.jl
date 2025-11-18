@@ -153,7 +153,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             ltc = ltc[setdiff(1:end, findall(ltc.z.<1)), :]
         end
         bsm_x, bsm_y, bsm_z, _  = make_branches(ltc.x,ltc.y,ltc.z,
-                    ltc.tx,ltc.ty,ltc.hd,ltc.ang,ltc.cls,st.branch_spacing,st.phenology)
+                    ltc.tx,ltc.ty,ltc.hd,ltc.ang,ltc.fortype,st.branch_spacing,st.phenology)
 
         bsm_z .+= findelev(copy(hrdtm_x),copy(hrdtm_y),copy(hrdtm_z),bsm_x,bsm_y)
     end

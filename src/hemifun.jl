@@ -156,7 +156,7 @@ end
 
 function make_branches(ltc_x::Vector{Float64},ltc_y::Vector{Float64},ltc_z::Vector{Float64},
     ltc_tx::Vector{Float64},ltc_ty::Vector{Float64},ltc_hd::Vector{Float64},ltc_ang::Vector{Float64},
-    ltc_cls::Vector{Int32},spacing=0.1::Float64,season=nothing::String)
+    ltc_fortype::Vector{Int32},spacing=0.1::Float64,season=nothing::String)
 
     # calculate angular (eucledian) distane of trunk from trunk to tip
     ltc_ad = zeros(size(ltc_hd,1)) .* NaN
@@ -172,8 +172,8 @@ function make_branches(ltc_x::Vector{Float64},ltc_y::Vector{Float64},ltc_z::Vect
     ltc_tz = ltc_z + ltc_zd
 
     bsm_x = Vector{Float64}(); bsm_y = Vector{Float64}(); bsm_z = Vector{Float64}();
-    season == "complete" ? bsm_cls = Vector{Int32}() : bsm_cls = 0
-    # bsm_cls = 1 if deciduous, 0 if evergreen
+    season == "complete" ? bsm_fortype = Vector{Int32}() : bsm_fortype = 0
+    # bsm_fortype = 1 if deciduous, 0 if evergreen
 
     for bidx in eachindex(ltc_x)
         npts = Int32(floor(ltc_ad[bidx,1] / spacing))-1
@@ -186,7 +186,7 @@ function make_branches(ltc_x::Vector{Float64},ltc_y::Vector{Float64},ltc_z::Vect
             append!(bsm_z,ltc_z[bidx]+spacing .+ collect(range(0,stop=1,length=npts)) .*
                                         (ltc_tz[bidx] - ltc_z[bidx]))
             if season == "complete"
-                append!(bsm_cls,Int.(repeat([ltc_cls[bidx]],npts)))
+                append!(bsm_fortype,Int.(repeat([ltc_fortype[bidx]],npts)))
             end
         end
     end
@@ -196,7 +196,7 @@ function make_branches(ltc_x::Vector{Float64},ltc_y::Vector{Float64},ltc_z::Vect
     bsm_y .+= rand(Uniform(-spacing,spacing),size(bsm_x,1))
     bsm_z .+= rand(Uniform(-spacing,spacing),size(bsm_x,1))
 
-    return bsm_x, bsm_y, bsm_z, Bool.(bsm_cls)
+    return bsm_x, bsm_y, bsm_z, Bool.(bsm_fortype)
 
 end
 

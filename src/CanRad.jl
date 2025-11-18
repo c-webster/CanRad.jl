@@ -1,10 +1,9 @@
 module CanRad
 
-using DelimitedFiles, DataStructures, LasIO, LazIO,
-    Statistics, Dates, Interpolations, Images,
-    DataFrames, Format, Distributed, Distributions,
-    SpatialFileIO, NCDatasets, Chain, Pkg, Proj, MarketTechnicals,
-    Parameters, Impute
+using Chain, DataFrames, DataStructures, Dates, 
+    DelimitedFiles, Distributions, Format, Images,
+    Impute, Interpolations, MarketTechnicals, NCDatasets,
+    Parameters, Pkg, PointClouds, Proj, SpatialFileIO, Statistics
 
 using Conda, PyCall
 

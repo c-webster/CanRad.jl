@@ -26,53 +26,52 @@ function loadltc_txt(fname::String,limits::Vector{Float64},peri::Int64)
     return ltc
 end
 
+
 function loadltc_laz(fname::String,limits::Vector{Float64},
     dbh_x::Vector{Float64},dbh_y::Vector{Float64},
-    lastc::Vector{Float64},phenology::String=nothing)
+    lastc::Vector{Float64},phenology::String)
 
-    # calculate random branch angle for each tree
-    ang = rand(Uniform(60,100),size(lastc,1)) # Norway Spruce
+    # Random branch angle for each tree
+    ang = rand(Uniform(60, 100), length(lastc))
 
-
-    
-    header, ltcdat = LazIO.load(fname)
-
-    dat = DataFrame(ltcdat)
-
-    ignore = indexin(dat.intensity, lastc)
-
-    dx = ((limits[1] .<= (dat.x .* header.x_scale .+ header.x_offset) .<= limits[2]) .&
-        (limits[3] .<= (dat.y .* header.y_scale .+ header.y_offset) .<= limits[4])) .&
-        (dat.raw_classification .!= 2) .& (ignore .!= nothing)
-
-    ltc = DataFrame()
-    
-    ltc.x = dat.x[dx] .* header.x_scale .+ header.x_offset
-    ltc.y = dat.y[dx] .* header.y_scale .+ header.y_offset
-    ltc.z = dat.z[dx] .* header.z_scale .+ header.z_offset
-    ltc.num = Int32.(dat.intensity[dx]) # tree number
-
-    # get the point classification, assigning points to tree crowns. 
-    if phenology == "complete"
-        ltc.cls = Int32.(dat.pt_src_id[dx]) # tree class
+    # Load point cloud
+    if phenology != "complete"
+        pc = getfield(PointCloud(fname; attributes = (classification, :tree_num => intensity)), :data)
+        pc.fortype .= Int32.(0)
     else
-        ltc.cls = Int32.(fill(0,(size(ltc.x)))) # leave empty
+        pc = getfield(PointCloud(fname; attributes = (classification, :tree_num => intensity, :fortype => pt_src_id)), :data)
+        # !!! needs validating but option currently disabled in main anyway
+        # pc.fortype should be Int32
     end
+    # in this case the intensity field might have been replaced with a forest type classification for
+    # each tree crown (i.e. deciduous or evergreen) - allowing distinction for leaf on and off conditions
+    # in deciduous forests.  
 
-    ltc.tx = fill(NaN,size(ltc.x,1))
-    ltc.ty = fill(NaN,size(ltc.x,1))
-    ltc.hd = fill(NaN,size(ltc.x,1))
-    ltc.ang = fill(NaN,size(ltc.x,1))
+    pc.tree_num = Int16.(round.(pc.tree_num.*65535)) # scale back intensity to the raw value
+        
+    mask = (pc.x .>= limits[1]) .& (pc.x .<= limits[2]) .&
+        (pc.y .>= limits[3]) .& (pc.y .<= limits[4]) .&
+        (pc.classification .!= 2) .& (in.(pc.tree_num, Ref(Set(lastc))))
+
+    keepat!(pc, mask)
+
+    # Add new columns directly to pc
+    n = nrow(pc)
+    pc.tx = fill(NaN, n)
+    pc.ty = fill(NaN, n)
+    pc.hd = fill(NaN, n)
+    pc.ang = fill(NaN, n)
+
+    # Assign trunk coordinates and branch angles
     for tx in eachindex(lastc)
-        t_dx = (lastc[tx] .== ltc.num)
-        ltc.tx[t_dx] .= dbh_x[tx] # tree x
-        ltc.ty[t_dx] .= dbh_y[tx] # tree y
-        ltc.hd[t_dx] .= dist(ltc.x[t_dx],ltc.y[t_dx],dbh_x[tx],dbh_y[tx]) # horizontal distance between point and trunk
-        ltc.ang[t_dx] .= ang[tx] # branch angle
+        t_dx = (lastc[tx] .== pc.tree_num)
+        pc.tx[t_dx] .= dbh_x[tx]
+        pc.ty[t_dx] .= dbh_y[tx]
+        pc.hd[t_dx] .= sqrt.((pc.x[t_dx] .- dbh_x[tx]).^2 .+ (pc.y[t_dx] .- dbh_y[tx]).^2)
+        pc.ang[t_dx] .= ang[tx]
     end
 
-    # return ltc_x, ltc_y, ltc_z, tree_num, ltc_tx, ltc_ty, ltc_hd, ltc_ang
-    return ltc
+    return pc
 
 end
 
