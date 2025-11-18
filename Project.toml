@@ -1,6 +1,6 @@
 name = "CanRad"
 uuid = "aeb86711-de0f-4108-877d-aa9de166218e"
-version = "0.13.0"
+version = "0.13.1"
 authors = ["Clare Webster"]
 
 [deps]
@@ -30,8 +30,8 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Pkg = "1.12.0"
 PointClouds = "1.1.2"
 Proj = "1.7.2"
-SpatialFileIO = "0.7.0"
-julia = "1.7,1.8,1.9,1.10"
+SpatialFileIO = "0.8.0"
+julia = "1.12"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
