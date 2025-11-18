@@ -16,6 +16,8 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
 
     for model in ["T2R","C2R","L2R","S2R"]
 
+        println("Testing $(model) ...")
+
         setf       = joinpath(datdir,model*"_settings_test.jl")
 
         include(setf)
@@ -27,7 +29,6 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
         if model == "T2R"
 
             dat_in, par_in = ter2rad_settings(datdir)
-            println("Running T2R ...")
             ter2rad!(pts,dat_in,par_in,exdir,"T2R test")
 
             ncds = Dataset(joinpath(exdir,"Output_testset.nc"))
@@ -39,7 +40,6 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
         elseif model == "C2R"
 
             dat_in, par_in = chm2rad_settings(datdir)
-            println("Testing C2R ...")
             chm2rad!(pts,dat_in,par_in,exdir,"C2R test")
 
             ncds = Dataset(joinpath(exdir,"Output_testset.nc"))
@@ -51,15 +51,13 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
 
         elseif model == "L2R"
 
-            dat_in, par_in = las2rad_settings(datdir)
-
             GC.gc()
             if (Sys.free_memory()/2^20) < 12000
                 @warn "not enough available RAM to test L2R . . .  skipping test "
                 continue
             end
 
-            println("Testing L2R ...")
+            dat_in, par_in = las2rad_settings(datdir)
             las2rad!(pts,dat_in,par_in,exdir,"L2R test")
 
             ncds = Dataset(joinpath(exdir,"Output_testset.nc"))
@@ -74,10 +72,13 @@ bmk_dd = readdlm(joinpath(datdir,"real_HPs","info.txt"),header=true)[1][:,4]
             par_in = shi2rad_settings()
             shif = joinpath(datdir,"Output_tests_C2R","SHIs_testset.nc")
             shi2rad!(shif::String,par_in,exdir)
+            # checks the output file is created
             @test isfile(joinpath(exdir,"Output_testset.nc"))
 
                 
         end
+
+        println(". . . done")
 
     end
 
@@ -85,7 +86,7 @@ end
 
 cd(cwd)
 
-# for model in ["T2R","C2R","L2R"]
-#     rm(joinpath(datdir,"Output_tests_"*model),force=true,recursive=true)
-# end
+for model in ["T2R","C2R","L2R","S2R"]
+    rm(joinpath(datdir,"Output_tests_"*model),force=true,recursive=true)
+end
 
