@@ -106,7 +106,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         getlimits!(limits_highres,pts_x,pts_y,st.highres_peri)
         hrdtm_x, hrdtm_y, hrdtm_z, hrdtm_cellsize = read_griddata_window(fp.hrdtmf,limits_highres,true, true)
         rbins_hrdtm = collect(2*hrdtm_cellsize:sqrt(2).*hrdtm_cellsize:st.highres_peri)
-        pts_e = findelev!(copy(hrdtm_x),copy(hrdtm_y),copy(hrdtm_z),pts_x,pts_y,limits_highres,10.0,pts_e)
+        pts_e = findelev!(copy(hrdtm_x),copy(hrdtm_y),copy(hrdtm_z),pts_x,pts_y,limits_highres,10.0,pts_e,"nearest")
 
     end
 
@@ -123,7 +123,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
             rbins_lrdtm = collect(lrdtm_cellsize:sqrt(2).*lrdtm_cellsize:st.lowres_peri)
         end
 
-        findelev!(copy(lrdtm_x),copy(lrdtm_y),copy(lrdtm_z),pts_x,pts_y,limits_lowres,lrdtm_cellsize*3,pts_e_lrdtm)
+        findelev!(copy(lrdtm_x),copy(lrdtm_y),copy(lrdtm_z),pts_x,pts_y,limits_lowres,lrdtm_cellsize*3,pts_e_lrdtm,"nearest")
 
     end
 

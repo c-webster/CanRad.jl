@@ -83,7 +83,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         getlimits!(limits_lowres,pts_x,pts_y,st.lowres_peri)
         lrdtm_x, lrdtm_y, lrdtm_z, lrdtm_cellsize = read_griddata_window(fp.lrdtmf,limits_lowres,true,true)
         rbins_lrdtm = collect(lrdtm_cellsize:sqrt(2).*lrdtm_cellsize:st.lowres_peri)
-        findelev!(copy(lrdtm_x),copy(lrdtm_y),copy(lrdtm_z),pts_x,pts_y,limits_lowres,lrdtm_cellsize*3,pts_e_lrdtm)
+        findelev!(copy(lrdtm_x),copy(lrdtm_y),copy(lrdtm_z),pts_x,pts_y,limits_lowres,lrdtm_cellsize*3,pts_e_lrdtm,"nearest")
 
     end
 
@@ -91,7 +91,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     if size(pts,2) > 2
         pts_e = pts[:,3]
     elseif st.terrain_highres
-        pts_e = findelev!(copy(hrdtm_x),copy(hrdtm_y),copy(hrdtm_z),pts_x,pts_y,limits_highres,10.0,pts_e)
+        pts_e = findelev!(copy(hrdtm_x),copy(hrdtm_y),copy(hrdtm_z),pts_x,pts_y,limits_highres,10.0,pts_e,"nearest")
     elseif st.terrain_lowres
         pts_e     = pts_e_lrdtm
     else # if there's no terrain input, just assume the ground is flat
