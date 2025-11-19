@@ -81,13 +81,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         ter2rad = TER2RAD(pts_sz = size(pts_x,1))
         flat_terrain_flag = false
         if st.hlm_precalc
-            if st.special_implementation == "oshd"
-            oshd_flag = true
-            pt_lrdtm_x, pt_lrdtm_y = load_hlm_oshd(fp.hlmf)
-            else
-                oshd_flag = false
-                hlm_tht = load_hlm(ter2rad,fp.hlmf,pts_x,pts_y)
-            end
+            hlm_tht = load_hlm(ter2rad,fp.hlmf,pts_x,pts_y)
         elseif st.terrainmask_precalc
             terrain_mask = getterrainmask(canrad,fp.termf,pts_x,pts_y)
         end
@@ -431,7 +425,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     ###############################################################################
     # > Loop through the points
 
-    @simd for crx = 1:size(pts_x,1)
+    @simd for crx = 1:eachindex(pts_x)
 
         st.step_progress && (start = time())
 
@@ -466,13 +460,13 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         
             end
 
-            if st.hlm_precalc && !oshd_flag
+            if st.hlm_precalc # use pre-calculated horizon line
                 pt_hrdtm_x,pt_hrdtm_y = hlm2cart(ter2rad,hlm_tht[:,crx])
-            elseif st.terrain_highres && (st.terrain_lowres || (st.hlm_precalc && oshd_flag))
+            elseif st.terrain_highres && st.terrain_lowres # combine highres and lowres horizon lines
                 prepterdat!(append!(pt_hrdtm_x,pt_lrdtm_x),append!(pt_hrdtm_y,pt_lrdtm_y));
-            elseif st.terrain_highres
+            elseif st.terrain_highres # use highres only
                 prepterdat!(pt_hrdtm_x,pt_hrdtm_y)
-            elseif (st.terrain_lowres && !st.terrain_highres)
+            elseif st.terrain_lowres # use lowres only
                 pt_hrdtm_x, pt_hrdtm_y = prepterdat(pt_lrdtm_x,pt_lrdtm_y)
             end
 

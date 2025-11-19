@@ -132,7 +132,7 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     ###############################################################################
     # > Loop through the points
 
-    @simd for crx = 1:size(pts_x,1)
+    @simd for crx = 1:eachindex(pts_x)
 
         st.step_progress && (start = time())
 

@@ -86,7 +86,6 @@ export
     hlm2cart,
     loaddbh,
     load_hlm,
-    load_hlm_oshd,
     loadltc_laz,
     loadltc_txt,
     make_branches,

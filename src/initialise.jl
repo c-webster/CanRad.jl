@@ -129,6 +129,8 @@ function check_conflicts(st::SETTINGS,fp::FILEPATHS,model::String="none")
         # check if phenology is leafon, leafoff or both that either deciduous or mixed are the options for forest type
         (st.phenology in ("leafon","leafoff","both")) && !(st.forest_type in ("deciduous","mixed")) &&
             error("phenology = \"leafon\", \"leafoff\" or \"both\" is only possible when forest_type = \"deciduous\" or \"mixed\"") 
+        # warning for special_implementation oshd
+        ((st.special_implementation == "oshd") && (st.hlm_precalc)) && @error("special_implementation oshd and hlm_precalc is deprecated. Use \"swissrad\" methods instead.")
     end
 
     # make_pngs only works if save_images is enabled

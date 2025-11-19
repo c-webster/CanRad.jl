@@ -420,41 +420,6 @@ function load_hlm(ter2rad::TER2RAD,hlmf::String,pts_x::Float64,pts_y::Float64)
 
 end
 
-function load_hlm_oshd(hlmf::String,taskID::String)
-
-    error("load_hlm_oshd function deprecated for now.
-        use output from save_hlm instead")
-
-    # xllcorner = parse(Int,(split(taskID,"_")[2]))[1]
-    # yllcorner = parse(Int,(split(taskID,"_")[3]))[1]
-
-    # if xllcorner % 250 .!== 0.0
-    #     xllcorner = 250 * round(xllcorner/250)
-    # end
-    # if yllcorner % 250 .!== 0.0
-    #     yllcorner = 250 * round(yllcorner/250)
-    # end
-
-    # hlmds = NCDataset(hlmf,"r")
-    # xdx = findall(hlmds["easting"][:,:] .== xllcorner)
-    # ydx = findall(hlmds["northing"][:,:] .== yllcorner)
-
-    # # phi = vec(hlmds["phi"][:])
-    # phi = (-pi:(pi - -pi)/89:pi) .- pi/2
-    # tht = (vec(hlmds["tht"][ydx,xdx,:]))
-    # close(hlmds)
-
-    # rphi = collect(-pi:pi/1080:pi)  .- pi/2
-    # rtht = Array{Float64,1}(undef,size(rphi,1))
-
-    # rtht = LinearInterpolation(phi,vec(tht))(rphi)
-
-    # pol_phi, pol_tht = fillterrain(rphi,rtht,0.0)
-
-    # return pol2cart(pol_phi,pol_tht)
-
-end
-
 
 function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,ptsx::Vector{Float64},
                             ptsy::Vector{Float64},exdir::String,par_in::Dict{String, Any},
