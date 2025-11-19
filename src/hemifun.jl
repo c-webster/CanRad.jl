@@ -626,7 +626,7 @@ function calcThickness!(chm2rad::CHM2RAD,rbins::Vector{Float64},sum_lavd_thick::
             # add the thickness to each cell
             # would be great to work out how to do this without the loop
             fill!(temp_thick,0.0)
-            for tx = 1:eachindex(chm_temptht_short)
+            for tx in eachindex(chm_temptht_short)
                 if (bse_temptht[tx])-(chm_temptht_short[tx]) > 0 # zenith angle
                     temp_thick[tx,round(Int,91-bse_temptht[tx]):(91-chm_temptht_short[tx])] .= sqrt(2)*cellsize # elevation angle
                 else

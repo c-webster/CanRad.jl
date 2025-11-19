@@ -425,7 +425,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     ###############################################################################
     # > Loop through the points
 
-    @simd for crx = 1:eachindex(pts_x)
+    @simd for crx in eachindex(pts_x)
 
         st.step_progress && (start = time())
 
