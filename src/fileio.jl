@@ -539,9 +539,9 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
     if (haskey(par_in,"phenology") && ((par_in["phenology"] == "both") || (par_in["phenology"] == "leafoff"))) ||
         (haskey(par_in,"SHI_leafoff") && par_in["SHI_leafoff"])
        leafoff = true
-       svf_p_w = Float64[]
-       svf_h_w = Float64[]
-       for_tau_w = Float64[]
+       svf_p_leafoff = Float64[]
+       svf_h_leafoff = Float64[]
+       for_tau_leafoff = Float64[]
     else
         leafoff = false
     end
@@ -573,55 +573,55 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
         append!(north, tds["northing"][:])
 
         if terrain
-            (append!(svf_p_t,tds["svf_planar_t"][:]))
-            (append!(svf_h_t,tds["svf_hemi_t"][:]))
+            (append!(svf_p_t,tds["svf_planar_terrain"][:]))
+            (append!(svf_h_t,tds["svf_hemi_terrain"][:]))
             if isempty(for_tau_t)
-                for_tau_t = tds["trans_t"][:,:]
+                for_tau_t = tds["trans_terrain"][:,:]
             else
-                for_tau_t = hcat(for_tau_t, tds["trans_t"][:,:])
+                for_tau_t = hcat(for_tau_t, tds["trans_terrain"][:,:])
             end
         end
 
         if !(sum(pts[:,3]) == (size(pts,1) * 2)) # checks whether this sub-tile was calculated with ter2rad
 
-            leafoff && (append!(svf_p_w,tds["svf_planar_w"][:]))
-            leafon && (append!(svf_p_s,tds["svf_planar_s"][:]))
+            leafoff && (append!(svf_p_leafoff,tds["svf_planar_leafoff"][:]))
+            leafon && (append!(svf_p_leafon,tds["svf_planar_leafon"][:]))
 
-            leafoff && (append!(svf_h_w,tds["svf_hemi_w"][:]))
-            leafon && (append!(svf_h_s,tds["svf_hemi_s"][:]))
+            leafoff && (append!(svf_h_leafoff,tds["svf_hemi_leafoff"][:]))
+            leafon && (append!(svf_h_leafon,tds["svf_hemi_leafon"][:]))
 
-            if leafoff && isempty(for_tau_w)
-                for_tau_w = tds["for_trans_w"][:,:]
+            if leafoff && isempty(for_tau_leafoff)
+                for_tau_leafoff = tds["for_trans_leafoff"][:,:]
             elseif leafoff
-                for_tau_w = hcat(for_tau_w, tds["for_trans_w"][:,:])
+                for_tau_leafoff = hcat(for_tau_leafoff, tds["for_trans_leafoff"][:,:])
             end
 
-            if leafon && isempty(for_tau_s)
-                for_tau_s = tds["for_trans_s"][:,:]
+            if leafon && isempty(for_tau_leafon)
+                for_tau_leafon = tds["for_trans_leafon"][:,:]
             elseif leafon
-                for_tau_s = hcat(for_tau_s, tds["for_trans_s"][:,:])
+                for_tau_leafon = hcat(for_tau_leafon, tds["for_trans_leafon"][:,:])
             end
 
         else # if subtile is terrain only (calculated with ter2rad), fill forest variables with nodata
 
             dummvf = fill(-1,size(tds["svf_planar_t"][:]))
-            leafoff && (append!(svf_p_w,dummvf))
-            leafon && (append!(svf_p_s,dummvf))
+            leafoff && (append!(svf_p_leafoff,dummvf))
+            leafon && (append!(svf_p_leafon,dummvf))
 
-            leafoff && (append!(svf_h_w,dummvf))
-            leafon && (append!(svf_h_s,dummvf))
+            leafoff && (append!(svf_h_leafoff,dummvf))
+            leafon && (append!(svf_h_leafon,dummvf))
 
             dummytau = fill(-1,size(tds["trans_t"][:,:]))
-            if leafoff && isempty(for_tau_w)
-                for_tau_w = tds["trans_w"][:,:]
+            if leafoff && isempty(for_tau_leafoff)
+                for_tau_leafoff = tds["trans_leafoff"][:,:]
             elseif leafoff
-                for_tau_w = hcat(for_tau_w, dummytau)
+                for_tau_leafoff = hcat(for_tau_leafoff, dummytau)
             end
 
-            if leafon && isempty(for_tau_s)
-                for_tau_s = tds["trans_s"][:,:]
+            if leafon && isempty(for_tau_leafon)
+                for_tau_leafon = tds["trans_leafon"][:,:]
             elseif leafon
-                for_tau_s = hcat(for_tau_s, dummytau)
+                for_tau_leafon = hcat(for_tau_leafon, dummytau)
             end
 
         end
@@ -661,47 +661,47 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
     end
 
     if leafoff 
-        svf_p_all_w, svf_h_all_w, ft_newdim_w = getnewdims(svf_p_w,svf_h_w,for_tau_w,p,locs,numptsvec,numptsgrid,numptstime); end
+        svf_p_all_leafoff, svf_h_all_leafoff, ft_newdim_leafoff = getnewdims(svf_p_leafoff,svf_h_leafoff,for_tau_leafoff,p,locs,numptsvec,numptsgrid,numptstime); end
 
     if leafon
-        svf_p_all_s, svf_h_all_s, ft_newdim_s = getnewdims(svf_p_s,svf_h_s,for_tau_s,p,locs,numptsvec,numptsgrid,numptstime); end
+        svf_p_all_leafon, svf_h_all_leafon, ft_newdim_leafon = getnewdims(svf_p_leafon,svf_h_leafon,for_tau_leafon,p,locs,numptsvec,numptsgrid,numptstime); end
 
     if terrain
         svf_p_all_t, svf_h_all_t, ft_newdim_t = getnewdims(svf_p_t,svf_h_t,for_tau_t,p,locs,numptsvec,numptsgrid,numptstime); end
 
     if leafoff
-        defVar(ds,"svf_planar_leafoff",Int8.(reverse(reshape(svf_p_all_w,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
+        defVar(ds,"svf_planar_leafoff",Int8.(reverse(reshape(svf_p_all_leafoff,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
                     attrib=["comments" =>
                     "values are represented as percentage;
                     perspective of a horizontal flat uplooking surface;
                     zenith rings weighted by surface area projected onto a horizontal flat surface;
                     calculated for leafoff canopy conditions",])
-        defVar(ds,"svf_hemi_leafoff",Int8.(reverse(reshape(svf_h_all_w,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
+        defVar(ds,"svf_hemi_leafoff",Int8.(reverse(reshape(svf_h_all_leafoff,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
                     attrib=["comments" =>
                     "values are represented as percentage;
                     perspective of hemipherically shaped surface or plant;
                     zenith rings weighted by surface area on the hemisphere;
                     calculated for leafoff canopy conditions",])
-        defVar(ds,"transmissivity_leafoff",Int8.(ft_newdim_w),("datetime","locY","locX",),fillvalue = Int8(-1),
+        defVar(ds,"transmissivity_leafoff",Int8.(ft_newdim_leafoff),("datetime","locY","locX",),fillvalue = Int8(-1),
                     deflatelevel=5,attrib=["comments" => 
                     "values are represented as percentage;
                     calculated for leafoff canopy conditions",])
     end
 
     if leafon
-        defVar(ds,"svf_planar_leafon",Int8.(reverse(reshape(svf_p_all_s,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
+        defVar(ds,"svf_planar_leafon",Int8.(reverse(reshape(svf_p_all_leafon,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
                     attrib=["comments" =>
                     "values are represented as percentage;
                     perspective of a horizontal flat uplooking surface;
                     zenith rings weighted by surface area projected onto a horizontal flat surface;
                     calculated for leafon canopy conditions",])
-        defVar(ds,"svf_hemi_leafon",Int8.(reverse(reshape(svf_h_all_s,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
+        defVar(ds,"svf_hemi_leafon",Int8.(reverse(reshape(svf_h_all_leafon,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
                     attrib=["comments" =>
                     "values are represented as percentage;
                     perspective of hemipherically shaped surface or plant;
                     zenith rings weighted by surface area on the hemisphere;
                     calculated for leafon canopy conditions",])
-        defVar(ds,"transmissivity_leafon",Int8.(ft_newdim_s),("datetime","locY","locX",),fillvalue = Int8(-1),
+        defVar(ds,"transmissivity_leafon",Int8.(ft_newdim_leafon),("datetime","locY","locX",),fillvalue = Int8(-1),
                     deflatelevel=5,attrib=["comments" => 
                     "values are represented as percentage;
                     calculated for leafon canopy conditions",])
