@@ -241,6 +241,10 @@ end
     # meteorological 
     swrf::String = ""
 
+    # special implementation
+    ftdf::String = ""
+
+
 end
 
 
