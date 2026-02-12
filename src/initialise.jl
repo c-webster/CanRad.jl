@@ -37,6 +37,7 @@ function update_deprecated_settings!(par_in::Dict{String, Any},dat_in::Dict{Stri
         par_in["phenology"] = par_in["season"] == "summer" ? "leafon" : 
                             par_in["season"] == "winter" ? "leafoff" : 
                             par_in["season"] == "both" ? "both" : "none"
+        delete!(par_in,"season")
     else
         par_in["phenology"] = "none"
     end
@@ -67,7 +68,7 @@ function update_deprecated_settings!(par_in::Dict{String, Any},dat_in::Dict{Stri
     end
 
     # replacement of "tree_species" with "leaf_type"
-    haskey(par_in,"tree_species") && (par_in["leaf_type"] = par_in["tree_species"])
+    haskey(par_in,"tree_species") && (par_in["leaf_type"] = par_in["tree_species"]; delete!(par_in,"tree_species"))
 
     # deal with input filename changes
     haskey(dat_in,"dtmf") && (dat_in["hrdtmf"] = dat_in["dtmf"]; delete!(dat_in,"dtmf")) # dtmf->hrdtmf
