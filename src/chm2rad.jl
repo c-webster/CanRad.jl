@@ -293,7 +293,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
     # create the canopy base height vector based on above settings
     if !isempty(fp.cbhf)
 
-        if st.phenology == "leaf_on"
+        if st.phenology == "leafon"
             chm_base_leafon = read_griddata_window(fp.cbhf,limits_canopy,true,true)[3] .+ chm_e
         elseif st.phenology == "leafoff"
             chm_base_leafoff = read_griddata_window(fp.cbhf,limits_canopy,true,true)[3] .+ chm_e
