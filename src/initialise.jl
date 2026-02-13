@@ -38,7 +38,7 @@ function update_deprecated_settings!(par_in::Dict{String, Any},dat_in::Dict{Stri
                             par_in["season"] == "winter" ? "leafoff" : 
                             par_in["season"] == "both" ? "both" : "none"
         delete!(par_in,"season")
-    else
+    elseif (haskey(par_in,"season") && par_in["season"] == "none") 
         par_in["phenology"] = "none"
     end
 
