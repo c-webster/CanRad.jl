@@ -189,7 +189,7 @@ end
 
 @with_kw struct FILEIO
 
-    percent_desc = "values are represented as percentage (0-100)"
+    percent_desc::String = "values are represented as percentage (0-100)"
 
     svf_planar_desc::String = "perspective of a horizontal flat uplooking surface"
     svf_planar_calc::String = "zenith rings weighted by surface area projected onto a horizontal flat surface"

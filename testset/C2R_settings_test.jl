@@ -1,4 +1,4 @@
-function chm2rad_settings(basefolder="empty"::String)
+function chm2rad_settings(datfolder="empty"::String) 
 
     par_in = Dict(
 
@@ -48,26 +48,25 @@ function chm2rad_settings(basefolder="empty"::String)
     )
 
     # all spatial input data must be in the same coordinate system
-    dat_in = Dict(
-        # chm
-        "chmf" => basefolder*"/input/test_chm.tif",
-        # dtm -> high res terrain
-        "hrdtmf" => basefolder*"/input/test_dtm.tif",
-        # dem -> low res terrain
-        "lrdtmf" => basefolder*"/input/dem_50m.tif",
-        # terrain mask (if terrain_precalc = true)
-        "termf" => basefolder*"/Output_tests_T2R/SHIs_testset.nc",
-        # horizon line file
-        "hlmf" => basefolder*"/Output_tests_T2R/HLM_testset.nc",
-        # lavdf
-        "lavdf" => basefolder*"/input/test_lavd.asc",
-        # dbh
-        "dbhf" => basefolder*"/input/test_chm_treeinfo.txt",
-        # swr
-        "swrf" => basefolder*"/input/test_swr.txt"
-    )
-
-    return dat_in, par_in
-
+    dat_in = Dict( 
+        # chm 
+        "chmf" => datfolder*"/input/test_chm.tif", 
+        # dtm -> high res terrain 
+        "hrdtmf" => datfolder*"/input/test_dtm.tif", 
+        # dem -> low res terrain 
+        "lrdtmf" => datfolder*"/input/dem_50m.tif", 
+        # terrain mask (if terrain_precalc = true) 
+        "termf" => datfolder*"/Output_tests_T2R/SHIs_testset.nc", 
+        # horizon line file 
+        "hlmf" => datfolder*"/Output_tests_T2R/HLM_testset.nc", 
+        # lavdf 
+        "lavdf" => datfolder*"/input/test_lavd.asc", 
+        # dbh 
+        "dbhf" => datfolder*"/input/test_chm_treeinfo.txt", 
+        # swr 
+        "swrf" => datfolder*"/input/test_swr.txt" 
+    ) 
+ 
+    return dat_in, par_in 
 
 end
