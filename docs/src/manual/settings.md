@@ -1,226 +1,273 @@
-
-**setting [relevant model]**
-
-Settings with no default values are required in the settings file
-
-
-## Terrain Settings
-
-**terrain_highres [ L2R, C2R, T2R ]**\
-*Boolean*\
-*default = false*\
-include high resolution (1-25 m) local terrain 
-
-**highres_peri [ L2R, C2R, T2R ]**\
-*Integer*\
-*default = 300*\
-radius (in metres) for including high-res terrain 
-value in metres
-
-**terrain_lowres [ L2R, C2R, T2R ]**\
-*Boolean*\
-*default = false (ground assumed flat)*\
-include lower resolution (> 25 m) regional terrain 
-
-**lowres_peri [ L2R, C2R, T2R ]**\
-*integer*\
-*default = 25000*\
-radius (in metres) for low-res terrain (calculating regional horizon line)
-
-**terrainmask_precalc [ L2R, C2R ]**\
-*Boolean*\
-*default = false*\
-used only if the terrain mask has been pre-calculated and saved by T2R (can be useful when calibrating L2R and needing to run multiple times)
-
-**calc_terrain [ L2R, C2R ]**\
-*Boolean*\
-*default = false*\
-calculate variables for terrain-only as well as forest
-
-**buildings [ L2R, C2R, T2R ]**\
-*Boolean*\
-*default = false*\
-include buildings in terrain calculation - requires blmf file\
-buildings within the same radius as highres_peri are included in the calculations
-
-**hlm_precalc [ L2R, C2R ]**\
-*Boolean*\
-*default = false*\
-use pre-calculated horizon line matrix (e.g. for compatibility with topo-downscaled swr data)
-
-## Forest settings [ L2R, C2R ]
-
-**keep_points [ L2R ]**\
-*String*\
-options:\
-"canopy" (*default*) : only loads lidar points classified as vegetation (classes 3,4,5)\
-"ground+canopy" : loads ground and canopy classified points (classes 2-5)\
-"all" : loads all points, including those unclassified and those classified as noise
-
-**forest_peri  [ L2R, C2R ]**\
-*Integer*\
-*default = 100*\
-radius within which forest is included (note all model points must be a minimum of this distance from the edge of the forest canopy datasets)
-
-**forest_type [ C2R ]**\
-*String*\
-options:\
-"evergreen" (*default*) : 100% evergreen forest; no phenology in calculations (note: only developed/tested for coniferous evergreen species)\
-"deciduous"* : 100% deciduous forest\
-"mixed"* : a mix of deciduous and evergreen species (only available with one of the "special_implementation" options \
-*Requires *phenology* to also be specified\
-
-**phenology [ L2R, C2R ]**\
-*String*\
-*default = "none"*\
-In C2R:\
-&emsp;"leafon" : calculates for leaf-on/summertime canopy conditions \
-&emsp;"leafoff" : calculates for leaf-off/wintertime canopy conditions  \
-&emsp;"both" : calculates output data for both leaf-on and leaf-off conditions \
-&emsp;"none" (*default*) : phenology is not accounted for and evergreen forest_forest is assumed \
-In L2R:\
-&emsp;"leafoff" : calculates for leaf-off/wintertime canopy conditions (calculates trunk and canopy points differently to reduce canopy density in winter)  \
-&emsp;"leafon"* : doesn't change calculations but used to name variables in output files
-&emsp;"none"* (*default*) :  doesn't change calculations but used to name variables in output files (i.e forest_type = "evergreen")
-*uses only user input *point_size* to create hemispheric image
-
-**leaf_type [ C2R ]** \
-<formerly tree_species>
-*String*\
-*default = "needleleaf"*\
-"needleleaf" or "broadleaf"\
-Used in \
-a) the generation of the hemispheric images to distinguish between the different crown shapes of needleleaf and broadleaf forests\
-b) distinguishing between larch (deciduous needleleaf) and decidious broadleaf forests in *special_implementation*
-
-**trunks [ L2R, C2R ]**\
-*Boolean*\
-*default = false*\
-adds opaque trunks to the hemispheric images - requires that the canrad_precalc.jl steps are run to create additional datasets. 
-
-**trunks_peri [ L2R, C2R ]**\
-*Integer*\
-*default = forest_peri*\
-radius within which trunks are included - in dense canopies, this can be reduced to lower than forest_peri to save computation time. 
-
-
-**branches [ L2R ]**\
-*Boolean*\
-*default = false*\
-adds additional branch points to the image to increase canopy density\
-method: adds additional points between existing points and the centre of the tree crown - requires that the canrad_precalc.jl steps are run to create additional datasets. 
-
-**branch_spacing [ L2R ]**\
-*Float*\
-*default = 0.1*\
-spacing interval (m) for creating branches\
-
-**cbh [ C2R ]**\
-*Float*\
-*default = 2.0*\
-height of canopy base above ground (in m)\
-
-
-## Calculation settings
-
-**calc_trans [ L2R, C2R, T2R ]**\
-*Boolean*\
-*default = false*\
-false = only sky-view fraction is calculated and saved\
-true  = time-varying direct-beam transmissivity is calculated and saved
-
-
-**calc_swr [ L2R, C2R, T2R ]**\
-*Integer*\
-*default = 0*\
-0  = shortwave radiation not calculated \
-1* = calculates potential swr using atm_trans = 1 \
-2* = calculates true swr, requiring measured or modelled above-canopy swr data suppled in the file 'swrf' in dat_in\
-*requires that calc_trans=true
-
-
-## Time settings
-
-**t1 and t2 [ L2R, C2R, T2R ]**\
-*String* \
-*default =  "22.06.2020 00:00:00" and "22.06.2020 23:00:00"*\
-start and end time steps for calculation\
-format: "dd.mm.yyyy HH:MM:SS"
-
-**tstep [ L2R, C2R, T2R ]**\
-*Integer*\
-*default = 60*\
-time step in minutes for the output transmissivity and shortwave radiation data \
-all data is calculated at a 2 minute interval and aggregated to tstep to saving, therefore the minimum value for this setting is 2 \
-
-
-
-## Location settings
-
-**time_zone [ L2R, C2R, T2R ]**\
-*Integer*\
-*required if calc_trans=true*\
-local time zone relative to UTC (e.g. CET = UTC+1, time_zone = 1)
-
-
-**epsg_code [ L2R, C2R, T2R ]**\
-*Integer*\
-*required if calc_trans=true*\
-relevant epsg code for the coordinate system of the input and output datasets\
-note: all input datasets must be in this coordinate system\
-
-
-## Image settings
-
-**image_height [ L2R, C2R, T2R ]**\
-*Float*\
-*default = 0.5*\
-height (m) of virtual camera position above ground
-
-**point_size [ L2R ]**\
-*2-element Vector{Float64}*\
-*default = [ 30.0 , 10.0 ]*\
-size of points in synthetic hemispheric images
-First number is the size of points closest to the camera, second number is point size futherest away from camera\
-Values are in pixels and image is 10000x10000 pixels
-
-
-## Run settings
-
-**batch [ L2R, C2R, T2R ]**\
-*boolean*\
-*default = false*\
-used if running multiple tiles to manage sub-folders in the output folder structure
-
-**save_images [ L2R, C2R, T2R ]**\
-*boolean*\
-*default = false*\
-save the calculated images in a netcdf file 
-
-**make_pngs [ L2R, C2R, T2R ]**\
-*boolean*\
-*default = false*\
-generates .png files from the saved images
-
-**save_horizon [ C2R, T2R ]**\
-*boolean*\
-*default = false*\
-saves the calculated topographic horizon line (terrain only)
-
-**progress [ L2R, C2R, T2R ]**\
-*boolean*\
-*default = false*\
-reports individual step progress in /ProgressLastPoint\
-(good for checking run-time in L2R, both otherwise doesn't need to be used)
-
-
-## Special implementations [ C2R ]
-
-Written for a specific application and uses specific combinations of datasets
-
-Current options:\
-**swissrad** used to calculate the Swiss nationwide dataset \
-**oshd** used to calculate across domains relevant to oshd (uses a pre-calculated horizon line to ensure compatibility with downscaled SWR) \
-**oshd-alps** used to calculate across the European Alps\
-**none** used for all other C2R use cases and requires lavdf in dat_in
-
+# Configuration Settings 
+ 
+This page provides a complete reference for all configuration settings in CanRad. Settings are defined in Julia script files (e.g., `C2R_settings.jl`, `L2R_settings.jl`, `T2R_settings.jl`). 
+ 
+## Overview 
+ 
+**Required vs Optional Settings:** 
+- All configuration settings have default values, but the default configuration is designed for the code to run without error rather than produce a default result for an example forest.  
+- Some settings are required only if certain features are enabled (e.g., `t1`, `t2`, and `time_zone` are required if `calc_trans = true`). 
+ 
+**Model Applicability:** 
+- Each setting indicates which models it applies to: [L2R], [C2R], [T2R] 
+- You need only include settings relevant to your chosen model (settings not relevant to your chosen model will be ignored) 
+ 
+ 
+## Terrain Settings 
+ 
+Configure topographic shading effects from local and regional terrain. 
+ 
+| Setting | Type | Default | Models | Description | 
+|---------|------|---------|--------|-------------| 
+| `terrain_highres` | Boolean | `false` | L2R, C2R, T2R | Include high-resolution (1-25 m) local terrain for near-field shading calculations | 
+| `highres_peri` | Integer | `300` | L2R, C2R, T2R | Radius (meters) for including high-resolution terrain around each calculation point | 
+| `terrain_lowres` | Boolean | `false` | L2R, C2R, T2R | Include low-resolution (>25 m) regional terrain for distant horizon calculations. If false, ground is assumed flat. | 
+| `lowres_peri` | Integer | `25000` | L2R, C2R, T2R | Radius (meters) for low-resolution terrain (calculating regional horizon line). Default = 25 km. | 
+| `terrainmask_precalc` | Boolean | `false` | L2R, C2R | Use pre-calculated terrain mask (useful for calibration runs or when reusing T2R outputs) | 
+| `calc_terrain` | Boolean | `false` | L2R, C2R | Also calculate and save terrain-only (above-canopy) variables for comparison | 
+| `buildings` | Boolean | `false` | L2R, C2R, T2R | Include buildings in terrain shading calculations (requires `blmf` input file). Buildings within `highres_peri` are included. | 
+| `hlm_precalc` | Boolean | `false` | L2R, C2R | Use pre-calculated horizon line matrix instead of computing from terrain (ensures compatibility with topographically-downscaled radiation data) | 
+ 
+**Typical configurations:** 
+- **Flat terrain:** Keep both `terrain_highres` and `terrain_lowres` as `false` 
+- **Forest gaps:** Set `terrain_highres = true`, `highres_peri = 300` 
+- **Mountain valleys:** Set both to `true`, `lowres_peri = 25000` or larger 
+ 
+<br> 
+ 
+## Forest settings [ L2R, C2R ] 
+ 
+Configure how forest canopy is represented in the model. 
+ 
+### Spatial Extent Settings 
+ 
+| Setting | Type | Default | Models | Description | 
+|---------|------|---------|--------|-------------| 
+| `forest_peri` | Integer | `100` | L2R, C2R | Radius (meters) within which forest is included in calculations. All calculation points must be at least this distance inside the extent of all forest canopy datasets. | 
+| `trunks_peri` | Integer | `forest_peri` | L2R, C2R | Radius (meters) within which trunks are included. Can be reduced below `forest_peri` in dense canopies to save computation time. | 
+ 
+**Important:** Ensure input data extends at least `forest_peri` beyond all calculation points to avoid edge effects. 
+ 
+ 
+ 
+ 
+### Forest Type and Phenology 
+ 
+| Setting | Type | Default | Models | Description | 
+|---------|------|---------|--------|   ----------| 
+| `forest_type` | String | `"evergreen"` | C2R |  Forest type of the model domain | 
+ 
+ 
+> | Option | Description | 
+> |--------|-------------| 
+> | `"evergreen"` | Coniferous or evergreen forest (i.e. no phenology); currently only developed/tested for coniferous evergreen forests | 
+> | `"deciduous"` | Deciduous forest: requires `phenology` setting | 
+> | `"mixed"` | Mixed forest: requires `special_implementation` and dataset of forest type | 
+ 
+### Phenology 
+ 
+| Setting | Type | Default | Models | Description | 
+|---------|------|---------|--------|-------------| 
+| `phenology` | String | `"none"` | L2R, C2R | Seasonal canopy state (see table below) | 
+ 
+**Phenology Options for C2R:** 
+ 
+> | Options | Description | 
+> |-------|-------------| 
+> | `"none"` | No phenology; assumes evergreen forest | 
+> | `"leafon"` | Leaf-on (summer) conditions only | 
+> | `"leafoff"` | Leaf-off (winter) conditions only | 
+> | `"both"` | Calculates both leaf-on and leaf-off outputs | 
+ 
+**Phenology Options for L2R:** 
+> | Options | Description | 
+> |-------|-------------| 
+> | `"none"` | No phenology adjustments (evergreen) | 
+> | `"leafoff"` | Reduces canopy density for winter; treats trunks and canopy separately | 
+> | `"leafon"` | No calculation changes; used for output variable naming | 
+ 
+### Leaf Characteristics (C2R only) 
+ 
+| Setting | Type | Default | Description | 
+|---------|------|---------|-------------| 
+| `leaf_type` | String | `"needleleaf"` | Leaf morphology.<br>Used to: (a) distinguish crown shapes in image generation, (b) differentiate larch from broadleaf deciduous species in special implementations. | 
+ 
+> | Options | Description | 
+> |---------|-------------| 
+> | `"needleleaf"` | typically used for coniferous evergreen forests and larch deciduous forests; assumes conical tree crown shape 
+> | `"broadleaf"` | typically used for mid-latitude/altitude deciduous broadleaf forests; assumes spherical tree crown shape 
+ 
+### Point Cloud Settings (L2R only) 
+ 
+| Setting | Type | Default | Description | 
+|---------|------|---------|-------------| 
+| `keep_points` | String | `"canopy"` | Sets lidar point classifications to load. Requires the input point cloud is classified. | 
+ 
+> | Option | Description | 
+> |--------|-------------|   
+> | `"canopy"` | Recommended for most users; minimizes memory usage and focuses on canopy structure | 
+> | `"ground+canopy"` | Not recommended; including ground points can significantly increase memory usage and may not improve transmissivity estimates if a DTM is used for terrain | 
+> | `"all"` | Not recommended; includes unclassified points which may be noise and further increases memory usage | 
+ 
+ 
+### Canopy Structure Enhancement 
+ 
+| Setting | Type | Default | Models | Description | 
+|---------|------|---------|--------|-------------| 
+| `trunks` | Boolean | `false` | L2R, C2R | Add opaque tree trunks to synthetic images. Requires preprocessing with `canrad_precalc.jl` to generate tree information files. | 
+| `branches` | Boolean | `false` | L2R | Add synthetic branch points to increase canopy density. Adds points between existing points and tree crown centers. Requires preprocessing. | 
+| `branch_spacing` | Float | `0.1` | L2R | Spacing interval (meters) for creating synthetic branch points | 
+| `cbh` | Float | `2.0` | C2R | Height of canopy base above ground (meters). Used if not providing a `cbhf` (canopy base height file). | 
+ 
+**When to enable trunks:** Important for winter/leaf-off conditions and/or sparse canopies. Setting has a minimal effect in dense evergreen forests (can reduce `trunks_peri` to save time) 
+ 
+**When to enable branches:** Sparse lidar point clouds (<20 pts/m²) to increase tree-crown density 
+ 
+<br> 
+ 
+## Calculation Settings 
+ 
+Control what outputs are calculated and saved. 
+ 
+| Setting | Type | Default | Models | Description | 
+|---------|------|---------|--------|-------------| 
+| `calc_trans` | Boolean | `false` | L2R, C2R, T2R | Calculate and save time-varying direct-beam transmissivity.<br>• `false`: Only sky-view fraction is calculated<br>• `true`: Transmissivity time series is calculated | 
+| `calc_swr` | Integer | `0` | L2R, C2R, T2R | Shortwave radiation calculation mode:<br>• `0`: No radiation calculation<br>• `1`: Potential radiation (atmospheric transmissivity = 1)<br>• `2`: Actual radiation using measured data (requires `swrf` input file)<br>**Note:** Options 1 and 2 require `calc_trans = true` | 
+ 
+ 
+<br> 
+ 
+## Time Settings 
+ 
+Define the temporal extent and resolution of calculations. 
+ 
+| Setting | Type | Default | Models | Required | Description | 
+|---------|------|---------|--------|----------|-------------| 
+| `t1` | String | `"22.06.2020 00:00:00"` | L2R, C2R, T2R | If `calc_trans=true` | Start date and time for calculations | 
+| `t2` | String | `"22.06.2020 23:00:00"` | L2R, C2R, T2R | If `calc_trans=true` | End date and time for calculations | 
+| `tstep` | Integer | `60` | L2R, C2R, T2R | No | Output time step in minutes (transmissivity and radiation are aggregated to this interval) | 
+ 
+**Format:** `"dd.mm.yyyy HH:MM:SS"` 
+ 
+**Examples:** 
+```julia 
+# Single day in summer 
+t1 = "21.06.2023 00:00:00" 
+t2 = "21.06.2023 23:00:00" 
+tstep = 30  # 30-minute output 
+ 
+# Full year 
+t1 = "01.01.2023 00:00:00" 
+t2 = "31.12.2023 23:00:00" 
+tstep = 60  # hourly output 
+``` 
+ 
+**Important notes:** 
+- All calculations are performed at 2-minute intervals internally 
+- Results are then averaged to `tstep` for output 
+- Minimum `tstep` value is 2 minutes 
+- For `calc_swr = 2`, measurement timestamps must match output `tstep` exactly 
+ 
+## Location Settings 
+ 
+Specify geographic location and coordinate system. 
+ 
+| Setting | Type | Models | Required | Description | 
+|---------|------|--------|----------|-------------| 
+| `time_zone` | Integer | L2R, C2R, T2R | If `calc_trans=true` | Local time zone offset from UTC (e.g., CET = UTC+1 → `time_zone = 1`) | 
+| `epsg_code` | Integer | L2R, C2R, T2R | If `calc_trans=true` | EPSG code for coordinate reference system of all spatial inputs and outputs | 
+ 
+**Examples:** 
+```julia 
+# Switzerland (LV95) 
+epsg_code = 2056 
+time_zone = 1  # CET 
+ 
+# Western US (UTM Zone 10N) 
+epsg_code = 32610 
+time_zone = -8  # PST 
+``` 
+ 
+**Critical:** All input datasets (rasters, point clouds, calculation points) must use this coordinate system. 
+ 
+ 
+## Image Settings 
+ 
+Configure synthetic hemispheric image generation. 
+ 
+| Setting | Type | Default | Models | Description | 
+|---------|------|---------|--------|-------------| 
+| `image_height` | Float | `0.5` | L2R, C2R, T2R | Height (meters) of virtual camera position above ground | 
+| `point_size` | Vector{Float64} | `[30.0, 10.0]` | L2R | Size of points in synthetic hemispheric images (pixels). First value = points closest to camera, second value = points farthest from camera. Image resolution is 10000×10000 pixels internally. | 
+ 
+**Adjusting image_height:** 
+- `0.5`: Standard for radiation sensors or snow surface 
+- `1.5-2.0`: For above-ground vegetation sensors 
+- Lower values emphasize nearby canopy; higher values give wider perspective 
+ 
+**Adjusting point_size (L2R):** 
+- Larger values: Denser canopy representation, higher transmissivity sensitivity 
+- Smaller values: May miss canopy gaps in sparse point clouds 
+- Depends on point cloud density 
+ 
+## Output and Run Settings 
+ 
+Control what files are saved and how the model runs. 
+ 
+| Setting | Type | Default | Models | Description | 
+|---------|------|---------|--------|-------------| 
+| `batch` | Boolean | `false` | L2R, C2R, T2R | Enable batch mode for processing multiple tiles with organized sub-folder structure | 
+| `save_images` | Boolean | `false` | L2R, C2R, T2R | Save synthetic hemispheric images in NetCDF file | 
+| `make_pngs` | Boolean | `false` | L2R, C2R, T2R | Export saved images as PNG files to a separate folder | 
+| `save_horizon` | Boolean | `false` | C2R, T2R | Save calculated topographic horizon line matrix for reuse | 
+| `progress` | Boolean | `false` | L2R, C2R, T2R | Report detailed per-point progress to `/ProgressLastPoint/` folder (useful for debugging or timing L2R runs) | 
+ 
+**Storage considerations:** 
+- `save_images = true`: Significantly increases NetCDF file size 
+- `make_pngs = true`: Creates many files; useful for validation but storage-intensive 
+- `save_horizon = true`: Small file size; recommended for reusable terrain 
+ 
+## Special Implementations (C2R only) 
+ 
+Pre-configured implementations for specific large-scale applications. 
+ 
+| Option | Description | Use Case | 
+|--------|-------------|----------| 
+| `"swissrad"` | Swiss nationwide dataset configuration | Switzerland-wide radiation modeling | 
+| `"oshd"` | Uses pre-calculated horizon lines for compatibility | Integration with OSHD downscaled radiation | 
+| `"oshd-alps"` | Configuration for European Alps domain | Large-scale Alpine applications | 
+| `"none"` | Standard C2R configuration | General applications (requires `lavdf` input) | 
+ 
+**Usage:** 
+```julia 
+special_implementation = "none"  # For most users 
+``` 
+ 
+These are specialized configurations developed for published datasets. Use `"none"` unless working with these specific projects. 
+ 
+ 
+ 
+ 
+ 
+## Settings File Templates 
+ 
+See files in `testset/` for complete working examples of each model.  
+ 
+ 
+## Important Notes 
+ 
+- All input datasets but be in the same coordinate reference system specified by `epsg_code` 
+- Ensure canopy input data extent covers at least `forest_peri` beyond all calculation points and terrain data covers `highres_peri` and `lowres_peri` as applicable 
+- For `calc_swr = 2`, ensure `swrf` measurement timestamps exactly match output `tstep` 
+ 
+## Troubleshooting Settings 
+ 
+**Memory issues:** 
+- Reduce `forest_peri` or `trunks_peri` 
+- For L2R: Use `keep_points = "canopy"` instead of `"all"` 
+- Reduce spatial or temporal extent 
+ 
+**Slow computation:** 
+- Disable `branches` if not needed 
+- Reduce `trunks_peri` in dense forests 
+- Increase `tstep` if high temporal resolution isn't required

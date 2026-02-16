@@ -60,8 +60,8 @@ Pkg.test("CanRad")
 
 ## Usage
 
-Use ~/test/L2R_Settings_test.jl or ~/test/C2R_Settings_test.jl for desired input parameters and file paths. 
-Edit ~/test/run_CanRad_tests.jl 
+Use test/L2R_Settings_test.jl or test/C2R_Settings_test.jl for desired input parameters and file paths. 
+Edit test/run_CanRad_tests.jl 
 
 <!-- ... examaples for points, batch and cluster to be added -->
 
