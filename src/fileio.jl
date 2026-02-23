@@ -84,8 +84,13 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},st::SETT
     ds = NCDataset(outfile,"c",format=:netcdf4_classic)
 
     defDim(ds,"Coordinates",size(pts,1))
-    defVar(ds,"easting",pts[:,1],("Coordinates",))
-    defVar(ds,"northing",pts[:,2],("Coordinates",))
+    defVar(ds,"easting",pts[:,1],("Coordinates",),
+        attrib=[
+            "long_name" => "easting coordinate of point",
+            "epsg"  => st.epsg_code,])
+    defVar(ds,"northing",pts[:,2],("Coordinates",),attrib=[
+            "long_name" => "northing coordinate of point",
+            "epsg"  => st.epsg_code,])
 
     if st.calc_trans
         defDim(ds,"datetime",length(loc_time))
@@ -458,7 +463,12 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
 
     ds = NCDataset(joinpath(exdir,"Output_"*input*".nc"),"c",format=:netcdf4_classic)
     defDim(ds,"locX",size(xlim,1)); defDim(ds,"locY",size(ylim,1))
-    defVar(ds,"Easting",Float64.(unique(ptsx)),("locX",)); defVar(ds,"Northing",Float64.(reverse(unique(ptsy))),("locY",))
+    defVar(ds,"Easting",Float64.(unique(ptsx)),("locX",),attrib=[
+            "long_name" => "easting coordinate of lower left corner of pixel",
+            "epsg"  => par_in["epsg_code"],]); 
+    defVar(ds,"Northing",Float64.(reverse(unique(ptsy))),("locY",),attrib=[
+            "long_name" => "northing coordinate of lower left corner of pixel",
+            "epsg"  => par_in["epsg_code"],])
     defDim(ds,"DateTime",size(loc_time,1))
     time_zone = par_in["time_zone"]
     if  time_zone >= 0
