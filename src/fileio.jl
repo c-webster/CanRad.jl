@@ -425,7 +425,138 @@ function load_hlm(ter2rad::TER2RAD,hlmf::String,pts_x::Float64,pts_y::Float64)
 
 end
 
+"""
 
+will use the minimum and maximum coordinates from the input file to create a grid of points at the specified spacing, 
+ which will be used for the tile collating and writing functions. 
+
+Requirements:
+Grid must be complete (will fail if there are missing points)
+
+
+Assumptions:
+- point spacing is consistent across the grid
+- the grid has the same x and y dimensions (i.e. square cellsize)
+
+"""
+function create_grid_from_file(infile::String)
+    # will use the minimum and maximum coordinates from the input file to create a grid of points at the specified spacing, 
+    # which will be used for the tile collating and writing functions.    
+
+    infile = "/Users/cwebst/temp_local/Output_GRM_intact/Output_GRM_intact.nc"
+    ds = NCDataset(infile,"r")
+    xvals = ds["easting"][:]
+    yvals = ds["northing"][:]
+
+    easting = sort(unique(xvals))
+    northing = sort(unique(yvals))
+
+    @assert size(unique(diff(sort(unique(xvals)))))[1] == 1 "spacing between points inconsistent in x dimension"
+    @assert size(unique(diff(sort(unique(yvals)))))[1] == 1 "spacing between points inconsistent in y dimension"
+
+    pt_spacing_x = diff(sort(unique(xvals)))[1]
+    pt_spacing_y = diff(sort(unique(yvals)))[1]
+
+    @assert pt_spacing_x == pt_spacing_y "cellsize not consistent across x and y dimensions"
+
+    xmin = minimum(xvals) - pt_spacing_x/2
+    xmax = maximum(xvals) + pt_spacing_x/2
+    ymin = minimum(yvals) - pt_spacing_y/2
+    ymax = maximum(yvals) + pt_spacing_y/2
+
+    fulltilesize = Int64(max(xmax - xmin, ymax - ymin))
+
+    @assert fulltilesize == (xmax - xmin) == (ymax - ymin) "Grid is not square"
+
+    numptsgrid = Int64(div(fulltilesize,pt_spacing_x))
+    numptsvec = numptsgrid^2
+
+    # run some checks
+    @assert numptsvec == size(xvals,1) == size(yvals,1) "Number of points in grid does not match number of points in input file"
+    
+    B = hcat(xvals,yvals)
+    p = sortperm(view.(Ref(B), 1:size(B,1), :));
+
+    # get a list of the variable names in ds
+    list_vars = keys(ds)
+
+    numptstime = any(contains.(list_vars, "datetime")) ? size(ds["datetime"][:], 1) : 1
+
+    exdir = splitpath(infile)[1:end-1] |> joinpath
+    outname = "Output_" * splitpath(infile)[end][8:end-3] * "_grid.nc"
+    ds_grid = NCDataset(joinpath(exdir,outname),"c",format=:netcdf4_classic)
+    defDim(ds_grid,"locX",size(easting,1)); defDim(ds_grid,"locY",size(northing,1))
+    epsg_code = haskey(ds["easting"].attrib,"epsg") ? ds["easting"].attrib["epsg"] : missing
+    defVar(ds_grid,"easting",Float64.(easting),("locX",),attrib=[
+            "long_name" => "easting coordinate of center of pixel",
+            "epsg"  => epsg_code,]); 
+    defVar(ds_grid,"northing",Float64.(reverse(northing)),("locY",),attrib=[
+            "long_name" => "northing coordinate of center of pixel",
+            "epsg"  => epsg_code,])
+
+    if any(contains.(list_vars, "datetime"))
+        defVar(ds_grid,"datetime",ds["datetime"][:],("datetime",),attrib=ds["datetime"].attrib)
+    end
+
+    list_vars = filter(var -> any(startswith(string(var), prefix) for prefix in ["svf", "tvt", "swr"]), list_vars)
+    
+    for var in list_vars
+        println("Processing variable: ", var)
+
+        if contains(string(var),"svf")
+
+            dat = nomissing(ds[string(var)][:])
+            dat_new = Int8.(reverse(reshape(dat[p],(numptsgrid,numptsgrid)),dims=1))
+            if haskey(ds[string(var)].attrib, "_FillValue")
+                src_attrib = ds[string(var)].attrib
+                attrib_no_fill = Dict{String,Any}(
+                    String(k) => v for (k, v) in pairs(src_attrib) if String(k) != "_FillValue"
+                )
+                defVar(ds_grid,string(var),dat_new,("locY","locX",),deflatelevel=5,attrib=attrib_no_fill)
+            else
+                defVar(ds_grid,string(var),dat_new,("locY","locX",),deflatelevel=5,fillvalue=Int8(-1),attrib=ds[string(var)].attrib)
+            end
+
+        elseif contains(string(var),"tvt") || contains(string(var),"swr")
+
+            dat = nomissing(ds[string(var)][:,:])
+            dat_new = fill(-1,numptstime,numptsgrid,numptsgrid)
+            for x in 1:1:size(dat,1)
+                dat_new[x,:,:] = reverse(reshape(dat[x,p],numptsgrid,numptsgrid),dims=1)
+            end
+            if haskey(ds[string(var)].attrib, "_FillValue")
+                src_attrib = ds[string(var)].attrib
+                attrib_no_fill = Dict{String,Any}(
+                    String(k) => v for (k, v) in pairs(src_attrib) if String(k) != "_FillValue"
+                )
+                defVar(ds_grid,string(var),Int8.(dat_new),("datetime","locY","locX",),deflatelevel=5,attrib=attrib_no_fill)
+            else
+                defVar(ds_grid,string(var),Int8.(dat_new),("datetime","locY","locX",),deflatelevel=5,fillvalue = Int8(-1),attrib=ds[string(var)].attrib)
+            end
+        end
+
+    end
+
+    close(ds)
+    close(ds_grid)
+
+
+
+
+end
+
+
+
+
+"""
+Takes the vectorised output and sub-tiles from running chm2rad!
+Collates the output into one file per tile and converts the data into a grid format.
+
+Optionally moves the horizon line files and SHI images if specified in settings
+
+
+
+"""
 function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,ptsx::Vector{Float64},
                             ptsy::Vector{Float64},exdir::String,par_in::Dict{String, Any},
                             ptdx::Vector{Float64},pt_spacing::Int64,fulltilesize::Int64,sub_tilesize::Int64,hlmexdir::String="",
@@ -522,6 +653,7 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
     end
 
     pts_all = hcat(ptsx[ptdx.>0],ptsy[ptdx.>0],ptdx[ptdx.>0])
+    pts_all = hcat(ptsx,ptsy,ptdx)
 
     limx = Int.((floor(limits[1]/sub_tilesize))*sub_tilesize):sub_tilesize:(Int.(floor((limits[2]/sub_tilesize))*sub_tilesize))
     limy = (Int.((floor(limits[3]/sub_tilesize))*sub_tilesize):sub_tilesize:(Int.(floor(((limits[4])/sub_tilesize))*sub_tilesize)))
