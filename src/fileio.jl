@@ -504,9 +504,9 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
     if (haskey(par_in,"phenology") && ((par_in["phenology"] == "both") || (par_in["phenology"] == "leafon"))) ||
          (haskey(par_in,"SHI_leafon") && par_in["SHI_leafon"])
        leafon = true
-       svf_p_s = Float64[]
-       svf_h_s = Float64[]
-       for_tau_s = Float64[]
+       svf_p_leafon = Float64[]
+       svf_h_leafon = Float64[]
+       for_tau_leafon = Float64[]
     else
         leafon = false
     end
@@ -551,9 +551,9 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
             (append!(svf_p_t,tds["svf_planar_terrain"][:]))
             (append!(svf_h_t,tds["svf_hemi_terrain"][:]))
             if isempty(for_tau_t)
-                for_tau_t = tds["trans_terrain"][:,:]
+                for_tau_t = tds["tvt_terrain"][:,:]
             else
-                for_tau_t = hcat(for_tau_t, tds["trans_terrain"][:,:])
+                for_tau_t = hcat(for_tau_t, tds["tvt_terrain"][:,:])
             end
         end
 
@@ -566,15 +566,15 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
             leafon && (append!(svf_h_leafon,tds["svf_hemi_leafon"][:]))
 
             if leafoff && isempty(for_tau_leafoff)
-                for_tau_leafoff = tds["for_trans_leafoff"][:,:]
+                for_tau_leafoff = tds["tvt_leafoff"][:,:]
             elseif leafoff
-                for_tau_leafoff = hcat(for_tau_leafoff, tds["for_trans_leafoff"][:,:])
+                for_tau_leafoff = hcat(for_tau_leafoff, tds["tvt_leafoff"][:,:])
             end
 
             if leafon && isempty(for_tau_leafon)
-                for_tau_leafon = tds["for_trans_leafon"][:,:]
+                for_tau_leafon = tds["tvt_leafon"][:,:]
             elseif leafon
-                for_tau_leafon = hcat(for_tau_leafon, tds["for_trans_leafon"][:,:])
+                for_tau_leafon = hcat(for_tau_leafon, tds["tvt_leafon"][:,:])
             end
 
         else # if subtile is terrain only (calculated with ter2rad), fill forest variables with nodata
@@ -586,15 +586,15 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
             leafoff && (append!(svf_h_leafoff,dummvf))
             leafon && (append!(svf_h_leafon,dummvf))
 
-            dummytau = fill(-1,size(tds["trans_t"][:,:]))
+            dummytau = fill(-1,size(tds["tvt_t"][:,:]))
             if leafoff && isempty(for_tau_leafoff)
-                for_tau_leafoff = tds["trans_leafoff"][:,:]
+                for_tau_leafoff = tds["tvt_leafoff"][:,:]
             elseif leafoff
                 for_tau_leafoff = hcat(for_tau_leafoff, dummytau)
             end
 
             if leafon && isempty(for_tau_leafon)
-                for_tau_leafon = tds["trans_leafon"][:,:]
+                for_tau_leafon = tds["tvt_leafon"][:,:]
             elseif leafon
                 for_tau_leafon = hcat(for_tau_leafon, dummytau)
             end
