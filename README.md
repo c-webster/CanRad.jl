@@ -47,23 +47,24 @@ Pkg.add(url="https://github.com/c-webster/CanRad.jl")
 
 ## Tests
 
+Tests compilation and basic usage of `CanRad`. The test can take several minutes to run as they include a full L2R run on a small test site, although testing LAS2Rad is skipped if there is not enough RAM available for loading in the test point cloud.
+
+The output sky-view factor from the test runs of L2R and C2R are benchmarked against values calculated from hemispherical photographs taken at the same locations using [HPEVal](https://github.com/Tobias-Jonas-SLF/HPEval) and available [here](https://github.com/c-webster/CanRad.jl/tree/main/testset/real_HPs). The tests are considered passed if the code runs without error and the sky-view factor values from L2R and C2R are within 0.05 of the values from HPEVal. 
+
 Add required packages
 ```
 Pkg.add(["DelimitedFiles", "NCDatasets"])
 ```
 
-Run the test (this will take several minutes)
+Run the test
 ```
 using CanRad
 Pkg.test("CanRad")
 ```
 
-## Usage
+<!-- ## Usage
 
-Use test/L2R_Settings_test.jl or test/C2R_Settings_test.jl for desired input parameters and file paths. 
-Edit test/run_CanRad_tests.jl 
-
-<!-- ... examaples for points, batch and cluster to be added -->
+See specific documnentation for L2R and C2R in the [docs](https://c-webster.github.io/CanRad.jl/stable/). -->
 
 
 

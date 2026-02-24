@@ -218,34 +218,30 @@ Control what files are saved and how the model runs.
 |---------|------|---------|--------|-------------| 
 | `batch` | Boolean | `false` | L2R, C2R, T2R | Enable batch mode for processing multiple tiles with organized sub-folder structure | 
 | `save_images` | Boolean | `false` | L2R, C2R, T2R | Save synthetic hemispheric images in NetCDF file | 
-| `make_pngs` | Boolean | `false` | L2R, C2R, T2R | Export saved images as PNG files to a separate folder | 
+| `make_pngs` | Boolean | `false` | L2R, C2R, T2R | Export saved images as PNG files to a separate folder. Note that if `phenology` is enabled, the output is a .gif for each location. | 
 | `save_horizon` | Boolean | `false` | C2R, T2R | Save calculated topographic horizon line matrix for reuse | 
 | `progress` | Boolean | `false` | L2R, C2R, T2R | Report detailed per-point progress to `/ProgressLastPoint/` folder (useful for debugging or timing L2R runs) | 
  
-**Storage considerations:** 
-- `save_images = true`: Significantly increases NetCDF file size 
-- `make_pngs = true`: Creates many files; useful for validation but storage-intensive 
-- `save_horizon = true`: Small file size; recommended for reusable terrain 
+**Considerations:** 
+- `save_images = true` and `make_pngs = true`: Creates many files; useful for validation but storage-intensive 
+- `save_horizon = true`: Used for topographically downscaling radiation data in external software
  
 ## Special Implementations (C2R only) 
  
-Pre-configured implementations for specific large-scale applications. 
+Pre-configured specialised configurations for specific large-scale applications and datasets. Use `"none"` unless working with these specific projects. 
  
 | Option | Description | Use Case | 
 |--------|-------------|----------| 
+| `"none"` | Standard C2R configuration | General applications (requires `lavdf` input) | 
 | `"swissrad"` | Swiss nationwide dataset configuration | Switzerland-wide radiation modeling | 
 | `"oshd"` | Uses pre-calculated horizon lines for compatibility | Integration with OSHD downscaled radiation | 
 | `"oshd-alps"` | Configuration for European Alps domain | Large-scale Alpine applications | 
-| `"none"` | Standard C2R configuration | General applications (requires `lavdf` input) | 
+
  
 **Usage:** 
 ```julia 
 special_implementation = "none"  # For most users 
 ``` 
- 
-These are specialized configurations developed for published datasets. Use `"none"` unless working with these specific projects. 
- 
- 
  
  
  
