@@ -426,13 +426,13 @@ function load_hlm(ter2rad::TER2RAD,hlmf::String,pts_x::Float64,pts_y::Float64)
 end
 
 """
+    create_grid_from_file(infile::String)
 
-will use the minimum and maximum coordinates from the input file to create a grid of points at the specified spacing, 
- which will be used for the tile collating and writing functions. 
+Takes an output file from CanRad (created using `createfiles`) and creates a grid of points based on the coordinates in the file.
+Uses the minimum and maximum coordinates and the spacing between points to create a complete grid of points.
 
 Requirements:
 Grid must be complete (will fail if there are missing points)
-
 
 Assumptions:
 - point spacing is consistent across the grid
@@ -440,10 +440,7 @@ Assumptions:
 
 """
 function create_grid_from_file(infile::String)
-    # will use the minimum and maximum coordinates from the input file to create a grid of points at the specified spacing, 
-    # which will be used for the tile collating and writing functions.    
 
-    infile = "/Users/cwebst/temp_local/Output_GRM_intact/Output_GRM_intact.nc"
     ds = NCDataset(infile,"r")
     xvals = ds["easting"][:]
     yvals = ds["northing"][:]
