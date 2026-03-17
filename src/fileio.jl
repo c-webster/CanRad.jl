@@ -516,8 +516,12 @@ function create_grid_from_file(infile::String)
 
         elseif contains(string(var),"tvt") || contains(string(var),"swr")
 
+            is_swr = contains(String(var), "swr")
+            T = is_swr ? Int16 : Int8
+            fillv = T(-1)
+
             dat = nomissing(ds[string(var)][:,:])
-            dat_new = fill(-1,numptstime,numptsgrid,numptsgrid)
+            dat_new = fill(fillv,numptstime,numptsgrid,numptsgrid)
             for x in 1:1:size(dat,1)
                 dat_new[x,:,:] = reverse(reshape(dat[x,p],numptsgrid,numptsgrid),dims=1)
             end
@@ -526,9 +530,9 @@ function create_grid_from_file(infile::String)
                 attrib_no_fill = Dict{String,Any}(
                     String(k) => v for (k, v) in pairs(src_attrib) if String(k) != "_FillValue"
                 )
-                defVar(ds_grid,string(var),Int8.(dat_new),("datetime","locY","locX",),deflatelevel=5,attrib=attrib_no_fill)
+                defVar(ds_grid,string(var),T.(dat_new),("datetime","locY","locX",),deflatelevel=5,attrib=attrib_no_fill)
             else
-                defVar(ds_grid,string(var),Int8.(dat_new),("datetime","locY","locX",),deflatelevel=5,fillvalue = Int8(-1),attrib=ds[string(var)].attrib)
+                defVar(ds_grid,string(var),T.(dat_new),("datetime","locY","locX",),deflatelevel=5,fillvalue = T(-1),attrib=ds[string(var)].attrib)
             end
         end
 
@@ -538,11 +542,7 @@ function create_grid_from_file(infile::String)
     close(ds_grid)
 
 
-
-
 end
-
-
 
 
 """
