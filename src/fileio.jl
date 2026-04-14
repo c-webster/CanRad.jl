@@ -95,7 +95,9 @@ function createfiles(outdir::String,outstr::String,pts::Matrix{Float64},st::SETT
     if st.calc_trans
         defDim(ds,"datetime",length(loc_time))
         @unpack dt_desc = fileio
-        defVar(ds,"datetime",loc_time,("datetime",),attrib=["time_zone" => dt_desc])
+        defVar(ds,"datetime",loc_time,("datetime",),attrib=[
+                                                "time_zone" => dt_desc,
+                                                "comment"   => "timestamp is for beginning of averaged period",])
     end
 
     defl_val = 5
