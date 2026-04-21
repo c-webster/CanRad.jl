@@ -710,14 +710,14 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
 
         else # if subtile is terrain only (calculated with ter2rad), fill forest variables with nodata
 
-            dummvf = fill(-1,size(tds["svf_planar_t"][:]))
+            dummvf = fill(-1,size(tds["svf_planar_terrain"][:]))
             leafoff && (append!(svf_p_leafoff,dummvf))
             leafon && (append!(svf_p_leafon,dummvf))
 
             leafoff && (append!(svf_h_leafoff,dummvf))
             leafon && (append!(svf_h_leafon,dummvf))
 
-            dummytau = fill(-1,size(tds["tvt_t"][:,:]))
+            dummytau = fill(-1,size(tds["tvt_terrain"][:,:]))
             if leafoff && isempty(for_tau_leafoff)
                 for_tau_leafoff = tds["tvt_leafoff"][:,:]
             elseif leafoff
@@ -785,7 +785,7 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
         defVar(ds,"svf_hemi_leafoff",Int8.(reverse(reshape(svf_h_all_leafoff,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
                     attrib=["comments" =>
                     "values are represented as percentage;
-                    perspective of hemipherically shaped surface or plant;
+                    perspective of hemispherically shaped surface or plant;
                     zenith rings weighted by surface area on the hemisphere;
                     calculated for leafoff canopy conditions",])
         defVar(ds,"transmissivity_leafoff",Int8.(ft_newdim_leafoff),("datetime","locY","locX",),fillvalue = Int8(-1),
@@ -804,7 +804,7 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
         defVar(ds,"svf_hemi_leafon",Int8.(reverse(reshape(svf_h_all_leafon,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
                     attrib=["comments" =>
                     "values are represented as percentage;
-                    perspective of hemipherically shaped surface or plant;
+                    perspective of hemispherically shaped surface or plant;
                     zenith rings weighted by surface area on the hemisphere;
                     calculated for leafon canopy conditions",])
         defVar(ds,"transmissivity_leafon",Int8.(ft_newdim_leafon),("datetime","locY","locX",),fillvalue = Int8(-1),
@@ -823,7 +823,7 @@ function collate2tilefile(outdir::String,limits::Matrix{Int64},input::String,pts
         defVar(ds,"svf_hemi_terrain",Int8.(reverse(reshape(svf_h_all_t,numptsgrid,numptsgrid),dims=1)),("locY","locX",),deflatelevel=5,fillvalue = Int8(-1),
                     attrib=["comments" =>
                     "values are represented as percentage;
-                    perspective of hemipherically shaped surface or plant;
+                    perspective of hemispherically shaped surface or plant;
                     zenith rings weighted by surface area on the hemisphere;
                     calculated for terrain only (no canopy)",])
         defVar(ds,"transmissivity_terrain",Int8.(ft_newdim_t),("datetime","locY","locX",),fillvalue = Int8(-1),

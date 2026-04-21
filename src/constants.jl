@@ -193,7 +193,7 @@ end
 
     svf_planar_desc::String = "perspective of a horizontal flat uplooking surface"
     svf_planar_calc::String = "zenith rings weighted by surface area projected onto a horizontal flat surface"
-    svf_hemi_desc::String   = "perspective of hemipherically shaped surface or plant"
+    svf_hemi_desc::String   = "perspective of hemispherically shaped surface or plant"
     svf_hemi_calc::String   = "zenith rings weighted by surface area on the hemisphere"
 
     time_zone::Int64
