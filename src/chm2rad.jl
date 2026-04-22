@@ -570,7 +570,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
         if st.step_progress
             if crx != 1; try; rm(joinpath(progdir,progtext1)); catch; end; end
-            global progtext1 = "1. Transferring to polar took "*cfmt.("%.$(2)f", time() - start)*" seconds"
+            global progtext1 = "1. Transferring coordinates took "*cfmt.("%.$(2)f", time() - start)*" seconds"
             writedlm(joinpath(progdir,progtext1),NaN)
         end
 
@@ -671,7 +671,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
         if st.step_progress
             if crx != 1; try; rm(joinpath(progdir,progtext2)); catch; end; end
-            global progtext2 = "2. Classifying image took "*cfmt.("%.$(2)f", time() - start)*" seconds"
+            global progtext2 = "2. Building hemishperical image took "*cfmt.("%.$(2)f", time() - start)*" seconds"
             writedlm(joinpath(progdir,progtext2),NaN)
         end
 
@@ -770,7 +770,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
 
         if st.step_progress
             if crx != 1; try; rm(joinpath(progdir,progtext3)); catch; end; end
-            global progtext3 = "3. Calculations and export "*cfmt.("%.$(2)f", time() - start)*" seconds"
+            global progtext3 = "3. Calculation svf, tvt, swr and export "*cfmt.("%.$(2)f", time() - start)*" seconds"
             writedlm(joinpath(progdir,progtext3),NaN)
         end
 

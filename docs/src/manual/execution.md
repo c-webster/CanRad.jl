@@ -283,7 +283,7 @@ scancel JOBID              # Cancel specific job
 scancel -u $USER           # Cancel all your jobs
 scancel --array=1-100      # Cancel specific array tasks
 ```
-
+<!-- 
 ### Using Singularity/Apptainer
 
 Many HPC systems use containers. Example with Singularity:
@@ -315,28 +315,8 @@ singularity exec $julia_container julia $myjlscript $JOBNUM
 ```bash
 # Instantiate packages once before submitting jobs
 singularity exec julia.sif julia -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
-```
+``` -->
 
-### PBS/Torque Job Script
-
-For PBS-based systems:
-
-```bash
-#!/bin/bash
-#PBS -N canrad
-#PBS -l walltime=02:00:00
-#PBS -l mem=4gb
-#PBS -t 1-1000%50
-
-cd $PBS_O_WORKDIR
-
-module load julia/1.9.0
-
-# Calculate job number
-JOBNUM=$((((PBS_ARRAYID-1)*4)+1))
-
-julia run_canrad_tile.jl $JOBNUM
-```
 
 ## Progress Monitoring
 

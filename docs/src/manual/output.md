@@ -117,8 +117,12 @@ All output variables include a suffix indicating the environment type, character
 Every model run creates a progress file e.g. `Processing 10% ... 15 of 150.txt` file in the output directory, which is updated in real-time to reflect the current progress of the model run as it iterates over each point in the task. This file is used to monitor long-running jobs, especially on HPC clusters. Because it is updated as each point is calculated, it can also be used as an indication of how fast/slow the model is running.
 
 A `Progress_<sitename>/` folder can be created (`step_progress = true`) during model runs containing:
-- Step-by-step progress updates
-- Timing information for performance monitoring/benchmarking
+- Step-by-step progress updates:
+    1. "Transferring coordinates ..." calculates how long it takes to transfer the cartesian coordinates of the point cloud or CHM and DTM(s) to the polar coordinate system for building the hemispheric image
+    2. "Building hemishperical image ..." calculates how long it takes to create the synthetic image matrix using the points calculated in the previous step.
+    Points 1 and 2 together are the time taken to generate the synethic image for each point
+    3. "Calculation svf, tvt, swr and export ..." calculates how long it takes to calculate the output variables and save them in the entcdf file
+- This timing information was originall included for performance monitoring and benchmarking
 - It is *not recommended* to enable this option for large runs due to the large number of files created. It is designed for development and benchmarking rather than routine use.
 
 ## Units and Conventions
