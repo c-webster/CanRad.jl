@@ -114,7 +114,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         if st.terrain_highres
             rbins_lrdtm = collect(st.highres_peri-lrdtm_cellsize:sqrt(2).*lrdtm_cellsize:st.lowres_peri)
         else # include lowres terrain under pts if not using highres terrain
-            rbins_lrdtm = collect(1.5*lrdtm_cellsize:sqrt(2).*lrdtm_cellsize:st.lowres_peri)
+            rbins_lrdtm = collect(2*lrdtm_cellsize:sqrt(2).*lrdtm_cellsize:st.lowres_peri)
         end
 
         findelev!(copy(lrdtm_x),copy(lrdtm_y),copy(lrdtm_z),pts_x,pts_y,limits_lowres,lrdtm_cellsize*3,pts_e_lrdtm,"nearest")
