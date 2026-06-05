@@ -1,6 +1,6 @@
 name = "CanRad"
 uuid = "aeb86711-de0f-4108-877d-aa9de166218e"
-version = "0.13.11"
+version = "0.13.12"
 authors = ["Clare Webster"]
 
 [deps]
