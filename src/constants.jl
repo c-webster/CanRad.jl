@@ -130,8 +130,7 @@ end
     pts_e_lrdtm::Vector{Float64} = zeros(pts_sz)
 
     # terrain horizon line parameters
-    phi_bins_highres::Vector{Float64} = collect(-2*pi:pi/180:2*pi)[1:end-1]
-    phi_bins_lowres::Vector{Float64} = collect(-2*pi:pi/90:2*pi)[1:end-1]
+    phi_bins::Vector{Float64} = collect(-2*pi:pi/180:2*pi)[1:end-1]
 
     fix1::Vector{Int64} = zeros(10000)
     tdx::Vector{Bool} = zeros(size(phi_bins,1))

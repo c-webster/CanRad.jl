@@ -434,17 +434,9 @@ function remove_duplicates!(indat::Vector{Float64})
 end
 
 function calcmintht!(ter2rad::TER2RAD,mintht::Vector{Float64},pcd_phi::Vector{Float64},pcd_tht::Vector{Float64},pcd_rad::Vector{Float64},
-    rbins::Vector{Float64},dat_type=nothing::String)
+    rbins::Vector{Float64})
 
-    @unpack fix1, tdx, tempmintht = ter2rad
-
-    if (dat_type == "terrain_highres") || (dat_type == "buildings")
-        phi_bins = ter2rad.phi_bins_highres
-    elseif dat_type == "terrain_lowres"
-        phi_bins = ter2rad.phi_bins_highres
-    else
-        phi_bins = ter2rad.phi_bins_highres
-    end
+    @unpack phi_bins, fix1, tdx, tempmintht = ter2rad
 
     fill!(fix1,0)
     fill!(tdx,0)
@@ -503,7 +495,7 @@ function calc_horizon_lines(ter2rad::TER2RAD,pcd_phi::Vector{Float64},pcd_tht::V
 
     @unpack mintht = ter2rad
     fill!(mintht,90)
-    calcmintht!(ter2rad,mintht,pcd_phi,pcd_tht,pcd_rad,rbins,dat_type);
+    calcmintht!(ter2rad,mintht,pcd_phi,pcd_tht,pcd_rad,rbins);
 
     if dat_type=="buildings"
         # calculate moving average across building tops to smooth surface

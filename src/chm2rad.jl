@@ -436,7 +436,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 pt_hrdtm_x, pt_hrdtm_y, pt_hrdtm_z = getsurfdat(copy(hrdtm_x),copy(hrdtm_y),copy(hrdtm_z),
                                                 pts_x[crx],pts_y[crx],pts_e[crx],st.highres_peri);
                 pt_hrdtm_x, pt_hrdtm_y = pcd2pol2cart!(ter2rad,pt_hrdtm_x, pt_hrdtm_y, pt_hrdtm_z,pts_x[crx],
-                                        pts_y[crx],pts_e[crx],"terrain_highres",rbins_hrdtm,pts_z[crx])
+                                        pts_y[crx],pts_e[crx],"terrain",rbins_hrdtm,pts_z[crx])
 
                 st.save_horizon && copy!(hrdtm_mintht,ter2rad.mintht[ter2rad.dx1:ter2rad.dx2-1])
         
@@ -447,7 +447,7 @@ function chm2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
                 pt_lrdtm_x, pt_lrdtm_y, pt_lrdtm_z = getsurfdat(copy(lrdtm_x),copy(lrdtm_y),copy(lrdtm_z),
                                                 pts_x[crx],pts_y[crx],pts_e[crx],st.lowres_peri);
                 pt_lrdtm_x, pt_lrdtm_y = pcd2pol2cart!(ter2rad,pt_lrdtm_x, pt_lrdtm_y, pt_lrdtm_z,pts_x[crx],
-                                        pts_y[crx],pts_e_lrdtm[crx],"terrain_lowres",rbins_lrdtm,pts_z[crx]);
+                                        pts_y[crx],pts_e_lrdtm[crx],"terrain",rbins_lrdtm,pts_z[crx]);
 
                 if st.save_horizon
                     if st.terrain_highres && !isempty(hrdtm_x)
