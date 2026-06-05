@@ -76,7 +76,7 @@ function las2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         @unpack limits_lowres, pts_e_lrdtm = ter2rad
         getlimits!(limits_lowres,pts_x,pts_y,st.lowres_peri)
         lrdtm_x, lrdtm_y, lrdtm_z, lrdtm_cellsize = read_griddata_window(fp.lrdtmf,limits_lowres,true,true)
-        rbins_lrdtm = collect(lrdtm_cellsize:sqrt(2).*lrdtm_cellsize:st.lowres_peri)
+        rbins_lrdtm = collect(1:sqrt(2).*lrdtm_cellsize:st.lowres_peri)
         findelev!(copy(lrdtm_x),copy(lrdtm_y),copy(lrdtm_z),pts_x,pts_y,limits_lowres,lrdtm_cellsize*3,pts_e_lrdtm,"nearest")
 
     end

@@ -59,7 +59,7 @@ function ter2rad!(pts::Matrix{Float64},dat_in::Dict{String, String},par_in::Dict
         limits_lowres = getlimits!(Vector{Float64}(undef,4),pts_x,pts_y,st.lowres_peri)
         lrdtm_x, lrdtm_y, lrdtm_z, lrdtm_cellsize = read_griddata_window(fp.lrdtmf,limits_lowres,true,true)
         pts_e_lrdtm = findelev!(copy(lrdtm_x),copy(lrdtm_y),copy(lrdtm_z),pts_x,pts_y,limits_lowres,30,Vector{Float64}(undef,size(pts_x)),"nearest")
-        rbins_lrdtm = collect(lrdtm_cellsize:sqrt(2).*lrdtm_cellsize:st.lowres_peri)
+        rbins_lrdtm = collect(1:sqrt(2).*lrdtm_cellsize:st.lowres_peri)
 
     end
 
